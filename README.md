@@ -52,4 +52,6 @@ sh scripts/dev.sh
 - 构建命令：`cp -r prompts public/prompts`
 - 输出目录：`public`
 
+复制 Astra 版空岛邮班到本地时，一并复制同目录下的 `gpt-6.2-astra-max-fallback.mp4`。网页会在 WebGL 不可用时才请求这段备用影片。
+
 分享预览图 `og:image` 现在写的是相对路径，部分平台只认完整网址。绑定域名后，把 `index.html` 里的 `og.jpg` 改成 `https://你的域名/og.jpg`。
