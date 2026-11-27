@@ -1,4 +1,4 @@
-// Shared helpers for the home page: language, prompt loading + tiny Markdown, live previews.
+// Shared helpers for language, prompts, preview clips, and embedded works.
 (() => {
   const KEY = 'html-toys:lang';
   const pick = () => {
@@ -90,29 +90,121 @@
     }
   }
 
-  // Live iframes, keyed by their host element. Hover previews are exclusive (one on the page);
-  // the comparison view mounts one per model side by side.
-  const lives = new Map();
-  function mountLive(host, src, { exclusive = true, onload, title } = {}) {
-    const have = lives.get(host);
-    if (have && have.src === src) return have;
-    if (exclusive) unmountLive(); else unmountLive(host);
-    const f = document.createElement('iframe');
-    f.src = src;
-    f.title = title || src.split('/').slice(-2).join(' / ');
-    f.setAttribute('allow', 'autoplay; fullscreen');
-    f.tabIndex = -1;
-    f.addEventListener('load', () => { f.classList.add('is-loaded'); onload && onload(f); }, { once: true });
-    host.append(f);
-    const live = { host, src, frame: f };
-    lives.set(host, live);
+  function mountClip(host, src, { loop = true } = {}) {
+    const video = document.createElement('video');
+    video.preload = 'none';
+    video.defaultMuted = video.muted = video.playsInline = true;
+    video.loop = loop;
+    video.setAttribute('aria-hidden', 'true');
+    video.addEventListener('playing', () => video.classList.add('is-playing'));
+    video.src = src;
+    host.append(video);
+    return video;
+  }
+
+  function playClip(video) {
+    video.play().catch(() => {});
+  }
+
+  function removeClip(video) {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+    video.remove();
+  }
+
+  const embedWidth = 1440;
+  const lives = new WeakMap();
+  function mountLive(host, src, title) {
+    const frame = document.createElement('iframe');
+    frame.src = src;
+    frame.title = title;
+    frame.setAttribute('allow', 'autoplay; fullscreen');
+    const live = { frame, active: true, width: 0 };
+    lives.set(frame, live);
+    sizeLive(live, host.clientWidth);
+    host.append(frame);
     return live;
   }
-  function unmountLive(host) {
-    for (const [h, l] of lives) if (!host || h === host) { l.frame.remove(); lives.delete(h); }
+
+  function sizeLive(live, width) {
+    if (width <= 0 || live.width === width) return;
+    const previous = live.width;
+    live.width = width;
+    live.frame.style.transform = `scale(${width / embedWidth})`;
+    if (previous) live.resize?.();
+  }
+
+  // Works call this at the start of their scripts when framed by the gallery.
+  function prepareWork(win) {
+    const live = lives.get(win.frameElement);
+    if (!live) return;
+    const request = win.requestAnimationFrame.bind(win);
+    const cancel = win.cancelAnimationFrame.bind(win);
+    const now = win.performance.now.bind(win.performance);
+    const pending = new Map();
+    const audio = new Set();
+    const suspendedAudio = new Set();
+    let id = 0, pausedAt = live.active ? null : now(), pausedTime = 0;
+
+    const schedule = (key, job) => {
+      job.frame = request(timestamp => {
+        pending.delete(key);
+        job.callback(timestamp - pausedTime);
+      });
+    };
+    win.requestAnimationFrame = callback => {
+      const key = ++id, job = { callback };
+      pending.set(key, job);
+      if (live.active) schedule(key, job);
+      return key;
+    };
+    win.cancelAnimationFrame = key => {
+      const job = pending.get(key);
+      if (job?.frame !== undefined) cancel(job.frame);
+      pending.delete(key);
+    };
+    win.performance.now = () => (pausedAt ?? now()) - pausedTime;
+
+    win.ToyEmbed = {
+      get active() { return live.active; },
+      get pixelRatio() { return Math.max(.25, (win.devicePixelRatio || 1) * live.width / embedWidth); },
+      trackAudio(context) { audio.add(context); },
+    };
+    live.resize = () => win.dispatchEvent(new win.Event('resize'));
+    live.setActive = active => {
+      if (active) {
+        pausedTime += now() - pausedAt;
+        pausedAt = null;
+        for (const [key, job] of pending) schedule(key, job);
+        for (const context of suspendedAudio) context.resume().catch(() => {});
+        suspendedAudio.clear();
+      } else {
+        pausedAt = now();
+        for (const job of pending.values()) if (job.frame !== undefined) cancel(job.frame);
+        for (const context of audio) if (context.state === 'running') {
+          suspendedAudio.add(context);
+          context.suspend().catch(() => {});
+        }
+      }
+      win.dispatchEvent(new win.Event('toyvisibilitychange'));
+    };
+  }
+
+  function activateLive(live, active) {
+    if (live.active === active) return;
+    live.active = active;
+    live.setActive?.(active);
+  }
+
+  function removeLive(live) {
+    activateLive(live, false);
+    lives.delete(live.frame);
+    live.frame.remove();
   }
 
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const media = JSON.parse(document.getElementById('gallery-media').textContent);
 
   window.Home = {
     // Resolve works/prompts/covers relative to the site root, wherever this page sits.
@@ -132,8 +224,14 @@
     // Every model in MODELS order, with its run for this prompt or null.
     runs: id => { const p = window.PROMPTS.find(x => x.id === id); return window.MODELS.map(m => ({ model: m, run: (p && p.runs[m.id]) || null })); },
     cover: (id, model) => new URL(`covers/${id}/${model}.webp`, Home.base).href,
+    covers: (id, model) => {
+      const src = Home.cover(id, model), widths = media[id]?.[model]?.widths || [];
+      return widths.map(w => `${src.replace(/\.webp$/, `-${w}.webp`)} ${w}w`).concat(`${src} 1200w`).join(', ');
+    },
+    preview: (id, model) => media[id]?.[model]?.preview ? new URL(`previews/${id}/${model}.mp4`, Home.base).href : '',
     href: (id, model) => new URL(`works/${id}/${model}.html`, Home.base).href,
-    md, prompt, copy, mountLive, unmountLive,
+    md, prompt, copy, mountClip, playClip, removeClip, mountLive, sizeLive, activateLive, removeLive, prepareWork,
+    motion: reduced,
     get reducedMotion() { return reduced.matches; },
   };
 })();

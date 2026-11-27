@@ -1,6 +1,6 @@
 # HTML Toys：同题
 
-同一段提示词交给不同的模型，每个模型各写成一个单文件 HTML 作品。主页「同题印样」把所有作品排成一张摄影印样：每一行是一道题，每一列是一个模型。点「放大对比」可以把同一道题的作品并排放大，下面附上这段提示词（中英两版）。
+同一段提示词交给不同的模型，每个模型各写成一个 HTML 作品。主页「同题印样」把所有作品排成一张摄影印样：每一行是一道题，每一列是一个模型。悬停可播放无声短片，点击可打开完整作品。「放大对比」先并排显示预览，下方可分别运行两个作品，并查看中英文提示词。
 
 ## 目录
 
@@ -14,9 +14,13 @@ public/                        站点根目录（Cloudflare Pages 输出目录�
   og.jpg                       分享预览图，1200×630
   assets/
     toys.js                    作品清单：MODELS 与 PROMPTS
-    home.js                    主页共用脚本：语言切换、提示词加载、实时预览
+    home.js                    语言、提示词、预览短片及嵌入播放
+    gallery.js                 印样和对比页交互
   works/<prompt-id>/<model-id>.html     作品，一个模型一个文件
   covers/<prompt-id>/<model-id>.webp    封面，宽 1200，比例 16:10
+  covers/<prompt-id>/<model-id>-<w>.webp  可选封面尺寸，宽 384、576 或 864
+  previews/<prompt-id>/<model-id>.mp4   可选无声短片，约 4 秒
+scripts/prepare-gallery.mjs     按现有资源生成首页的预加载链接及媒体清单
 scripts/dev.sh                 本地预览
 ```
 
@@ -31,8 +35,9 @@ scripts/dev.sh                 本地预览
 1. 把 HTML 文件放到 `public/works/<prompt-id>/<model-id>.html`。
 2. 截一张封面，存为 `public/covers/<prompt-id>/<model-id>.webp`。
 3. 在 `public/assets/toys.js` 对应题目的 `runs` 里加一项，写上 `title`、`medium` 和 `blurb`，中英各一份。
+4. 可加 384、576、864 像素宽的 WebP 封面及一段 432 × 270、无音轨的 H.264 MP4。运行 `node scripts/prepare-gallery.mjs` 刷新媒体清单。
 
-主页会自动把这件作品放进对应的格子，原来的「未曝光」空帧随之换掉。
+主页会自动更新对应的格子。缺少短片时使用静态封面，缺少缩小版时使用原尺寸封面。
 
 新增题目：添加 `prompts/zh` 和 `prompts/en` 下的两份提示词，然后在 `PROMPTS` 里加一项，印样上会多出一行，顺序和 `PROMPTS` 一致。
 新增模型：在 `MODELS` 里加一项（`name` 是页面上显示的全名，`short` 是窄屏上的短名，`color` 是它的识别色），印样上会多出一列，还没有它作品的题目显示「未曝光」空帧。
@@ -45,11 +50,11 @@ scripts/dev.sh                 本地预览
 sh scripts/dev.sh
 ```
 
-然后打开 http://localhost:8787 。改了 `assets/` 下的脚本后如果页面没变化，强制刷新一下，浏览器可能还在用缓存。这个脚本会把 `prompts/` 链接到 `public/prompts`，和线上的目录结构保持一致。
+然后打开 http://localhost:8787 。脚本需要 Node.js 和 Python 3，会更新媒体清单并把 `prompts/` 链接到 `public/prompts`。新增封面或短片后，可单独运行 `node scripts/prepare-gallery.mjs`。
 
 ## 部署到 Cloudflare Pages
 
-- 构建命令：`cp -r prompts public/prompts`
+- 构建命令：`node scripts/prepare-gallery.mjs && cp -r prompts public/prompts`
 - 输出目录：`public`
 
 复制 Astra 版空岛邮班到本地时，一并复制同目录下的 `gpt-6.2-astra-max-fallback.mp4`。网页会在 WebGL 不可用时才请求这段备用影片。
