@@ -1054,6 +1054,8 @@ const S={spd:2,paused:false,sound:false,rm:false,num:0,lastT:0,lastUi:0,px:0,py:
 const swap={ph:'',t:0,from:[0,0],z0:1};
 const rmq=matchMedia('(prefers-reduced-motion: reduce)');
 S.rm=rmq.matches||/[?&]rm=1/.test(location.search);
+let frameId=0;
+function requestStage(){if(!frameId)frameId=requestAnimationFrame(frame);}
 
 function newComp(){
   S.num=S.num?S.num%9999+1:R0.int(1,960);
@@ -1064,6 +1066,7 @@ function startSheet(plan,from){
   viewLayer=-1;startJob(plan,from);updatePos();
   buildList();layout();
   if(S.rm)finishNow();
+  requestStage();
 }
 function ensureExtraLayer(){
   let li=comp.layers.findIndex(l=>l.key==='extra');
@@ -1078,20 +1081,21 @@ function finishNow(){
   recomputeTotal();
   Object.assign(EX,{i:EX.plan.length,phase:'idle',done:true,x:0,y:0,z:1,pt:0,jx:0,jy:0,drawn:d,travel:t+EX.home.len,doneT:EX.jobT});
   if(S.rm)viewLayer=comp.layers.length-1;
-  redrawInk();onJobDone();
+  redrawInk();onJobDone();requestStage();
 }
 function addBird(x,y){
   if(S.rm){
     const li=ensureExtraLayer();
     const st=makeStroke(wobble(birdShape(x,y,R0.range(1.8,2.8),R0.range(-.3,.3)),Math.random,.04),li,FEED.bird);
     setTravel(st,[0,0]);EX.plan.push(st);comp.layers[li].count++;comp.layers[li].last=EX.plan.length;
-    EX.i=EX.plan.length;viewLayer=comp.layers.length-1;redrawInk();buildList();return;
+    EX.i=EX.plan.length;viewLayer=comp.layers.length-1;redrawInk();buildList();requestStage();return;
   }
   EX.birds.push([x,y]);
   if(EX.done){   // 画完后点击：唤醒机器补上这一笔
     EX.done=false;let s=EX.introT;for(let i=0;i<EX.i;i++)s+=EX.plan[i].dur;EX.doneT=s;
     beginStroke();const st=EX.plan[EX.i];if(st){setTravel(st,[EX.x,EX.y]);recomputeTotal();}
   }
+  requestStage();
 }
 /* —— 换纸：停车 → 出纸 → 进纸 → 归位 —— */
 const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
@@ -1100,6 +1104,7 @@ function newPaper(){
   if(S.rm){sheets++;startSheet(newComp(),[0,0]);return;}
   EX.birds.length=0;Object.assign(swap,{ph:'park',t:0,from:[EX.x,EX.y],z0:EX.z});
   EX.phase='idle';EX.done=true;
+  requestStage();
 }
 function stepSwap(dt){
   swap.t+=dt;
@@ -1143,16 +1148,18 @@ function setSpeed(i){
   knob.style.transform=`rotate(${-135+S.spd*45}deg)`;
   knob.setAttribute('aria-valuenow',SPEEDS[S.spd]);knob.setAttribute('aria-valuetext',SPEEDS[S.spd]+'×');
   kw.querySelectorAll('.sc').forEach((e,k)=>e.classList.toggle('on',k===S.spd));
+  requestStage();
 }
 function togglePause(){
   if(S.rm)return;
   S.paused=!S.paused;$('pause').setAttribute('aria-pressed',S.paused);
   $('pause').setAttribute('aria-label',S.paused?'继续':'暂停');
   $('pauseLbl').firstChild.textContent=S.paused?'继续 ':'暂停 ';
+  requestStage();
 }
 function layerStep(d){
   if(!S.rm)return;
-  viewLayer=clamp(viewLayer+d,0,comp.layers.length-1);redrawInk();updateList();updateLcd();
+  viewLayer=clamp(viewLayer+d,0,comp.layers.length-1);redrawInk();requestStage();
 }
 function flash(el){el.classList.add('down');setTimeout(()=>el.classList.remove('down'),120);}
 
@@ -1268,6 +1275,7 @@ function applyRm(on){
   S.rm=on;document.body.classList.toggle('rm',on);
   if(on){if(S.paused)togglePause();if(swap.ph){swap.ph='';paperX=0;startJob(swap.plan||EX.plan,[0,0]);}finishNow();viewLayer=comp.layers.length-1;redrawInk();updateList();}
   else{viewLayer=-1;redrawInk();updateList();}
+  requestStage();
 }
 rmq.addEventListener&&rmq.addEventListener('change',e=>applyRm(e.matches));
 /* 刚开画时若屏幕方向与纸张不符（如手机旋转），换成合适的竖幅/横幅纸 */
@@ -1278,10 +1286,12 @@ function fitOrientation(){
   if(S.rm||EX.i<=12){S.num=S.num>1?S.num-1:9999;startSheet(newComp(),S.rm?[0,0]:[EX.x,EX.y]);return true;}
   return false;
 }
-new ResizeObserver(()=>{if(comp){if(!fitOrientation())layout();drawStage();}}).observe($('stageWrap'));
+const refit=()=>{if(comp){if(!fitOrientation())layout();requestStage();}};
+new ResizeObserver(refit).observe($('stageWrap'));
 
 /* —— 主循环 —— */
 function frame(ts){
+  frameId=0;
   const dt=Math.min(.1,(ts-(S.lastT||ts))/1000);S.lastT=ts;
   if(!S.paused&&!S.rm){if(swap.ph)stepSwap(dt);else advance(dt*SPEEDS[S.spd]);}
   if(dt>0){
@@ -1291,8 +1301,13 @@ function frame(ts){
   }
   S.px=EX.x;S.py=EX.y;
   drawStage();
-  if(ts-S.lastUi>90){updateLcd();updateList();S.lastUi=ts;}
-  requestAnimationFrame(frame);
+  const running=!S.paused&&!S.rm&&(swap.ph||!EX.done);
+  if(!running||ts-S.lastUi>90){updateLcd();updateList();S.lastUi=ts;}
+  if(running) requestStage();
+  else {
+    S.lastT=0;AU.vx=AU.vy=0;
+    audioUpdate(0,0);
+  }
 }
 (function init(){
   document.body.classList.toggle('rm',S.rm);
@@ -1300,7 +1315,6 @@ function frame(ts){
   const plan=newComp();
   startSheet(plan,S.rm?[0,0]:[comp.W*R0.range(.35,.7),comp.H*R0.range(.3,.6)]);
   S.px=EX.x;S.py=EX.y;
-  requestAnimationFrame(frame);
 })();
 </script>
 </body>
