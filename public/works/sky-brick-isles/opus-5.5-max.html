@@ -3242,9 +3242,11 @@ async function boot() {
   applyView(Object.assign(shotState(DIR.shot, NOW), { dist: 540, pitch: .3 })); DIR.prev = Object.assign({}, VIEW); DIR.blend = 0; DIR.blendDur = 7;
   setCaption('云端', DIR.shot.caption, true);
   document.getElementById('veil').classList.add('gone');
+  if (window.ToyEmbed?.preview) document.getElementById('veil').style.display = 'none';
   setTimeout(() => UI.title.classList.add('small'), 16000);
   setTimeout(() => { UI.hint.style.opacity = '0'; }, 22000);
   requestAnimationFrame(loop);
+  window.ToyEmbed?.ready?.();
 }
 let LASTT = 0, FT = [], LOWQ = 0;
 function loop(ts) {

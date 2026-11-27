@@ -5710,6 +5710,7 @@ async function start(){
   ready=true;resize();updateCamera(0,true);
   document.body.dataset.ready=fallback?'postcard':'3d';
   frameId=requestAnimationFrame(loop);
+  window.ToyEmbed?.ready?.();
 }
 start();
 

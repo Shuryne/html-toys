@@ -1110,6 +1110,7 @@ if (JUMP >= 0){
   tDrawn = tb; painting = false; hud(tb); composite(); gl.finish(); LOG('jumped to', tb);
   $('replay').addEventListener('click', () => {}, {once:true});
 } else startPainting();
+window.ToyEmbed?.ready?.();
 
 // ============================================================ PLANNER
 function planPainting(){

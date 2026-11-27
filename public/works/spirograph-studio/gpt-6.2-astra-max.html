@@ -963,6 +963,7 @@
       layers.push(sample);
       advance(sample, sample.shape.lastStep, "#1f3f78");
       newLayer();
+      window.ToyEmbed?.ready?.();
       new ResizeObserver(resizeSurface).observe($("disc"));
       window.addEventListener("resize", resizeSurface);
       // A display change can leave the CSS box unchanged and send no resize event.

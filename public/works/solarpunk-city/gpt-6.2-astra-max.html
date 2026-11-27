@@ -1025,6 +1025,7 @@ Promise.all([...plates,maps,vehicles].map(decode)).then(()=>{
   $('full').hidden=!(theatre.requestFullscreen||theatre.webkitRequestFullscreen);
   document.querySelector('.dock').hidden=false;
   redraw();wake();schedule();
+  window.ToyEmbed?.ready?.();
   if(camera.portrait) {
     theatre.classList.add('show-hint');hintTimer=setTimeout(hideHint,4100);
   }

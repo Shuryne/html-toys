@@ -487,12 +487,13 @@ function start(d) {
   paintTrack(1, false);
   paintNext();
   if (d.started === true) { S.started = true; app.classList.add("started"); }
-  if (d.playing === true) setPlaying(true);
+  if (d.playing === true || window.ToyEmbed?.autoplay) setPlaying(true);
   requestAnimationFrame(t => {
     last = t;
     requestAnimationFrame(() => root.classList.remove("boot"));
     frame(t);
   });
+  window.ToyEmbed?.ready?.();
 }
 const hot = window.claude && window.claude.hot;
 if (hot && hot.snapshot) hot.snapshot(() => ({ index: S.index, t: S.t, playing: S.playing, started: S.started, shuffle: S.shuffle, repeat: S.repeat, liked: S.liked.slice(), intensity: S.intensity }));

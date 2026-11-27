@@ -1,4 +1,4 @@
-// Shared helpers for language, prompts, preview clips, and embedded works.
+// Shared helpers for language, prompts, covers, and embedded works.
 (() => {
   const KEY = 'html-toys:lang';
   const pick = () => {
@@ -90,37 +90,19 @@
     }
   }
 
-  function mountClip(host, src, { loop = true } = {}) {
-    const video = document.createElement('video');
-    video.preload = 'none';
-    video.defaultMuted = video.muted = video.playsInline = true;
-    video.loop = loop;
-    video.setAttribute('aria-hidden', 'true');
-    video.addEventListener('playing', () => video.classList.add('is-playing'));
-    video.src = src;
-    host.append(video);
-    return video;
-  }
-
-  function playClip(video) {
-    video.play().catch(() => {});
-  }
-
-  function removeClip(video) {
-    video.pause();
-    video.removeAttribute('src');
-    video.load();
-    video.remove();
-  }
-
   const embedWidth = 1440;
   const lives = new WeakMap();
-  function mountLive(host, src, title) {
+  function mountLive(host, src, title, { preview = false, autoplay = preview } = {}) {
     const frame = document.createElement('iframe');
     frame.src = src;
     frame.title = title;
-    frame.setAttribute('allow', 'autoplay; fullscreen');
-    const live = { frame, active: true, width: 0 };
+    frame.setAttribute('allow', preview ? "autoplay 'none'; fullscreen 'none'" : 'autoplay; fullscreen');
+    if (preview) {
+      frame.className = 'hover-preview';
+      frame.inert = true;
+      frame.setAttribute('aria-hidden', 'true');
+    }
+    const live = { frame, preview, autoplay, active: true, width: 0 };
     lives.set(frame, live);
     sizeLive(live, host.clientWidth);
     host.append(frame);
@@ -169,6 +151,14 @@
     win.ToyEmbed = {
       get active() { return live.active; },
       get pixelRatio() { return Math.max(.25, (win.devicePixelRatio || 1) * live.width / embedWidth); },
+      preview: live.preview,
+      autoplay: live.autoplay,
+      ready() {
+        if (!live.preview || live.ready) return;
+        live.ready = true;
+        // Keep the cover up until the child has had a chance to paint.
+        request(() => request(() => live.frame.classList.add('is-ready')));
+      },
       trackAudio(context) { audio.add(context); },
     };
     live.resize = () => win.dispatchEvent(new win.Event('resize'));
@@ -228,9 +218,8 @@
       const src = Home.cover(id, model), widths = media[id]?.[model]?.widths || [];
       return widths.map(w => `${src.replace(/\.webp$/, `-${w}.webp`)} ${w}w`).concat(`${src} 1200w`).join(', ');
     },
-    preview: (id, model) => media[id]?.[model]?.preview ? new URL(`previews/${id}/${model}.mp4`, Home.base).href : '',
     href: (id, model) => new URL(`works/${id}/${model}.html`, Home.base).href,
-    md, prompt, copy, mountClip, playClip, removeClip, mountLive, sizeLive, activateLive, removeLive, prepareWork,
+    md, prompt, copy, mountLive, sizeLive, activateLive, removeLive, prepareWork,
     motion: reduced,
     get reducedMotion() { return reduced.matches; },
   };

@@ -1301,6 +1301,7 @@ paintStroke=makeStrokePainter(art.tips,kinds);
 installPrimer(art.primer,art.tooth);
 for(const n of [1,3,5])cacheAfter.add(batches[n].last);
 ready=true;drawAt(0);origin=performance.now();frame=requestAnimationFrame(tick);
+window.ToyEmbed?.ready?.();
 })();
 </script>
 </body>

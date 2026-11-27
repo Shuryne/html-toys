@@ -3862,6 +3862,7 @@
       loadPaper(serial, freshSeed(), dimensions(mediaSmall.matches));
       if (quiet) finishDrawing();
       else startClock();
+      window.ToyEmbed?.ready?.();
       const refit = () => {
         if (!art) return;
         reformat();

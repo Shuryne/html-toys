@@ -86,11 +86,10 @@ function render() {
       const credit = `<p class="credit">${esc(m.name)}</p>`;
       if (!r) return `<article class="work-card" data-model="${esc(m.id)}">
         <div class="work-media empty">${Home.t('notYet')}</div><div class="work-caption">${credit}</div></article>`;
-      const clip = Home.preview(p.id, m.id);
       const image = coverImage(p.id, m.id, sizes, { deferred: ri !== 0, priority: ri === 0 && ci === 0 ? 'high' : 'auto' });
       return `<article class="work-card" data-model="${esc(m.id)}">
-        <a class="work-link" href="${Home.href(p.id, m.id)}"${clip ? ` data-clip="${clip}"` : ''}>
-          <div class="work-media">${image}${clip ? '<div class="preview" aria-hidden="true"></div>' : ''}</div>
+        <a class="work-link" href="${Home.href(p.id, m.id)}">
+          <div class="work-media">${image}</div>
           <div class="work-caption"><h3 class="work-title">${esc(L(r.title))}</h3>${credit}</div>
         </a></article>`;
     }).join('');
@@ -115,37 +114,43 @@ gallery.addEventListener('click', e => {
   if (o) openLoupe(o.dataset.open, true);
 });
 
-/* One clip can be playing or held ready for a second hover. */
+/* A sustained hover or keyboard focus can mount one passive work. */
 const canHover = matchMedia('(hover: hover) and (pointer: fine)');
-let timer = 0, hoverCell = null, focusCell = null, wanted = null, clip = null, clipCell = null;
-const autoplayClips = () => !Home.reducedMotion && !document.hidden && !navigator.connection?.saveData;
-const playable = target => target?.closest?.('.work-link[data-clip]') ?? null;
-function stopPreview(release = false) {
+let timer = 0, hoverCell = null, focusCell = null, wanted = null, livePreview = null;
+const allowAutoplay = () => !Home.reducedMotion && !navigator.connection?.saveData;
+const playable = target => target?.closest?.('.work-link') ?? null;
+const previewResize = new ResizeObserver(([entry]) => {
+  if (entry.target === livePreview?.frame.parentElement) Home.sizeLive(livePreview, entry.contentRect.width);
+});
+const previewViewport = new IntersectionObserver(entries => {
+  for (const entry of entries) {
+    if (entry.target !== wanted || entry.isIntersecting) continue;
+    if (hoverCell === wanted) hoverCell = null;
+    if (focusCell === wanted) focusCell = null;
+    stopPreview();
+  }
+});
+function stopPreview() {
   clearTimeout(timer);
   wanted = null;
-  if (!clip) return;
-  clipCell.classList.remove('is-live');
-  if (release || clip.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-    Home.removeClip(clip);
-    clip = clipCell = null;
-  } else {
-    clip.pause();
-  }
+  previewViewport.disconnect();
+  if (!livePreview) return;
+  previewResize.disconnect();
+  Home.removeLive(livePreview);
+  livePreview = null;
 }
 function updatePreview() {
-  const next = !openId && autoplayClips() ? hoverCell || focusCell : null;
+  const allowed = !openId && !document.hidden && allowAutoplay();
+  const next = allowed ? hoverCell || focusCell : null;
   if (wanted === next) return;
   stopPreview();
   if (!next) return;
   wanted = next;
+  previewViewport.observe(next);
   timer = setTimeout(() => {
-    if (clipCell !== next) {
-      if (clip) Home.removeClip(clip);
-      clipCell = next;
-      clip = Home.mountClip(next.querySelector('.preview'), next.dataset.clip);
-    }
-    next.classList.add('is-live');
-    Home.playClip(clip);
+    const host = next.querySelector('.work-media');
+    livePreview = Home.mountLive(host, next.href, next.innerText, { preview: true });
+    previewResize.observe(host);
   }, 380);
 }
 gallery.addEventListener('pointerover', e => {
@@ -174,17 +179,10 @@ let openId = null, pushed = false, promptLang = Home.lang, lastFocus = null;
 const stages = new Map();
 function updateStage(state) {
   const visible = state.visible && !document.hidden;
-  if (state.live) {
-    Home.activateLive(state.live, visible);
-    state.live.frame.inert = !visible;
-    return;
-  }
-  const play = visible && autoplayClips() && state.stage.dataset.clip;
-  if (play && !state.clip) state.clip = Home.mountClip(state.stage, state.stage.dataset.clip, { loop: false });
-  if (state.clip) {
-    if (play && !state.clip.ended) Home.playClip(state.clip);
-    else state.clip.pause();
-  }
+  if (visible && state.autoStart && allowAutoplay()) startStage(state, true);
+  if (!state.live) return;
+  Home.activateLive(state.live, visible);
+  state.live.frame.inert = !visible;
 }
 const io = new IntersectionObserver(entries => {
   for (const entry of entries) {
@@ -205,9 +203,23 @@ function unwatch() {
   ro.disconnect();
   for (const state of stages.values()) {
     if (state.live) Home.removeLive(state.live);
-    if (state.clip) Home.removeClip(state.clip);
   }
   stages.clear();
+}
+
+function updateStageButton(state) {
+  const { button, stage } = state;
+  const label = Home.t(state.live ? 'stop' : 'run');
+  button.textContent = label;
+  button.setAttribute('aria-label', label + ' · ' + stage.dataset.title);
+}
+
+function startStage(state, autoplay) {
+  state.autoStart = false;
+  const { stage } = state;
+  state.live = Home.mountLive(stage, stage.dataset.src, stage.dataset.title, { autoplay });
+  ro.observe(stage);
+  updateStageButton(state);
 }
 
 spread.addEventListener('click', e => {
@@ -219,21 +231,11 @@ spread.addEventListener('click', e => {
     ro.unobserve(stage);
     Home.removeLive(state.live);
     state.live = null;
-    if (state.clip?.ended) state.clip.currentTime = 0;
+    updateStageButton(state);
   } else {
-    if (state.clip && state.clip.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-      Home.removeClip(state.clip);
-      state.clip = null;
-    } else {
-      state.clip?.pause();
-    }
-    state.live = Home.mountLive(stage, stage.dataset.src, stage.dataset.title);
-    ro.observe(stage);
+    startStage(state, false);
     if (!state.visible) stage.scrollIntoView({ block: 'nearest' });
   }
-  const label = Home.t(state.live ? 'stop' : 'run');
-  button.textContent = label;
-  button.setAttribute('aria-label', label + ' · ' + stage.dataset.title);
   updateStage(state);
 });
 
@@ -258,7 +260,7 @@ function fillLoupe() {
       <div class="note"><h3 class="work-title">${esc(m.name)}</h3></div></article>`;
     const name = workName(r, m), href = Home.href(p.id, m.id);
     return `<article>
-      <div class="work-media stage" id="stage-${c}" data-src="${href}" data-clip="${Home.preview(p.id, m.id)}" data-title="${esc(name)}">${coverImage(p.id, m.id, sizes)}</div>
+      <div class="work-media stage" id="stage-${c}" data-src="${href}" data-title="${esc(name)}">${coverImage(p.id, m.id, sizes)}</div>
       <div class="note">
         <div class="note-heading">
           <div><h3 class="work-title">${esc(L(r.title))}</h3>
@@ -273,7 +275,8 @@ function fillLoupe() {
     </article>`;
   }).join('');
   for (const stage of spread.querySelectorAll('.stage')) {
-    stages.set(stage, { stage, visible: false, clip: null, live: null });
+    const button = spread.querySelector(`[data-stage="${stage.id}"]`);
+    stages.set(stage, { stage, button, visible: false, autoStart: true, live: null });
     io.observe(stage);
   }
 }
@@ -289,7 +292,7 @@ function show(id) {
   if (opening) {
     lastFocus = document.activeElement;
     hoverCell = focusCell = null;
-    stopPreview(true);
+    stopPreview();
     loupe.hidden = false;
     page.inert = true; document.body.style.overflow = 'hidden';
   }
@@ -345,7 +348,7 @@ document.getElementById('copy').onclick = async e => {
 document.getElementById('lang').onclick = () => Home.toggle();
 document.addEventListener('langchange', () => {
   hoverCell = focusCell = null;
-  stopPreview(true);
+  stopPreview();
   render();
   if (openId) { fillLoupe(); promptLang = Home.lang; showPrompt(); }
 });

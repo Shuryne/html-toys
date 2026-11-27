@@ -1,6 +1,6 @@
 # 网页小品 · HTML Toys
 
-Claude、GPT 等模型创作的互动网页作品集。作品按创作主题展出，悬停封面可播放无声短片，点击可打开完整作品。选择「并排看」可预览同组作品、分别体验交互版，并查看共同的中英文提示词。
+Claude、GPT 等模型创作的互动网页作品集。作品按创作主题展出，在封面上停留可预览原始作品，点击打开完整作品。「并排看」会自动运行视野中的原作，可分别回到封面，也可查看共同的中英文提示词。
 
 ## 目录
 
@@ -14,12 +14,11 @@ public/                        站点根目录（Cloudflare Pages 输出目录�
   og.jpg                       分享预览图，1200×630
   assets/
     toys.js                    作品清单：MODELS 与 PROMPTS
-    home.js                    语言、提示词、预览短片及嵌入播放
+    home.js                    语言、提示词、封面及作品嵌入
     gallery.js                 作品墙和对比页交互
   works/<prompt-id>/<model-id>.html     作品，一个模型一个文件
   covers/<prompt-id>/<model-id>.webp    封面，宽 1200，比例 16:10
   covers/<prompt-id>/<model-id>-<w>.webp  可选封面尺寸，宽 384、576 或 864
-  previews/<prompt-id>/<model-id>.mp4   可选无声短片，约 4 秒
 scripts/prepare-gallery.mjs     按现有资源生成首页的预加载链接及媒体清单
 scripts/dev.sh                 本地预览
 ```
@@ -35,11 +34,11 @@ scripts/dev.sh                 本地预览
 1. 把 HTML 文件放到 `public/works/<prompt-id>/<model-id>.html`。
 2. 截一张封面，存为 `public/covers/<prompt-id>/<model-id>.webp`。
 3. 在 `public/assets/toys.js` 对应题目的 `runs` 里加一项，写上 `title`、`medium` 和 `blurb`，中英各一份。
-4. 可加 384、576、864 像素宽的 WebP 封面及一段 432 × 270、无音轨的 H.264 MP4。运行 `node scripts/prepare-gallery.mjs` 刷新媒体清单。
+4. 可加 384、576、864 像素宽的 WebP 封面。运行 `node scripts/prepare-gallery.mjs` 刷新封面清单。
 
-主页会自动更新对应的格子。缺少短片时使用静态封面，缺少缩小版时使用原尺寸封面。
+主页会自动更新对应的格子。缺少缩小版时使用原尺寸封面。
 
-要让新作品嵌入对比页时支持离屏暂停，可在作品脚本前加入现有作品使用的 `parent.Home?.prepareWork(window)` 调用。Canvas 或 WebGL 的分辨率可读取 `window.ToyEmbed?.pixelRatio`。
+新作品可参照现有作品，在脚本前调用 `parent.Home?.prepareWork(window)`，启用嵌入时的离屏暂停和尺寸适配。第一帧可显示时调用 `window.ToyEmbed?.ready?.()`，首页才会从封面切换到原画。Canvas 或 WebGL 的分辨率可读取 `window.ToyEmbed?.pixelRatio`。
 
 新增题目：添加 `prompts/zh` 和 `prompts/en` 下的两份提示词，然后在 `PROMPTS` 里加一项。作品组的顺序和 `PROMPTS` 一致。
 新增模型：在 `MODELS` 里加一项（`name` 是作品下方的署名，`short` 是聚焦按钮的短名，`color` 是它的识别色）。缺少该模型作品的主题会显示「暂无作品」。
@@ -52,7 +51,7 @@ scripts/dev.sh                 本地预览
 sh scripts/dev.sh
 ```
 
-然后打开 http://localhost:8787 。脚本需要 Node.js 和 Python 3，会更新媒体清单并把 `prompts/` 链接到 `public/prompts`。新增封面或短片后，可单独运行 `node scripts/prepare-gallery.mjs`。
+然后打开 http://localhost:8787 。脚本需要 Node.js 和 Python 3，会更新封面清单并把 `prompts/` 链接到 `public/prompts`。新增封面后，可单独运行 `node scripts/prepare-gallery.mjs`。
 
 ## 部署到 Cloudflare Pages
 

@@ -2303,7 +2303,9 @@ function frame() {
   if (firstFrame) {
     firstFrame = false;
     window.__koiReady = true;
+    if (window.ToyEmbed?.preview) loaderEl.style.display = 'none';
     requestAnimationFrame(() => loaderEl.classList.add('done'));
+    window.ToyEmbed?.ready?.();
   }
 }
 renderer.setAnimationLoop(frame);

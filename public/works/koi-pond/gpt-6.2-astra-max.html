@@ -5500,7 +5500,7 @@ function frame(now){
     renderMirror();mirrorDirty=false;lastMirror=simTime;mirrorAz=azimuth;mirrorPolar=polar;mirrorR=radius;
   }
   renderer.setRenderTarget(null);renderer.render(screen,screenCam);
-  if(firstFrame){firstFrame=false;document.getElementById('loading').hidden=true;}
+  if(firstFrame){firstFrame=false;document.getElementById('loading').hidden=true;window.ToyEmbed?.ready?.();}
   frameID=requestAnimationFrame(frame);
 }
 document.addEventListener('visibilitychange',()=>{

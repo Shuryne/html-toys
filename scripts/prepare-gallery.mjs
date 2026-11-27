@@ -17,10 +17,7 @@ const media = Object.fromEntries(PROMPTS.map(prompt => [
   prompt.id,
   Object.fromEntries(MODELS.filter(model => prompt.runs[model.id]).map(model => {
     const name = `${prompt.id}/${model.id}`;
-    return [model.id, {
-      widths: widths.filter(width => hasFile(`covers/${name}-${width}.webp`)),
-      preview: hasFile(`previews/${name}.mp4`),
-    }];
+    return [model.id, { widths: widths.filter(width => hasFile(`covers/${name}-${width}.webp`)) }];
   })),
 ]));
 

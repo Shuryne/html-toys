@@ -871,6 +871,7 @@ h1 span{color:var(--red)}
     stickObserver.observe(el.sentinel);
     watchDpr();
     kick();
+    window.ToyEmbed?.ready?.();
   }
 
   const hot = window.claude && window.claude.hot;

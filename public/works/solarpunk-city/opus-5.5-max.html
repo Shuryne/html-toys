@@ -933,7 +933,9 @@ setTimeout(()=>{
   L_MTN=prepLayer(MTN.R,3,3);L_FAR=prepLayer(FAR.R,2,2.2);L_MB=prepLayer(MID.B,4,1.9);L_MID=prepLayer(MID.R,1,2.1);L_NEAR=prepLayer(NEAR.R,0,3.2);L_FRONT=prepLayer(NEAR.F,0,0);
   initClouds();initQuay();initWalkers();resize();cam=(MID.meta.heroX-.6*W)/PF.mid;
   const ld=document.getElementById('load');ld.style.opacity=0;setTimeout(()=>ld.remove(),900);hud.classList.add('on');
+  if(window.ToyEmbed?.preview)ld.style.display='none';
   requestAnimationFrame(frame);
+  window.ToyEmbed?.ready?.();
 },30);
 </script>
 </body>

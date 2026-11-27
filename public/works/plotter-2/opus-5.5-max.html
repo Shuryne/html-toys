@@ -1318,6 +1318,7 @@ function frame(ts){
   const plan=newComp();
   startSheet(plan,S.rm?[0,0]:[comp.W*R0.range(.35,.7),comp.H*R0.range(.3,.6)]);
   S.px=EX.x;S.py=EX.y;
+  window.ToyEmbed?.ready?.();
 })();
 </script>
 </body>
