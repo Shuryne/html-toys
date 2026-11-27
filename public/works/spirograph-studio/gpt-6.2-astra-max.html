@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
   <meta name="theme-color" content="#f6f1e7">
   <link id="favicon" rel="icon" href="data:,">
   <title>万花尺工作室 · Orbis 第 7 号绘图盘</title>
@@ -768,7 +769,7 @@
 
       function resizeSurface() {
         const width = $("disc").getBoundingClientRect().width;
-        pixelRatio = window.devicePixelRatio || 1;
+        pixelRatio = window.ToyEmbed?.pixelRatio ?? (window.devicePixelRatio || 1);
         const pixels = Math.max(1, Math.round(width * pixelRatio));
         if (pixels === pixelSize && width === cssSize) return;
         cssSize = width;
@@ -966,7 +967,7 @@
       window.addEventListener("resize", resizeSurface);
       // A display change can leave the CSS box unchanged and send no resize event.
       window.setInterval(() => {
-        if (!document.hidden && (window.devicePixelRatio || 1) !== pixelRatio) resizeSurface();
+        if (!document.hidden && window.ToyEmbed?.active !== false && (window.ToyEmbed?.pixelRatio ?? (window.devicePixelRatio || 1)) !== pixelRatio) resizeSurface();
       }, 1000);
     })();
   </script>

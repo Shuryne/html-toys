@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
 <meta name="theme-color" content="#163a33">
 <title>听泉池 · 锦鲤庭园</title>
 <style>
@@ -5460,7 +5461,7 @@ function resize(){
   camera.aspect=width/height;camera.updateProjectionMatrix();
   cameraTarget.x=width/height<1?.23:0;
   if(wasHome){toR=radius=homeR();}
-  baseDpr=Math.min(devicePixelRatio||1,1.65,Math.sqrt(1950000/(width*height)));
+  baseDpr=Math.min(window.ToyEmbed?.pixelRatio ?? (devicePixelRatio||1),1.65,Math.sqrt(1950000/(width*height)));
   applySize();
 }
 function updateCamera(dt){

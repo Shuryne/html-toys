@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
 <title>云端积木群岛</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Baloo+2:wght@600;800&display=swap">
@@ -2769,7 +2770,7 @@ function initShadow() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 function resize() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.6);
+  const dpr = Math.min(window.ToyEmbed?.pixelRatio ?? (window.devicePixelRatio || 1), 1.6);
   let w = Math.max(2, Math.round(innerWidth * dpr * R.scale)), h = Math.max(2, Math.round(innerHeight * dpr * R.scale));
   const maxPix = 2.7e6; if (w * h > maxPix) { const k = Math.sqrt(maxPix / (w * h)); w = Math.round(w * k); h = Math.round(h * k); }
   if (w === R.w && h === R.h) return;
@@ -3178,6 +3179,7 @@ addEventListener('resize', () => resize());
 const SND = { on: false, ctx: null };
 function initSound() {
   const A = new (window.AudioContext || window.webkitAudioContext)(); SND.ctx = A;
+  window.ToyEmbed?.trackAudio(A);
   const master = A.createGain(); master.gain.value = .0; master.connect(A.destination); SND.master = master;
   const nb = A.createBuffer(1, A.sampleRate * 2, A.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   const wind = A.createBufferSource(); wind.buffer = nb; wind.loop = true; const wf = A.createBiquadFilter(); wf.type = 'lowpass'; wf.frequency.value = 420; const wg = A.createGain(); wg.gain.value = .05; wind.connect(wf); wf.connect(wg); wg.connect(master); wind.start(); SND.wf = wf;

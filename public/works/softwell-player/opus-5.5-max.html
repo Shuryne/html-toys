@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
 <meta name="color-scheme" content="light">
 <title>索芙维尔播放器</title>
 <style>
@@ -332,7 +333,7 @@ function paintAmp() {
 const cx = el.bars.getContext("2d");
 const lv = new Float32Array(NB), tg = new Float32Array(NB);
 function fit() {
-  dprSeen = window.devicePixelRatio || 1;
+  dprSeen = window.ToyEmbed?.pixelRatio ?? (window.devicePixelRatio || 1);
   const d = Math.min(3, dprSeen), r = el.bars.getBoundingClientRect();
   W = r.width; H = r.height;
   el.bars.width = Math.max(1, Math.round(W * d));
@@ -391,7 +392,7 @@ function draw(color) {
   cx.globalAlpha = 1;
 }
 function viz(dt, now) {
-  if ((window.devicePixelRatio || 1) !== dprSeen) fit();
+  if ((window.ToyEmbed?.pixelRatio ?? (window.devicePixelRatio || 1)) !== dprSeen) fit();
   if (S.playing) {
     targets(TRACKS[S.index], S.t, reduced ? S.t / 4 : S.t, (.12 + 1.18 * S.intensity) * (reduced ? .55 : 1));
     if (reduced) blur3(tg);

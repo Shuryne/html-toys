@@ -39,6 +39,8 @@ scripts/dev.sh                 本地预览
 
 主页会自动更新对应的格子。缺少短片时使用静态封面，缺少缩小版时使用原尺寸封面。
 
+要让新作品嵌入对比页时支持离屏暂停，可在作品脚本前加入现有作品使用的 `parent.Home?.prepareWork(window)` 调用。Canvas 或 WebGL 的分辨率可读取 `window.ToyEmbed?.pixelRatio`。
+
 新增题目：添加 `prompts/zh` 和 `prompts/en` 下的两份提示词，然后在 `PROMPTS` 里加一项，印样上会多出一行，顺序和 `PROMPTS` 一致。
 新增模型：在 `MODELS` 里加一项（`name` 是页面上显示的全名，`short` 是窄屏上的短名，`color` 是它的识别色），印样上会多出一列，还没有它作品的题目显示「未曝光」空帧。
 

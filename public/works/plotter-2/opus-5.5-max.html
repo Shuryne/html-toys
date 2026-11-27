@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
 <title>2号绘图仪</title>
 <style>
 :root{
@@ -882,7 +883,7 @@ function stageBox(){
 }
 function layout(){
   const r=cv.parentElement.getBoundingClientRect();
-  V.dpr=Math.min(2.5,window.devicePixelRatio||1);V.cw=r.width;V.ch=r.height;
+  V.dpr=Math.min(2.5,window.ToyEmbed?.pixelRatio ?? (window.devicePixelRatio||1));V.cw=r.width;V.ch=r.height;
   V.mobile=window.innerWidth<700;
   const b=stageBox();V.x0=b.x0;V.y0=b.y0;V.sw=b.x1-b.x0;V.sh=b.y1-b.y0;
   V.s=Math.max(.2,Math.min(V.cw/V.sw,V.ch/V.sh));
@@ -1169,6 +1170,7 @@ function audioInit(){
   const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
   const ctx=new C(),m=ctx.createGain();m.gain.value=.55;m.connect(ctx.destination);
   Object.assign(AU,{ctx,m});
+  window.ToyEmbed?.trackAudio(ctx);
   for(const ax of ['x','y']){
     const o=ctx.createOscillator(),f=ctx.createBiquadFilter(),g=ctx.createGain();
     o.type=ax==='x'?'square':'sawtooth';o.frequency.value=90;f.type='lowpass';f.frequency.value=1400;f.Q.value=3;g.gain.value=0;
@@ -1288,6 +1290,7 @@ function fitOrientation(){
 }
 const refit=()=>{if(comp){if(!fitOrientation())layout();requestStage();}};
 new ResizeObserver(refit).observe($('stageWrap'));
+if(window.ToyEmbed) addEventListener('resize',refit);
 
 /* —— 主循环 —— */
 function frame(ts){

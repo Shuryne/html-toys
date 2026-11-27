@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
 <title>锦鲤池</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -184,8 +185,8 @@ const GLSL_NOISE = /* glsl */`
    ===================================================================== */
 const canvas = document.getElementById('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-const DPR = Math.min(window.devicePixelRatio || 1, 1.5);
-renderer.setPixelRatio(DPR);
+const pixelRatio = () => Math.min(window.ToyEmbed?.pixelRatio ?? (window.devicePixelRatio || 1), 1.5);
+renderer.setPixelRatio(pixelRatio());
 renderer.setSize(innerWidth, innerHeight, false);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -1800,6 +1801,7 @@ const sfx = (() => {
   let ctx = null, master = null, fallGain = null, on = false;
   function init() {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
+    window.ToyEmbed?.trackAudio(ctx);
     master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
     const len = ctx.sampleRate * 4, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
     let last = 0;
@@ -2173,6 +2175,8 @@ let reflectionDirty = true;
 function onResize() {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
+  const ratio = pixelRatio();
+  if (renderer.getPixelRatio() !== ratio) renderer.setPixelRatio(ratio);
   renderer.setSize(innerWidth, innerHeight, false);
   renderer.getDrawingBufferSize(_dbs);
   sceneRT.setSize(_dbs.x, _dbs.y);

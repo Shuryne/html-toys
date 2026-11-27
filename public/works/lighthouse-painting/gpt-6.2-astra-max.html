@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
 <meta name="theme-color" content="#171817">
 <link rel="icon" href="data:,">
 <title>岬角余光 · 风暴中的灯塔</title>
@@ -1189,7 +1190,11 @@ async function loadPainting(width,height){
 }
 
 const canvas=document.querySelector('#painting'),wet=document.querySelector('#wet');
-if(innerWidth<650){
+if(window.ToyEmbed){
+  const width=Math.min(canvas.width,Math.max(320,Math.round(canvas.clientWidth*window.ToyEmbed.pixelRatio)));
+  canvas.width=wet.width=width;
+  canvas.height=wet.height=Math.round(width*H/W);
+}else if(innerWidth<650){
   canvas.width=wet.width=W;canvas.height=wet.height=H;
 }
 const ctx=canvas.getContext('2d',{alpha:false,willReadFrequently:true}),tipCtx=wet.getContext('2d',{willReadFrequently:true}),scale=canvas.width/W;

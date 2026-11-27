@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
 <title>绿湾城</title>
 <style>
 :root{color-scheme:dark}
@@ -828,7 +829,7 @@ const GA=new Float32Array(8),Y={};let SKYC=[[0,0,0],[0,0,0],[0,0,0]];
 let MTN,FAR,MID,NEAR,L_MTN,L_FAR,L_MB,L_MID,L_NEAR,L_FRONT;
 
 function layout(){Y.water=H-58;Y.mid=Y.water-MH;Y.far=Y.water-4-FH;Y.mtn=Y.water-4-MTH;Y.near=H-NH;Y.front=H-FRH;Y.HY=Y.water-10;}
-function resize(){const vw=innerWidth,vh=innerHeight;DPR=devicePixelRatio||1;S=Math.max(1,Math.round(vh/270));
+function resize(){const vw=innerWidth,vh=innerHeight;DPR=window.ToyEmbed?.pixelRatio ?? (devicePixelRatio||1);S=Math.max(1,Math.round(vh/270));
   W=Math.ceil(vw/S);H=Math.ceil(vh/S);buf.width=W;buf.height=H;ctx=buf.getContext('2d');ctx.imageSmoothingEnabled=false;
   view.width=Math.round(vw*DPR);view.height=Math.round(vh*DPR);vctx.imageSmoothingEnabled=false;tmpC.width=W;tmpC.height=64;
   layout();skyT=0;vig=mkCanvas(W,H);const x=vig.getContext('2d'),g=x.createRadialGradient(W/2,H*.55,Math.min(W,H)*.3,W/2,H*.55,Math.max(W,H)*.78);

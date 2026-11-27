@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
 <meta name="theme-color" content="#99d0d8">
 <link rel="icon" href="data:,">
 <title>云海邮班 · Cloudpost Railway</title>
@@ -5396,7 +5397,7 @@ function prepareSound(){
 }
 function audioState(){
   if(!audioCtx)return;
-  (soundOn&&!paused&&!document.hidden?audioCtx.resume():audioCtx.suspend()).catch(()=>{});
+  (soundOn&&!paused&&!document.hidden&&window.ToyEmbed?.active!==false?audioCtx.resume():audioCtx.suspend()).catch(()=>{});
 }
 function tone(freq,at,duration,volume,type='sine'){
   const o=audioCtx.createOscillator(),g=audioCtx.createGain();
@@ -5441,7 +5442,7 @@ const filmPose={x:.46,y:.44,z:.30,width:45.7,height:45.7*896/1536,az:.225,el:.41
 let film,still,stepFilm=false,postcardContext;
 function playbackFilm(){
   if(!film)return;
-  if(paused||document.hidden){film.pause();return;}
+  if(paused||document.hidden||window.ToyEmbed?.active===false){film.pause();return;}
   film.play().then(()=>{stepFilm=false;}).catch(()=>{stepFilm=true;});
 }
 async function startPostcard(){
@@ -5637,7 +5638,7 @@ window.addEventListener('keydown',e=>{
 });
 function resize(){
   screenW=innerWidth;screenH=innerHeight;aspect=screenW/Math.max(1,screenH);
-  ratio=Math.min(devicePixelRatio||1,screenW<650?1.5:1.65,Math.sqrt(2000000/(screenW*screenH)));
+  ratio=Math.min(window.ToyEmbed?.pixelRatio ?? (devicePixelRatio||1),screenW<650?1.5:1.65,Math.sqrt(2000000/(screenW*screenH)));
   if(renderer&&!fallback){renderer.setPixelRatio(ratio);renderer.setSize(screenW,screenH,false);}
   const postcard=document.getElementById('postcard');
   if(fallback){postcard.width=Math.round(screenW*ratio);postcard.height=Math.round(screenH*ratio);}
@@ -5678,6 +5679,7 @@ function loop(ms){
   }
   soundscape(sim);frameId=requestAnimationFrame(loop);
 }
+addEventListener('toyvisibilitychange',()=>{audioState();if(fallback)playbackFilm();});
 document.addEventListener('visibilitychange',()=>{
   previousFrame=0;audioState();if(fallback)playbackFilm();
   if(document.hidden){cancelAnimationFrame(frameId);frameId=0;}

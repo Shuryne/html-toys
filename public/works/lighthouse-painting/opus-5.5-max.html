@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
 <title>风暴中的灯塔</title>
 <style>
 /* VOICE: a hushed painting studio; the canvas does all the talking
@@ -840,8 +841,10 @@ const hasCBF = !!gl.getExtension('EXT_color_buffer_float');
 gl.getExtension('OES_texture_float_linear');
 const PFMT = hasCBF ? gl.RGBA16F : gl.RGBA8;
 const pcx = gl.getExtension('KHR_parallel_shader_compile');
-const DPR = Math.min(window.devicePixelRatio || 1, 2);
-let PY = Math.round(Math.min(1440, Math.max(840, Math.min(innerWidth*0.94/1.5, innerHeight - 78)*DPR))/8)*8;
+const pixelRatio = () => Math.min(window.ToyEmbed?.pixelRatio ?? (window.devicePixelRatio || 1), 2);
+let DPR = pixelRatio();
+const minPaintHeight = window.ToyEmbed ? 420 : 840;
+let PY = Math.round(Math.min(1440, Math.max(minPaintHeight, Math.min(innerWidth*0.94/1.5, innerHeight - 78)*DPR))/8)*8;
 if (Q.has('res')) PY = Math.round(parseInt(Q.get('res'), 10)/8)*8;
 const PX = PY*3/2;
 const RH = Math.floor(Math.min(PY, 1200)/16)*16, RW = RH*3/2;
@@ -894,6 +897,7 @@ clearPaint();
 // ------------------------------------------------------------ view and zoom
 let base = {sc:1, ox:0, oy:0}, view = {sc:1, ox:0, oy:0}, zoom = 1, redraw = () => {};
 function layout(){
+  DPR = pixelRatio();
   const W = Math.round(innerWidth*DPR), H = Math.round(innerHeight*DPR);
   cv.width = W; cv.height = H;
   const cap = 60*DPR, m = Math.max(14, Math.min(innerWidth, innerHeight)*0.03)*DPR;
@@ -1093,6 +1097,7 @@ function startPainting(){
 $('replay').addEventListener('click', startPainting);
 let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
+  if (window.ToyEmbed) return;
   if (document.hidden){ hiddenAt = performance.now(); }
   else {
     if (hiddenAt && painting) tStart += performance.now() - hiddenAt;

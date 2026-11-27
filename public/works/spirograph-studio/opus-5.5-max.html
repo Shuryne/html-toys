@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
 <meta name="color-scheme" content="light">
 <title>万花尺工作室</title>
 <style>
@@ -283,7 +284,7 @@ h1 span{color:var(--red)}
   /* ---------- 几何 ---------- */
   function measure() {
     const w = paper.getBoundingClientRect().width || 300;
-    const raw = window.devicePixelRatio || 1;
+    const raw = window.ToyEmbed?.pixelRatio ?? (window.devicePixelRatio || 1);
     let dpr = clamp(raw, 1, 3);
     if (w * dpr > 2400) dpr = 2400 / w;
     const px = Math.max(2, Math.round(w * dpr));
@@ -786,7 +787,7 @@ h1 span{color:var(--red)}
 
   function relayout() {
     const w = paper.getBoundingClientRect().width;
-    if (Math.abs(w - geo.css) < 0.5 && (window.devicePixelRatio || 1) === geo.dpr) return;
+    if (Math.abs(w - geo.css) < 0.5 && (window.ToyEmbed?.pixelRatio ?? (window.devicePixelRatio || 1)) === geo.dpr) return;
     measure();
     renderAll();
     ghost.path = null;

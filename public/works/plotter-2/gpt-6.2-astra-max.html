@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
     <meta name="theme-color" content="#D9D9D9" />
     <meta name="description" content="一台用蓝色圆珠笔现场画山水的绘图仪。" />
     <link
@@ -3032,6 +3033,7 @@
           if (!Context) throw new Error("声音不可用");
           if (!this.ctx) {
             this.ctx = new Context();
+            window.ToyEmbed?.trackAudio(this.ctx);
             const c = this.ctx;
             this.bus = c.createGain();
             this.bus.gain.value = 0.48;
@@ -3189,7 +3191,7 @@
       }
       function fitCanvases(force = false) {
         const sheet = $("sheet"),
-          ratio = Math.min(3, Math.max(1.5, window.devicePixelRatio || 1)),
+          ratio = window.ToyEmbed?.pixelRatio ?? Math.min(3, Math.max(1.5, window.devicePixelRatio || 1)),
           w = Math.max(1, Math.round(sheet.clientWidth * ratio)),
           h = Math.max(1, Math.round(sheet.clientHeight * ratio));
         if (!force && $("ink").width === w && $("ink").height === h) return;
