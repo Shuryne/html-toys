@@ -48,8 +48,10 @@ a { color: inherit; }
 
 #page, .bar-inner, .spread, .promptbox { width: var(--content-width); margin-inline: auto; }
 .top { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; font-size: 15px; font-weight: 700; }
+.top-actions { display: flex; align-items: center; gap: 8px; }
 .pill, .lang { min-height: 36px; font: 600 13px/1.3 var(--sans); border: 1px solid var(--rule); background: none; color: var(--ink); padding: 7px 12px; border-radius: 99px; cursor: pointer; white-space: nowrap; }
-.pill:not(:disabled):hover, .lang:hover { background: var(--matte); }
+.github-link { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--rule); border-radius: 50%; }
+.pill:not(:disabled):hover, .lang:hover, .github-link:hover { background: var(--matte); }
 .pill:disabled { opacity: .45; cursor: default; }
 .text-button { padding: 0; border: 0; background: none; font: 600 14px/1.3 var(--sans); cursor: pointer; white-space: nowrap; }
 .text-button, .work-open { color: var(--accent); text-decoration: underline; text-underline-offset: .22em; text-decoration-thickness: 1px; }
@@ -141,7 +143,18 @@ html[lang="zh-CN"] .intro h1 { font-weight: 700; letter-spacing: -.02em; line-he
 </head>
 <body>
 <div id="page">
-  <div class="top"><span>HTML Toys</span><button class="lang" id="lang" type="button" data-t="langBtn" data-t-attr="aria-label:langLabel">EN</button></div>
+  <div class="top">
+    <span>HTML Toys</span>
+    <div class="top-actions">
+      <button class="lang" id="lang" type="button" data-t="langBtn" data-t-attr="aria-label:langLabel">EN</button>
+      <a class="github-link" href="https://github.com/Shuryne/html-toys" target="_blank" rel="noopener"
+         aria-label="在新标签页打开 GitHub 仓库" title="在新标签页打开 GitHub 仓库" data-t-attr="aria-label:githubLink;title:githubLink">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656"/>
+        </svg>
+      </a>
+    </div>
+  </div>
 
   <header class="intro">
     <h1 data-t="title">网页小品</h1>

@@ -8,6 +8,7 @@ Home.strings({
   hint: { zh: '悬停看动态', en: 'Hover to preview' },
   langBtn: { zh: 'EN', en: '中文' },
   langLabel: { zh: 'Switch to English', en: '切换到中文' },
+  githubLink: { zh: '在新标签页打开 GitHub 仓库', en: 'Open GitHub repository in a new tab' },
   allWorks: { zh: '全部', en: 'All works' },
   modelFilter: { zh: '按模型筛选作品', en: 'Filter works by model' },
   filterModel: { zh: '筛选', en: 'Filter by' },
