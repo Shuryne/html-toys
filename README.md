@@ -1,6 +1,6 @@
-# HTML Toys：同题
+# 网页小品 · HTML Toys
 
-同一段提示词交给不同的模型，每个模型各写成一个 HTML 作品。主页「同题印样」把所有作品排成一张摄影印样：每一行是一道题，每一列是一个模型。悬停可播放无声短片，点击可打开完整作品。「放大对比」先并排显示预览，下方可分别运行两个作品，并查看中英文提示词。
+Claude、GPT 等模型创作的互动网页作品集。作品按创作主题展出，悬停封面可播放无声短片，点击可打开完整作品。选择「并排看」可预览同组作品、分别体验交互版，并查看共同的中英文提示词。
 
 ## 目录
 
@@ -9,13 +9,13 @@ prompts/
   zh/<prompt-id>.md            中文提示词
   en/<prompt-id>.md            英文提示词（内容与中文版一致）
 public/                        站点根目录（Cloudflare Pages 输出目录）
-  index.html                   主页（同题印样）
+  index.html                   主页（网页小品）
   favicon.svg                  网站图标
   og.jpg                       分享预览图，1200×630
   assets/
     toys.js                    作品清单：MODELS 与 PROMPTS
     home.js                    语言、提示词、预览短片及嵌入播放
-    gallery.js                 印样和对比页交互
+    gallery.js                 作品墙和对比页交互
   works/<prompt-id>/<model-id>.html     作品，一个模型一个文件
   covers/<prompt-id>/<model-id>.webp    封面，宽 1200，比例 16:10
   covers/<prompt-id>/<model-id>-<w>.webp  可选封面尺寸，宽 384、576 或 864
@@ -41,10 +41,10 @@ scripts/dev.sh                 本地预览
 
 要让新作品嵌入对比页时支持离屏暂停，可在作品脚本前加入现有作品使用的 `parent.Home?.prepareWork(window)` 调用。Canvas 或 WebGL 的分辨率可读取 `window.ToyEmbed?.pixelRatio`。
 
-新增题目：添加 `prompts/zh` 和 `prompts/en` 下的两份提示词，然后在 `PROMPTS` 里加一项，印样上会多出一行，顺序和 `PROMPTS` 一致。
-新增模型：在 `MODELS` 里加一项（`name` 是页面上显示的全名，`short` 是窄屏上的短名，`color` 是它的识别色），印样上会多出一列，还没有它作品的题目显示「未曝光」空帧。
+新增题目：添加 `prompts/zh` 和 `prompts/en` 下的两份提示词，然后在 `PROMPTS` 里加一项。作品组的顺序和 `PROMPTS` 一致。
+新增模型：在 `MODELS` 里加一项（`name` 是作品下方的署名，`short` 是聚焦按钮的短名，`color` 是它的识别色）。缺少该模型作品的主题会显示「暂无作品」。
 
-想先看看多一个模型时的版式，可以在地址后面加 `?demo=gemini`，页面会临时多出一个没有作品的「Gemini（待定）」列。
+想先看看多一个模型时的版式，可以在地址后面加 `?demo=gemini`，页面会临时加入没有作品的「Gemini（待定）」。
 
 ## 本地预览
 

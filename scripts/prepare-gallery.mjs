@@ -24,9 +24,12 @@ const media = Object.fromEntries(PROMPTS.map(prompt => [
   })),
 ]));
 
-const columns = MODELS.length;
-const mobileColumns = Math.min(columns, 2.3);
-const sizes = `(max-width: 760px) calc(${100 / mobileColumns}vw - ${16 / mobileColumns + 10}px), (max-width: 1600px) calc(${92 / columns}vw - ${208 / columns + 16}px), calc(${100 / columns}vw - ${336 / columns + 16}px)`;
+// Match the gallery grid in public/index.html and the runtime sizes in gallery.js.
+const columns = Math.min(MODELS.length, 3);
+const mobileColumns = Math.min(columns, 2);
+const gaps = (columns - 1) * 20;
+const mobileGaps = (mobileColumns - 1) * 12;
+const sizes = `(max-width: 760px) calc(${100 / mobileColumns}vw - ${(32 + mobileGaps) / mobileColumns}px), min(calc(${92 / columns}vw - ${gaps / columns}px), ${(1440 - gaps) / columns}px)`;
 const first = PROMPTS[0];
 const preloads = [];
 for (const model of MODELS.slice(0, 2)) {

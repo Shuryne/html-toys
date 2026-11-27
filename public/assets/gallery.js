@@ -1,28 +1,26 @@
 Home.strings({
-  docTitle: { zh: '同题印样 · HTML Toys', en: 'Proof Sheet · HTML Toys' },
-  title: { zh: '同题印样', en: 'Proof Sheet' },
+  docTitle: { zh: '网页小品 · HTML Toys', en: 'Web Miniatures · HTML Toys' },
+  title: { zh: '网页小品', en: 'Web Miniatures' },
   lede: {
-    zh: '同一段提示词交给不同的模型，各写成一个网页。每一行是一道题，每一列是一个模型，像一张冲洗出来的印样。',
-    en: 'One prompt, handed to different models, each answering with a web page. Each row is a prompt, each column a model, laid out like a developed proof sheet.',
+    zh: '看灯塔一笔笔成形，去池边喂几尾锦鲤。这里收藏着 Claude、GPT 等模型创作的互动网页。',
+    en: 'Watch a lighthouse take shape, brushstroke by brushstroke, or stop to feed the koi. A collection of interactive web pieces by Claude, GPT, and other AI models.',
   },
-  hint: {
-    zh: '悬停播放动态预览，点击打开作品。点列头只看一个模型，点「放大对比」并排查看。',
-    en: 'Hover to preview a piece, click to open it. Pick a model above to highlight its work, or choose “Compare” to see both versions side by side.',
-  },
-  foot: { zh: '每件作品都可以独立运行。空帧表示这个模型还没交这道题。', en: 'Each piece runs on its own. A blank frame means that model hasn’t answered yet.' },
+  hint: { zh: '悬停看动态', en: 'Hover to preview' },
   langBtn: { zh: 'EN', en: '中文' },
   langLabel: { zh: 'Switch to English', en: '切换到中文' },
-  corner: { zh: '题目 ↓  模型 →', en: 'Prompts ↓  Models →' },
-  compare: { zh: '放大对比', en: 'Compare' },
-  unexposed: { zh: '未曝光', en: 'Unexposed' },
-  notYet: { zh: '还没交卷。', en: 'Not answered yet.' },
-  prev: { zh: '上一题', en: 'Previous' },
-  next: { zh: '下一题', en: 'Next' },
-  close: { zh: '回到印样', en: 'Back to the sheet' },
+  allWorks: { zh: '全部', en: 'All works' },
+  modelFocus: { zh: '按模型聚焦作品', en: 'Highlight works by model' },
+  focusModel: { zh: '聚焦', en: 'Highlight' },
+  compare: { zh: '并排看', en: 'View side by side' },
+  notYet: { zh: '暂无作品', en: 'No work yet' },
+  prev: { zh: '上一组', en: 'Previous' },
+  next: { zh: '下一组', en: 'Next' },
+  close: { zh: '返回', en: 'Back' },
   open: { zh: '新标签页打开', en: 'Open in new tab' },
-  run: { zh: '运行作品', en: 'Run piece' },
+  run: { zh: '体验作品', en: 'Try it' },
   stop: { zh: '回到预览', en: 'Back to preview' },
-  promptHead: { zh: '提示词', en: 'The prompt' },
+  promptHead: { zh: '原始提示词', en: 'Original prompt' },
+  promptOrigin: { zh: '这些作品从同一份提示词出发。', en: 'These works started with the same prompt.' },
   promptLang: { zh: '提示词语言', en: 'Prompt language' },
   copy: { zh: '复制', en: 'Copy' },
   copied: { zh: '已复制', en: 'Copied' },
@@ -32,7 +30,6 @@ const L = o => o[Home.lang];
 const zh = () => Home.lang === 'zh';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const qt = s => zh() ? `《${s}》` : `“${s}”`;
-const pad = n => String(n).padStart(2, '0');
 const workName = (r, m) => zh() ? `${qt(L(r.title))}，${m.name}` : `${qt(L(r.title))} by ${m.name}`;
 const coverObserver = new IntersectionObserver(entries => {
   for (const { target, isIntersecting } of entries) if (isIntersecting) {
@@ -48,76 +45,70 @@ function coverImage(id, model, sizes, { deferred = false, priority = 'auto' } = 
   return `<img ${prefix}src="${src}" ${prefix}srcset="${sources}" sizes="${sizes}" fetchpriority="${priority}" alt="" decoding="async" width="1200" height="750">`;
 }
 
-function sheetCoverSizes(columns) {
-  const mobile = Math.min(columns, 2.3);
-  return `(max-width: 760px) calc(${100 / mobile}vw - ${16 / mobile + 10}px), (max-width: 1600px) calc(${92 / columns}vw - ${208 / columns + 16}px), calc(${100 / columns}vw - ${336 / columns + 16}px)`;
-}
-// a loose hand-drawn ellipse, different for every frame
-function circlePath(seed) {
-  let r = seed * 9301 + 49297; const rnd = () => ((r = (r * 9301 + 49297) % 233280) / 233280);
-  const pts = [], turns = 1.12, n = 40;
-  for (let i = 0; i <= n; i++) {
-    const a = -2.2 + i / n * Math.PI * 2 * turns, w = 1 + (rnd() - .5) * .05;
-    pts.push([50 + 50.5 * w * Math.cos(a), 50 + 51 * w * Math.sin(a)]);
-  }
-  return 'M' + pts.map(p => p.map(v => v.toFixed(1)).join(' ')).join('L');
+function coverSizes(columns, mobileColumns) {
+  const gaps = (columns - 1) * 20;
+  const mobileGaps = (mobileColumns - 1) * 12;
+  return `(max-width: 760px) calc(${100 / mobileColumns}vw - ${(32 + mobileGaps) / mobileColumns}px), min(calc(${92 / columns}vw - ${gaps / columns}px), ${(1440 - gaps) / columns}px)`;
 }
 
-/* ---- the sheet ---- */
-let solo = null;
-const matrix = document.getElementById('matrix');
+let solo = '';
+const gallery = document.getElementById('gallery');
+const modelFocus = document.getElementById('model-focus');
+const groups = document.getElementById('gallery-groups');
+
+function updateSolo() {
+  groups.classList.toggle('has-focus', Boolean(solo));
+  for (const card of groups.querySelectorAll('[data-model]')) {
+    card.classList.toggle('highlighted', card.dataset.model === solo);
+  }
+  for (const button of modelFocus.querySelectorAll('[data-solo]')) {
+    button.setAttribute('aria-pressed', button.dataset.solo === solo);
+  }
+}
+
 function render() {
   const models = Home.models(), prompts = Home.prompts();
-  const sizes = sheetCoverSizes(models.length);
+  const columns = Math.min(models.length, 3), mobileColumns = Math.min(columns, 2);
+  const sizes = coverSizes(columns, mobileColumns);
   coverObserver.disconnect();
-  matrix.style.setProperty('--n', models.length);
-  matrix.classList.toggle('soloing', !!solo);
-  let html = `<div class="heads"><div class="colhead corner" aria-hidden="true">${Home.t('corner')}</div>` + models.map(m => {
-    const have = prompts.filter(p => p.runs[m.id]).length;
-    return `<div class="colhead ${solo === m.id ? 'on' : ''}"><button class="solo" type="button" data-solo="${m.id}" aria-pressed="${solo === m.id}" style="--mc:${m.color}">
-      <b><i></i><span class="full">${esc(m.name)}</span><span class="abbr" aria-hidden="true">${esc(m.short || m.name)}</span></b>
-      <span>${m.vendor ? esc(m.vendor) + (zh() ? '，' : ', ') : ''}${have} / ${prompts.length}</span>
-      <svg viewBox="0 0 336 12" preserveAspectRatio="none" aria-hidden="true"><use href="#scribble" fill="none" stroke="#d7262e" stroke-width="3" stroke-linecap="round"/></svg>
-    </button></div>`;
-  }).join('') + `</div>`;
-  let frameNo = 0;
-  prompts.forEach((p, ri) => {
-    const runs = Home.runs(p.id), have = runs.filter(x => x.run).length;
-    html += `<section class="row" id="${p.id}" aria-labelledby="h-${p.id}"><div class="rowhead"><h2 id="h-${p.id}">${esc(L(p.brief))}</h2>
-      <span class="tally">${zh() ? `${have} 个模型交卷` : `${have} of ${models.length} answered`}</span>
-      <button type="button" data-open="${p.id}" aria-describedby="h-${p.id}">${Home.t('compare')}</button></div><div class="reel">`;
-    runs.forEach(({ model: m, run: r }, ci) => {
-      frameNo++;
-      const on = !solo || solo === m.id;
-      const clip = r ? Home.preview(p.id, m.id) : '';
-      html += `<div class="cell ${on ? 'on' : ''}" data-model="${m.id}"${clip ? ` data-clip="${clip}"` : ''}><span class="no" aria-hidden="true">${pad(ri + 1)}${String.fromCharCode(65 + ci)}</span>`;
-      if (r) html += `<a class="frame" href="${Home.href(p.id, m.id)}" aria-label="${esc(workName(r, m))}">
-          ${coverImage(p.id, m.id, sizes, { deferred: ri !== 0, priority: ri === 0 && ci === 0 ? 'high' : 'auto' })}<div class="preview"></div>
-          <span class="cap" aria-hidden="true">${esc(qt(L(r.title)))}</span></a>
-          <svg class="mark" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${circlePath(frameNo)}" vector-effect="non-scaling-stroke" pathLength="1400"/></svg>`;
-      else html += `<div class="unexposed"><b>${Home.t('unexposed')}</b><span>${esc(m.short || m.name)}</span></div>`;
-      html += `</div>`;
-    });
-    html += `</div></section>`;
-  });
-  matrix.innerHTML = html;
-  matrix.querySelectorAll('img[data-src]').forEach(img => coverObserver.observe(img));
-  const works = prompts.reduce((n, p) => n + Object.keys(p.runs).filter(id => Home.model(id)).length, 0);
-  document.getElementById('stats').textContent = zh()
-    ? `现在有 ${prompts.length} 道题、${models.length} 个模型、${works} 件作品。`
-    : `${prompts.length} prompts, ${models.length} models, ${works} pieces so far.`;
+  groups.style.setProperty('--columns', columns);
+  groups.style.setProperty('--mobile-columns', mobileColumns);
+  modelFocus.innerHTML = `<button class="model-choice" type="button" data-solo="">${Home.t('allWorks')}</button>` + models.map(m =>
+    `<button class="model-choice" type="button" data-solo="${esc(m.id)}" title="${esc(Home.t('focusModel') + ' ' + m.name)}">
+      <span class="model-dot" aria-hidden="true" style="--model-color:${m.color}"></span>${esc(m.short || m.name)}</button>`
+  ).join('');
+
+  groups.innerHTML = prompts.map((p, ri) => {
+    const runs = Home.runs(p.id);
+    const hint = ri === 0 && !navigator.connection?.saveData
+      ? `<span class="preview-hint">${Home.t('hint')}</span>` : '';
+    const cards = runs.map(({ model: m, run: r }, ci) => {
+      const credit = `<p class="credit">${esc(m.name)}</p>`;
+      if (!r) return `<article class="work-card" data-model="${esc(m.id)}">
+        <div class="work-media empty">${Home.t('notYet')}</div><div class="work-caption">${credit}</div></article>`;
+      const clip = Home.preview(p.id, m.id);
+      const image = coverImage(p.id, m.id, sizes, { deferred: ri !== 0, priority: ri === 0 && ci === 0 ? 'high' : 'auto' });
+      return `<article class="work-card" data-model="${esc(m.id)}">
+        <a class="work-link" href="${Home.href(p.id, m.id)}"${clip ? ` data-clip="${clip}"` : ''}>
+          <div class="work-media">${image}${clip ? '<div class="preview" aria-hidden="true"></div>' : ''}</div>
+          <div class="work-caption"><h3 class="work-title">${esc(L(r.title))}</h3>${credit}</div>
+        </a></article>`;
+    }).join('');
+    return `<section id="${p.id}" aria-labelledby="h-${p.id}">
+      <div class="group-heading"><h2 id="h-${p.id}">${esc(L(p.brief))}</h2>
+        <div class="group-actions">${hint}<button class="text-button" type="button" data-open="${p.id}" aria-describedby="h-${p.id}">${Home.t('compare')}</button></div>
+      </div>
+      <div class="work-grid">${cards}</div>
+    </section>`;
+  }).join('');
+  updateSolo();
+  groups.querySelectorAll('img[data-src]').forEach(img => coverObserver.observe(img));
 }
-matrix.addEventListener('click', e => {
+gallery.addEventListener('click', e => {
   const s = e.target.closest('[data-solo]');
   if (s) {
-    solo = solo === s.dataset.solo ? null : s.dataset.solo;
-    matrix.classList.toggle('soloing', !!solo);
-    matrix.querySelectorAll('[data-model]').forEach(el => el.classList.toggle('on', !solo || el.dataset.model === solo));
-    matrix.querySelectorAll('[data-solo]').forEach(button => {
-      const on = button.dataset.solo === solo;
-      button.parentElement.classList.toggle('on', on);
-      button.setAttribute('aria-pressed', on);
-    });
+    solo = solo === s.dataset.solo ? '' : s.dataset.solo;
+    updateSolo();
     return;
   }
   const o = e.target.closest('[data-open]');
@@ -128,7 +119,7 @@ matrix.addEventListener('click', e => {
 const canHover = matchMedia('(hover: hover) and (pointer: fine)');
 let timer = 0, hoverCell = null, focusCell = null, wanted = null, clip = null, clipCell = null;
 const autoplayClips = () => !Home.reducedMotion && !document.hidden && !navigator.connection?.saveData;
-const playable = target => target?.closest?.('.cell[data-clip]') ?? null;
+const playable = target => target?.closest?.('.work-link[data-clip]') ?? null;
 function stopPreview(release = false) {
   clearTimeout(timer);
   wanted = null;
@@ -157,21 +148,21 @@ function updatePreview() {
     Home.playClip(clip);
   }, 380);
 }
-matrix.addEventListener('pointerover', e => {
+gallery.addEventListener('pointerover', e => {
   if (!canHover.matches || e.pointerType === 'touch') return;
   hoverCell = playable(e.target);
   updatePreview();
 });
-matrix.addEventListener('pointerout', e => {
+gallery.addEventListener('pointerout', e => {
   if (!hoverCell || playable(e.relatedTarget) === hoverCell) return;
   hoverCell = null;
   updatePreview();
 });
-matrix.addEventListener('focusin', e => {
-  focusCell = e.target.matches('.frame:focus-visible') ? playable(e.target) : null;
+gallery.addEventListener('focusin', e => {
+  focusCell = e.target.matches('.work-link:focus-visible') ? playable(e.target) : null;
   updatePreview();
 });
-matrix.addEventListener('focusout', e => {
+gallery.addEventListener('focusout', e => {
   if (focusCell !== playable(e.target)) return;
   focusCell = null;
   updatePreview();
@@ -255,22 +246,32 @@ Home.motion.addEventListener('change', updatePlayback);
 
 function fillLoupe() {
   const p = Home.find(openId), runs = Home.runs(openId), all = Home.prompts(), i = all.indexOf(p);
+  const columns = Math.min(runs.length, 3);
+  const sizes = coverSizes(columns, 1);
   unwatch();
   document.getElementById('lt').textContent = L(p.brief);
-  document.getElementById('lcount').textContent = `${i + 1} / ${all.length}`;
   document.getElementById('lprev').disabled = i === 0;
   document.getElementById('lnext').disabled = i === all.length - 1;
-  spread.style.setProperty('--n', runs.length);
-  const sizes = `(max-width: 400px) calc(100vw - 56px), (max-width: 760px) calc(92vw - 24px), (max-width: 1600px) calc(${92 / runs.length}vw - ${12 / runs.length + 16}px), calc(${100 / runs.length}vw - ${140 / runs.length + 16}px)`;
-  spread.innerHTML = runs.map(({ model: m, run: r }, c) => `
-    <div class="shot film" style="--c:${c + 1}">${r
-      ? `<div class="stage" id="stage-${c}" data-src="${Home.href(p.id, m.id)}" data-clip="${Home.preview(p.id, m.id)}" data-title="${esc(workName(r, m))}">${coverImage(p.id, m.id, sizes)}</div>`
-      : `<div class="unexposed"><b>${Home.t('unexposed')}</b><span>${esc(m.name)}</span></div>`}</div>
-    <div class="note" style="--c:${c + 1};--mc:${m.color}">
-      <h3><i></i>${esc(m.name)}${r ? `<span class="work-controls">
-        <button class="pill" type="button" data-stage="stage-${c}" aria-controls="stage-${c}" aria-label="${esc(Home.t('run') + ' · ' + workName(r, m))}">${Home.t('run')}</button>
-        <a href="${Home.href(p.id, m.id)}" target="_blank" rel="noopener" aria-label="${esc(Home.t('open') + (zh() ? '：' : ': ') + workName(r, m))}">${Home.t('open')}</a></span>` : ''}</h3>
-      <p>${r ? `${esc(qt(L(r.title)))} ${esc(L(r.medium))}${zh() ? '。' : '. '}${esc(L(r.blurb))}` : Home.t('notYet')}</p></div>`).join('');
+  spread.style.setProperty('--columns', columns);
+  spread.innerHTML = runs.map(({ model: m, run: r }, c) => {
+    if (!r) return `<article><div class="work-media empty">${Home.t('notYet')}</div>
+      <div class="note"><h3 class="work-title">${esc(m.name)}</h3></div></article>`;
+    const name = workName(r, m), href = Home.href(p.id, m.id);
+    return `<article>
+      <div class="work-media stage" id="stage-${c}" data-src="${href}" data-clip="${Home.preview(p.id, m.id)}" data-title="${esc(name)}">${coverImage(p.id, m.id, sizes)}</div>
+      <div class="note">
+        <div class="note-heading">
+          <div><h3 class="work-title">${esc(L(r.title))}</h3>
+            <p class="credit">${esc(m.name)} / ${esc(L(r.medium))}</p></div>
+          <div class="work-controls">
+            <button class="pill" type="button" data-stage="stage-${c}" aria-controls="stage-${c}" aria-label="${esc(Home.t('run') + ' · ' + name)}">${Home.t('run')}</button>
+            <a href="${href}" target="_blank" rel="noopener" aria-label="${esc(Home.t('open') + (zh() ? '：' : ': ') + name)}">${Home.t('open')}</a>
+          </div>
+        </div>
+        <p class="description">${esc(L(r.blurb))}</p>
+      </div>
+    </article>`;
+  }).join('');
   for (const stage of spread.querySelectorAll('.stage')) {
     stages.set(stage, { stage, visible: false, clip: null, live: null });
     io.observe(stage);
@@ -284,22 +285,22 @@ async function showPrompt() {
   catch { if (id === openId) promptEl.innerHTML = `<p class="err">${Home.t('loadFail')}</p>`; }
 }
 function show(id) {
-  if (!openId) {
+  const opening = !openId;
+  if (opening) {
     lastFocus = document.activeElement;
     hoverCell = focusCell = null;
     stopPreview(true);
-    loupe.hidden = false; loupe.classList.add('open');
+    loupe.hidden = false;
     page.inert = true; document.body.style.overflow = 'hidden';
-    document.getElementById('lclose').focus({ preventScroll: true });
   }
   openId = id; promptLang = Home.lang; loupe.scrollTop = 0;
   fillLoupe(); showPrompt();
+  if (opening) document.getElementById('lclose').focus({ preventScroll: true });
 }
 function hide() {
   if (!openId) return;
   unwatch(); openId = null; pushed = false;
-  loupe.classList.remove('open'); page.inert = false; document.body.style.overflow = '';
-  setTimeout(() => { if (!openId) loupe.hidden = true; }, 300);
+  loupe.hidden = true; page.inert = false; document.body.style.overflow = '';
   lastFocus && lastFocus.focus();
 }
 const url = id => location.pathname + location.search + (id ? '#' + id : '');
