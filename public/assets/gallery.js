@@ -9,18 +9,18 @@ Home.strings({
   langBtn: { zh: 'EN', en: '中文' },
   langLabel: { zh: 'Switch to English', en: '切换到中文' },
   allWorks: { zh: '全部', en: 'All works' },
-  modelFocus: { zh: '按模型聚焦作品', en: 'Highlight works by model' },
-  focusModel: { zh: '聚焦', en: 'Highlight' },
+  modelFilter: { zh: '按模型筛选作品', en: 'Filter works by model' },
+  filterModel: { zh: '筛选', en: 'Filter by' },
   compare: { zh: '并排看', en: 'View side by side' },
   notYet: { zh: '暂无作品', en: 'No work yet' },
   prev: { zh: '上一组', en: 'Previous' },
   next: { zh: '下一组', en: 'Next' },
   close: { zh: '返回', en: 'Back' },
-  open: { zh: '新标签页打开', en: 'Open in new tab' },
-  run: { zh: '体验作品', en: 'Try it' },
-  stop: { zh: '回到预览', en: 'Back to preview' },
-  promptHead: { zh: '原始提示词', en: 'Original prompt' },
-  promptOrigin: { zh: '这些作品从同一份提示词出发。', en: 'These works started with the same prompt.' },
+  open: { zh: '打开', en: 'Open' },
+  openNewTab: { zh: '在新标签页打开', en: 'Open in new tab' },
+  play: { zh: '同步播放', en: 'Play together' },
+  stop: { zh: '回到预览', en: 'Back to previews' },
+  promptHead: { zh: '提示词', en: 'Prompt' },
   promptLang: { zh: '提示词语言', en: 'Prompt language' },
   copy: { zh: '复制', en: 'Copy' },
   copied: { zh: '已复制', en: 'Copied' },
@@ -51,42 +51,50 @@ function coverSizes(columns, mobileColumns) {
   return `(max-width: 760px) calc(${100 / mobileColumns}vw - ${(32 + mobileGaps) / mobileColumns}px), min(calc(${92 / columns}vw - ${gaps / columns}px), ${(1440 - gaps) / columns}px)`;
 }
 
-let solo = '';
+let selectedModel = '';
 const gallery = document.getElementById('gallery');
-const modelFocus = document.getElementById('model-focus');
+const modelFilter = document.getElementById('model-filter');
 const groups = document.getElementById('gallery-groups');
 
-function updateSolo() {
-  groups.classList.toggle('has-focus', Boolean(solo));
-  for (const card of groups.querySelectorAll('[data-model]')) {
-    card.classList.toggle('highlighted', card.dataset.model === solo);
-  }
-  for (const button of modelFocus.querySelectorAll('[data-solo]')) {
-    button.setAttribute('aria-pressed', button.dataset.solo === solo);
+function updateModelFilter() {
+  for (const button of modelFilter.querySelectorAll('[data-model-filter]')) {
+    button.setAttribute('aria-pressed', button.dataset.modelFilter === selectedModel);
   }
 }
 
-function render() {
-  const models = Home.models(), prompts = Home.prompts();
-  const columns = Math.min(models.length, 3), mobileColumns = Math.min(columns, 2);
-  const sizes = coverSizes(columns, mobileColumns);
-  coverObserver.disconnect();
-  groups.style.setProperty('--columns', columns);
-  groups.style.setProperty('--mobile-columns', mobileColumns);
-  modelFocus.innerHTML = `<button class="model-choice" type="button" data-solo="">${Home.t('allWorks')}</button>` + models.map(m =>
-    `<button class="model-choice" type="button" data-solo="${esc(m.id)}" title="${esc(Home.t('focusModel') + ' ' + m.name)}">
+function renderModelFilter() {
+  modelFilter.innerHTML = `<button class="model-choice" type="button" data-model-filter="">${Home.t('allWorks')}</button>` + Home.models().map(m =>
+    `<button class="model-choice" type="button" data-model-filter="${esc(m.id)}" title="${esc(Home.t('filterModel') + ' ' + m.name)}">
       <span class="model-dot" aria-hidden="true" style="--model-color:${m.color}"></span>${esc(m.short || m.name)}</button>`
   ).join('');
+  updateModelFilter();
+}
 
-  groups.innerHTML = prompts.map((p, ri) => {
-    const runs = Home.runs(p.id);
+function renderGallery() {
+  const columns = Math.min(Home.models().length, 3), mobileColumns = Math.min(columns, 2);
+  const sizes = coverSizes(columns, mobileColumns);
+  const filtered = Boolean(selectedModel);
+  const workGroups = Home.prompts().map(p => {
+    const runs = Home.runs(p.id).filter(({ model, run }) => !filtered || (model.id === selectedModel && run));
+    return { p, runs };
+  }).filter(({ runs }) => runs.length);
+  hoverCell = focusCell = null;
+  stopPreview();
+  coverObserver.disconnect();
+  groups.classList.toggle('is-filtered', filtered);
+  groups.style.setProperty('--columns', columns);
+  groups.style.setProperty('--mobile-columns', mobileColumns);
+
+  const firstRow = filtered ? columns : 1;
+  groups.innerHTML = workGroups.map(({ p, runs }, ri) => {
     const hint = ri === 0 && !navigator.connection?.saveData
       ? `<span class="preview-hint">${Home.t('hint')}</span>` : '';
+    const actions = filtered ? '' : `<div class="group-actions">${hint}<button class="text-button" type="button" data-open="${p.id}" aria-describedby="h-${p.id}">${Home.t('compare')}</button></div>`;
     const cards = runs.map(({ model: m, run: r }, ci) => {
       const credit = `<p class="credit">${esc(m.name)}</p>`;
       if (!r) return `<article class="work-card" data-model="${esc(m.id)}">
         <div class="work-media empty">${Home.t('notYet')}</div><div class="work-caption">${credit}</div></article>`;
-      const image = coverImage(p.id, m.id, sizes, { deferred: ri !== 0, priority: ri === 0 && ci === 0 ? 'high' : 'auto' });
+      const image = coverImage(p.id, m.id, sizes, { deferred: ri >= firstRow, priority: ri === 0 && ci === 0 ? 'high' : 'auto' });
       return `<article class="work-card" data-model="${esc(m.id)}">
         <a class="work-link" href="${Home.href(p.id, m.id)}">
           <div class="work-media">${image}</div>
@@ -94,20 +102,19 @@ function render() {
         </a></article>`;
     }).join('');
     return `<section id="${p.id}" aria-labelledby="h-${p.id}">
-      <div class="group-heading"><h2 id="h-${p.id}">${esc(L(p.brief))}</h2>
-        <div class="group-actions">${hint}<button class="text-button" type="button" data-open="${p.id}" aria-describedby="h-${p.id}">${Home.t('compare')}</button></div>
-      </div>
+      <div class="group-heading"><h2 id="h-${p.id}">${esc(L(p.brief))}</h2>${actions}</div>
       <div class="work-grid">${cards}</div>
     </section>`;
-  }).join('');
-  updateSolo();
+  }).join('') || `<p class="empty">${Home.t('notYet')}</p>`;
   groups.querySelectorAll('img[data-src]').forEach(img => coverObserver.observe(img));
 }
 gallery.addEventListener('click', e => {
-  const s = e.target.closest('[data-solo]');
-  if (s) {
-    solo = solo === s.dataset.solo ? '' : s.dataset.solo;
-    updateSolo();
+  const filter = e.target.closest('[data-model-filter]');
+  if (filter) {
+    const model = filter.dataset.modelFilter;
+    selectedModel = selectedModel === model ? '' : model;
+    updateModelFilter();
+    renderGallery();
     return;
   }
   const o = e.target.closest('[data-open]');
@@ -149,7 +156,7 @@ function updatePreview() {
   previewViewport.observe(next);
   timer = setTimeout(() => {
     const host = next.querySelector('.work-media');
-    livePreview = Home.mountLive(host, next.href, next.innerText, { preview: true });
+    livePreview = Home.mountLive(host, next.href, next.innerText);
     previewResize.observe(host);
   }, 380);
 }
@@ -175,110 +182,97 @@ gallery.addEventListener('focusout', e => {
 
 /* ---- the loupe ---- */
 const page = document.getElementById('page'), loupe = document.getElementById('loupe'), spread = document.getElementById('spread'), promptEl = document.getElementById('prompt');
+const playButton = document.getElementById('lplay');
 let openId = null, pushed = false, promptLang = Home.lang, lastFocus = null;
-const stages = new Map();
-function updateStage(state) {
-  const visible = state.visible && !document.hidden;
-  if (visible && state.autoStart && allowAutoplay()) startStage(state, true);
-  if (!state.live) return;
-  Home.activateLive(state.live, visible);
-  state.live.frame.inert = !visible;
+let comparison = null, spreadVisible = false;
+
+function updateComparisonActivity() {
+  if (!comparison?.ready) return;
+  const active = spreadVisible && !document.hidden;
+  for (const live of comparison.lives.values()) Home.activateLive(live, active);
 }
-const io = new IntersectionObserver(entries => {
-  for (const entry of entries) {
-    const state = stages.get(entry.target);
-    if (!state) continue;
-    state.visible = entry.isIntersecting && entry.intersectionRatio >= .15;
-    updateStage(state);
-  }
-}, { root: loupe, threshold: .15 });
-const ro = new ResizeObserver(entries => {
+const spreadViewport = new IntersectionObserver(([entry]) => {
+  spreadVisible = entry.isIntersecting;
+  updateComparisonActivity();
+}, { root: loupe });
+spreadViewport.observe(spread);
+const comparisonResize = new ResizeObserver(entries => {
   for (const { target, contentRect } of entries) {
-    const live = stages.get(target)?.live;
+    const live = comparison?.lives.get(target);
     if (live) Home.sizeLive(live, contentRect.width);
   }
 });
-function unwatch() {
-  io.disconnect();
-  ro.disconnect();
-  for (const state of stages.values()) {
-    if (state.live) Home.removeLive(state.live);
-  }
-  stages.clear();
+
+function stopComparison() {
+  if (!comparison) return;
+  clearTimeout(comparison.timeout);
+  comparisonResize.disconnect();
+  for (const live of comparison.lives.values()) Home.removeLive(live);
+  comparison = null;
+  playButton.textContent = Home.t('play');
 }
 
-function updateStageButton(state) {
-  const { button, stage } = state;
-  const label = Home.t(state.live ? 'stop' : 'run');
-  button.textContent = label;
-  button.setAttribute('aria-label', label + ' · ' + stage.dataset.title);
+function startComparison() {
+  const links = [...spread.querySelectorAll('.work-open')];
+  if (!links.length) return;
+  const state = { lives: new Map(), ready: false };
+  comparison = state;
+  playButton.textContent = Home.t('stop');
+  const pending = links.map(link => new Promise(resolve => {
+    const host = link.closest('article').querySelector('.work-media');
+    const live = Home.mountLive(host, link.href, link.getAttribute('aria-label'), { active: false, onPrepare: resolve });
+    state.lives.set(host, live);
+    comparisonResize.observe(host);
+  }));
+  const start = () => {
+    if (comparison !== state || state.ready) return;
+    clearTimeout(state.timeout);
+    state.ready = true;
+    updateComparisonActivity();
+  };
+  // Release all animation loops together. Let the available works start if one is slow to load.
+  state.timeout = setTimeout(start, 4000);
+  Promise.all(pending).then(start);
 }
 
-function startStage(state, autoplay) {
-  state.autoStart = false;
-  const { stage } = state;
-  state.live = Home.mountLive(stage, stage.dataset.src, stage.dataset.title, { autoplay });
-  ro.observe(stage);
-  updateStageButton(state);
-}
-
-spread.addEventListener('click', e => {
-  const button = e.target.closest('[data-stage]');
-  if (!button) return;
-  const stage = document.getElementById(button.dataset.stage), state = stages.get(stage);
-  if (!state) return;
-  if (state.live) {
-    ro.unobserve(stage);
-    Home.removeLive(state.live);
-    state.live = null;
-    updateStageButton(state);
-  } else {
-    startStage(state, false);
-    if (!state.visible) stage.scrollIntoView({ block: 'nearest' });
-  }
-  updateStage(state);
-});
-
-function updatePlayback() {
+playButton.onclick = () => {
+  if (comparison) stopComparison();
+  else startComparison();
+};
+document.addEventListener('visibilitychange', () => {
   updatePreview();
-  for (const state of stages.values()) updateStage(state);
-}
-document.addEventListener('visibilitychange', updatePlayback);
-Home.motion.addEventListener('change', updatePlayback);
+  updateComparisonActivity();
+});
+Home.motion.addEventListener('change', updatePreview);
 
-function fillLoupe() {
+function fillLoupe(play = Boolean(comparison)) {
   const p = Home.find(openId), runs = Home.runs(openId), all = Home.prompts(), i = all.indexOf(p);
   const columns = Math.min(runs.length, 3);
   const sizes = coverSizes(columns, 1);
-  unwatch();
+  stopComparison();
   document.getElementById('lt').textContent = L(p.brief);
   document.getElementById('lprev').disabled = i === 0;
   document.getElementById('lnext').disabled = i === all.length - 1;
   spread.style.setProperty('--columns', columns);
-  spread.innerHTML = runs.map(({ model: m, run: r }, c) => {
+  spread.innerHTML = runs.map(({ model: m, run: r }) => {
     if (!r) return `<article><div class="work-media empty">${Home.t('notYet')}</div>
       <div class="note"><h3 class="work-title">${esc(m.name)}</h3></div></article>`;
     const name = workName(r, m), href = Home.href(p.id, m.id);
     return `<article>
-      <div class="work-media stage" id="stage-${c}" data-src="${href}" data-title="${esc(name)}">${coverImage(p.id, m.id, sizes)}</div>
+      <div class="work-media">${coverImage(p.id, m.id, sizes)}</div>
       <div class="note">
         <div class="note-heading">
           <div><h3 class="work-title">${esc(L(r.title))}</h3>
             <p class="credit">${esc(m.name)} / ${esc(L(r.medium))}</p></div>
-          <div class="work-controls">
-            <button class="pill" type="button" data-stage="stage-${c}" aria-controls="stage-${c}" aria-label="${esc(Home.t('run') + ' · ' + name)}">${Home.t('run')}</button>
-            <a href="${href}" target="_blank" rel="noopener" aria-label="${esc(Home.t('open') + (zh() ? '：' : ': ') + name)}">${Home.t('open')}</a>
-          </div>
+          <a class="work-open" href="${href}" target="_blank" rel="noopener" aria-label="${esc(Home.t('openNewTab') + ' · ' + name)}">${Home.t('open')}</a>
         </div>
         <p class="description">${esc(L(r.blurb))}</p>
       </div>
     </article>`;
   }).join('');
-  for (const stage of spread.querySelectorAll('.stage')) {
-    const button = spread.querySelector(`[data-stage="${stage.id}"]`);
-    stages.set(stage, { stage, button, visible: false, autoStart: true, live: null });
-    io.observe(stage);
-  }
+  playButton.hidden = !runs.some(({ run }) => run);
+  playButton.textContent = Home.t('play');
+  if (play) startComparison();
 }
 async function showPrompt() {
   const id = openId, l = promptLang;
@@ -297,18 +291,18 @@ function show(id) {
     page.inert = true; document.body.style.overflow = 'hidden';
   }
   openId = id; promptLang = Home.lang; loupe.scrollTop = 0;
-  fillLoupe(); showPrompt();
+  fillLoupe(opening ? allowAutoplay() : Boolean(comparison)); showPrompt();
   if (opening) document.getElementById('lclose').focus({ preventScroll: true });
 }
 function hide() {
   if (!openId) return;
-  unwatch(); openId = null; pushed = false;
+  stopComparison(); openId = null; pushed = false;
   loupe.hidden = true; page.inert = false; document.body.style.overflow = '';
   lastFocus && lastFocus.focus();
 }
 const url = id => location.pathname + location.search + (id ? '#' + id : '');
 function openLoupe(id, push) {
-  if (!Home.find(id)) return;
+  if (selectedModel || !Home.find(id)) return;
   if (push && !openId) { history.pushState({ loupe: true }, '', url(id)); pushed = true; }
   else history.replaceState(history.state, '', url(id));
   show(id);
@@ -323,7 +317,12 @@ function step(d) {
 }
 addEventListener('popstate', () => {
   const id = decodeURIComponent(location.hash.slice(1));
-  if (Home.find(id)) show(id); else hide();
+  const prompt = Home.find(id);
+  if (prompt && !selectedModel) show(id);
+  else {
+    if (prompt) history.replaceState(null, '', url());
+    hide();
+  }
 });
 document.getElementById('lclose').onclick = closeLoupe;
 document.getElementById('lprev').onclick = () => step(-1);
@@ -347,11 +346,11 @@ document.getElementById('copy').onclick = async e => {
 
 document.getElementById('lang').onclick = () => Home.toggle();
 document.addEventListener('langchange', () => {
-  hoverCell = focusCell = null;
-  stopPreview();
-  render();
+  renderModelFilter();
+  renderGallery();
   if (openId) { fillLoupe(); promptLang = Home.lang; showPrompt(); }
 });
-render();
+renderModelFilter();
+renderGallery();
 const first = decodeURIComponent(location.hash.slice(1));
 if (Home.find(first)) openLoupe(first, false);

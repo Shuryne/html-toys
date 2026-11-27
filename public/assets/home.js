@@ -92,17 +92,30 @@
 
   const embedWidth = 1440;
   const lives = new WeakMap();
-  function mountLive(host, src, title, { preview = false, autoplay = preview } = {}) {
+  function notifyPrepared(live) {
+    const { onPrepare } = live;
+    live.onPrepare = null;
+    onPrepare?.();
+  }
+
+  function mountLive(host, src, title, { active = true, onPrepare } = {}) {
     const frame = document.createElement('iframe');
     frame.src = src;
     frame.title = title;
-    frame.setAttribute('allow', preview ? "autoplay 'none'; fullscreen 'none'" : 'autoplay; fullscreen');
-    if (preview) {
-      frame.className = 'hover-preview';
-      frame.inert = true;
-      frame.setAttribute('aria-hidden', 'true');
+    frame.setAttribute('allow', "autoplay 'none'; fullscreen 'none'");
+    frame.className = 'live-preview';
+    frame.inert = true;
+    frame.setAttribute('aria-hidden', 'true');
+    const live = { frame, active, onPrepare, width: 0 };
+    if (location.protocol === 'file:') {
+      // Some browsers isolate local files from one another. Reveal those previews on load.
+      frame.addEventListener('load', () => {
+        if (live.setActive) return;
+        live.setActive = visible => frame.classList.toggle('is-ready', visible);
+        live.setActive(live.active);
+        notifyPrepared(live);
+      }, { once: true });
     }
-    const live = { frame, preview, autoplay, active: true, width: 0 };
     lives.set(frame, live);
     sizeLive(live, host.clientWidth);
     host.append(frame);
@@ -129,6 +142,8 @@
     const suspendedAudio = new Set();
     let id = 0, pausedAt = live.active ? null : now(), pausedTime = 0;
 
+    // Keep the cover up until the child has had a chance to paint.
+    const reveal = () => request(() => request(() => live.frame.classList.add('is-ready')));
     const schedule = (key, job) => {
       job.frame = request(timestamp => {
         pending.delete(key);
@@ -139,6 +154,7 @@
       const key = ++id, job = { callback };
       pending.set(key, job);
       if (live.active) schedule(key, job);
+      else notifyPrepared(live);
       return key;
     };
     win.cancelAnimationFrame = key => {
@@ -151,13 +167,13 @@
     win.ToyEmbed = {
       get active() { return live.active; },
       get pixelRatio() { return Math.max(.25, (win.devicePixelRatio || 1) * live.width / embedWidth); },
-      preview: live.preview,
-      autoplay: live.autoplay,
+      preview: true,
+      autoplay: true,
       ready() {
-        if (!live.preview || live.ready) return;
+        if (live.ready) return;
         live.ready = true;
-        // Keep the cover up until the child has had a chance to paint.
-        request(() => request(() => live.frame.classList.add('is-ready')));
+        notifyPrepared(live);
+        if (live.active) reveal();
       },
       trackAudio(context) { audio.add(context); },
     };
@@ -169,6 +185,7 @@
         for (const [key, job] of pending) schedule(key, job);
         for (const context of suspendedAudio) context.resume().catch(() => {});
         suspendedAudio.clear();
+        if (live.ready && !live.frame.classList.contains('is-ready')) reveal();
       } else {
         pausedAt = now();
         for (const job of pending.values()) if (job.frame !== undefined) cancel(job.frame);
