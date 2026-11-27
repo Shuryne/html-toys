@@ -892,7 +892,7 @@ function clearPaint(){
 clearPaint();
 
 // ------------------------------------------------------------ view and zoom
-let base = {sc:1, ox:0, oy:0}, view = {sc:1, ox:0, oy:0}, zoom = 1;
+let base = {sc:1, ox:0, oy:0}, view = {sc:1, ox:0, oy:0}, zoom = 1, redraw = () => {};
 function layout(){
   const W = Math.round(innerWidth*DPR), H = Math.round(innerHeight*DPR);
   cv.width = W; cv.height = H;
@@ -903,7 +903,7 @@ function layout(){
   if (zoom === 1) view = {...base};
 }
 layout();
-addEventListener('resize', () => { layout(); clampView(); });
+addEventListener('resize', () => { layout(); clampView(); redraw(); });
 function clampView(){
   const W = cv.width, H = cv.height, w = PX*view.sc, h = PY*view.sc;
   if (w <= W) view.ox = (W - w)/2; else view.ox = Math.min(0, Math.max(W - w, view.ox));
@@ -915,25 +915,25 @@ cv.addEventListener('wheel', ev => {
   const nz = Math.min(8, Math.max(1, zoom*Math.exp(-ev.deltaY*0.0016)));
   const px = (mx - view.ox)/view.sc, py = (my - view.oy)/view.sc;
   zoom = nz; view.sc = base.sc*zoom; view.ox = mx - px*view.sc; view.oy = my - py*view.sc;
-  if (zoom === 1) view = {...base}; clampView();
+  if (zoom === 1) view = {...base}; clampView(); redraw();
 }, {passive:false});
 let drag = null;
 cv.addEventListener('pointerdown', ev => { drag = {x:ev.clientX, y:ev.clientY, ox:view.ox, oy:view.oy}; cv.setPointerCapture(ev.pointerId); cv.classList.add('drag'); });
-cv.addEventListener('pointermove', ev => { if (!drag) return; view.ox = drag.ox + (ev.clientX - drag.x)*DPR; view.oy = drag.oy - (ev.clientY - drag.y)*DPR; clampView(); });
+cv.addEventListener('pointermove', ev => { if (!drag) return; view.ox = drag.ox + (ev.clientX - drag.x)*DPR; view.oy = drag.oy - (ev.clientY - drag.y)*DPR; clampView(); redraw(); });
 const endDrag = () => { drag = null; cv.classList.remove('drag'); };
 cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
 cv.addEventListener('dblclick', ev => {
-  if (zoom > 1){ zoom = 1; view = {...base}; return; }
+  if (zoom > 1){ zoom = 1; view = {...base}; redraw(); return; }
   const mx = ev.offsetX*DPR, my = cv.height - ev.offsetY*DPR;
   const px = (mx - view.ox)/view.sc, py = (my - view.oy)/view.sc;
-  zoom = 2.6; view.sc = base.sc*zoom; view.ox = mx - px*view.sc; view.oy = my - py*view.sc; clampView();
+  zoom = 2.6; view.sc = base.sc*zoom; view.ox = mx - px*view.sc; view.oy = my - py*view.sc; clampView(); redraw();
 });
 
 // ------------------------------------------------------------ compile
 const progs = { comp: program(VS_FULL, FS_COMP), ref: program(VS_FULL, FS_REF), blur: program(VS_FULL, FS_BLUR), stroke: program(VS_STROKE, FS_STROKE) };
 if (pcx) { for (let i = 0; i < 600; i++){ if (Object.values(progs).every(P => gl.getProgramParameter(P.p, pcx.COMPLETION_STATUS_KHR))) break; await nextFrame(); } }
 const C = finish(progs.comp);
-let painting = false, tStart = 0, tDrawn = -1, finished = false, showTex = null;
+let painting = false, tStart = 0, tDrawn = -1, showTex = null;
 
 function composite(){
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height);
@@ -946,11 +946,11 @@ function composite(){
   gl.uniform1f(C.u.uWK, WK); gl.uniform1i(C.u.uMode, VIEW === 'ref' ? 1 : VIEW === 'info' ? 2 : 0);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
-let loopOn = true;
+let frameId = 0;
 const DBG = Q.has('debug'); let fN = 0, fMax = 0, fLast = 0, fSlow = 0;
+redraw = () => { if (!frameId) frameId = requestAnimationFrame(loop); };
 function loop(now){
-  if (!loopOn) return;
-  requestAnimationFrame(loop);
+  frameId = 0;
   if (painting){
     let t = (now - tStart)/1000;
     if (t >= END){ t = END; }
@@ -958,11 +958,15 @@ function loop(now){
     hud(t);
     if (DBG && fLast){ const dt = now - fLast; fN++; fMax = Math.max(fMax, dt); if (dt > 25) fSlow++; }
     fLast = now;
-    if (t >= END && !finished){ finished = true; LOG('finished', DBG ? `frames ${fN} avg ${(25000/fN).toFixed(1)}ms max ${fMax.toFixed(1)}ms slow ${fSlow}` : ''); }
+    if (t >= END){
+      painting = false;
+      LOG('finished', DBG ? `frames ${fN} avg ${(25000/fN).toFixed(1)}ms max ${fMax.toFixed(1)}ms slow ${fSlow}` : '');
+    }
   }
   composite();
+  if (painting) redraw();
 }
-requestAnimationFrame(loop);
+redraw();
 
 const R = finish(progs.ref), B = finish(progs.blur), ST = finish(progs.stroke);
 
@@ -1031,8 +1035,8 @@ function readTex(t, w, h, filt, att){
 const LV = [readTex(refTex, PW, PH, gl.LINEAR), readTex(B1, PW, PH, gl.LINEAR), readTex(B2, PW, PH, gl.LINEAR), readTex(B3, B3.w, B3.h, gl.LINEAR), readTex(B4, B4.w, B4.h, gl.LINEAR)];
 const INFO = readTex(infTex, PW, PH, gl.NEAREST).a;
 LOG('reference', Math.round(performance.now() - t0), 'ms', RW + 'x' + RH, 'paint', PX + 'x' + PY);
-if (VIEW === 'ref'){ showTex = refTex; stageEl.textContent = '参考画面'; return; }
-if (VIEW === 'info'){ showTex = infTex; stageEl.textContent = '画面分区'; return; }
+if (VIEW === 'ref'){ showTex = refTex; stageEl.textContent = '参考画面'; redraw(); return; }
+if (VIEW === 'info'){ showTex = infTex; stageEl.textContent = '画面分区'; redraw(); return; }
 await nextFrame();
 
 // ============================================================ the painter: plans every stroke
@@ -1056,11 +1060,11 @@ function setInstanceBase(first){
 gl.bindVertexArray(null);
 function lowerBound(arr, v){ let lo = 0, hi = arr.length; while (lo < hi){ const m = (lo + hi) >> 1; if (arr[m] < v) lo = m + 1; else hi = m; } return lo; }
 function drawStrokes(ta, tb){
+  const lo = lowerBound(STROKES.ends, ta), hi = lowerBound(STROKES.starts, tb);
+  if (hi <= lo) return;
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER, paintFb); gl.readBuffer(gl.COLOR_ATTACHMENT0);
   gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, prevFb);
   gl.blitFramebuffer(0, 0, PX, PY, 0, 0, PX, PY, gl.COLOR_BUFFER_BIT, gl.NEAREST);
-  const lo = lowerBound(STROKES.ends, ta), hi = lowerBound(STROKES.starts, tb);
-  if (hi <= lo) return;
   gl.bindFramebuffer(gl.FRAMEBUFFER, paintFb); gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
   gl.viewport(0, 0, PX, PY);
   gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -1082,14 +1086,18 @@ function hud(t){
   timeEl.textContent = t.toFixed(1) + ' 秒';
 }
 function startPainting(){
-  clearPaint(); tDrawn = -0.01; finished = false; lastStage = '';
+  clearPaint(); tDrawn = -0.01; lastStage = '';
   tStart = performance.now(); painting = true;
+  redraw();
 }
 $('replay').addEventListener('click', startPainting);
 let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
   if (document.hidden){ hiddenAt = performance.now(); }
-  else if (hiddenAt && painting && !finished){ tStart += performance.now() - hiddenAt; hiddenAt = 0; }
+  else {
+    if (hiddenAt && painting) tStart += performance.now() - hiddenAt;
+    hiddenAt = 0;
+  }
 });
 if (JUMP >= 0){
   clearPaint(); let ta = -0.01; const tb = Math.min(END, JUMP);

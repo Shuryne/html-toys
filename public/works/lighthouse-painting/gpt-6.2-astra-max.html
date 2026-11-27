@@ -69,14 +69,66 @@
   </figure>
 </main>
 <script>
-(() => {
+(async () => {
 'use strict';
+const W=1200,H=750,kinds={CARBON:0,GROUND:1,BRUSH:2,GLAZE:3,LINER:4,KNIFE:5},trackStride=15;
+const clamp=(v,a=0,b=1)=>v<a?a:v>b?b:v;
+function makeStrokePainter(tips,{GROUND,BRUSH,GLAZE,KNIFE}){
+  const mix=(a,b,t)=>a+(b-a)*t;
+  return function strokePaint(g,m,part=1,resolution=1,study=false){
+    if(part<=.002)return;
+    const {x,y,ux,uy,len,w,bend,kind}=m,tip=tips[m.tip],upper=tip.top,lower=tip.bottom;
+    g.setTransform(resolution*ux,resolution*uy,-resolution*uy,resolution*ux,resolution*x,resolution*y);
+    const center=t=>4*bend*t*(1-t);
+    const at=(arr,t)=>{const f=t*8,j=Math.min(7,Math.floor(f));return mix(arr[j],arr[j+1],f-j)};
+    const last=Math.ceil(part*8);
+    const soft=kind===GROUND||kind===BRUSH||kind===GLAZE;
+    g.globalAlpha=m.a*(soft?.91:1);g.fillStyle=m.base;g.beginPath();
+    g.moveTo(0,-w*upper[0]);
+    for(let j=1;j<=last;j++){
+      const t=Math.min(part,j/8),v=center(t)-w*at(upper,t);
+      if(soft&&j<last){const b=Math.min(part,(j+1)/8);g.quadraticCurveTo(t*len,v,(t+b)*.5*len,(v+center(b)-w*at(upper,b))*.5)}else g.lineTo(t*len,v);
+    }
+    for(let j=last;j>=0;j--){
+      const t=Math.min(part,j/8),v=center(t)+w*at(lower,t);
+      if(soft&&j>0&&j<last){const b=(j-1)/8;g.quadraticCurveTo(t*len,v,(t+b)*.5*len,(v+center(b)+w*at(lower,b))*.5)}else g.lineTo(t*len,v);
+    }
+    g.closePath();g.fill();
+    if(study)return;
+    if(soft&&w>3){g.lineJoin='round';g.strokeStyle=m.base;g.lineWidth=w*.12;g.globalAlpha=m.a*.23;g.stroke()}
+    const count=kind===GLAZE?3:kind===KNIFE?7:w>20?16:w>8?9:w>2.4?5:2;
+    for(let j=0;j<count;j++){
+      const v=tip.fibres[(j*5+m.tip)%17],start=v[0],end=Math.min(part,v[1]);
+      if(start>=end)continue;
+      const off=v[2]*w,mid=(start+end)/2,lean=v[4]*w;
+      const ya=center(start)+off+lean,yb=center(end)+off-lean;
+      const yc=2*(center(mid)+off)-(ya+yb)/2;
+      g.beginPath();g.moveTo(start*len,ya);g.quadraticCurveTo(mid*len,yc,end*len,yb);
+      g.strokeStyle=j%2?m.shade:m.light;
+      g.globalAlpha=m.a*(kind===KNIFE?.67:kind===GLAZE?.25:.52);
+      g.lineWidth=Math.max(kind===KNIFE?.26:.21,w*v[3]*(kind===KNIFE?1.7:1));g.stroke();
+    }
+    if(kind===KNIFE&&w>1.1){
+      const end=Math.min(part,.78+tip.jitter*.14);
+      if(end>.12){
+        const a=.12,b=end,mid=(a+b)/2,side=ux>=0?-.28:.28,ya=center(a)+side*w,yb=center(b)+side*w;
+        const lip=(ux>=0?1:-1)*(.42*w+.15),midline=center(mid);
+        g.beginPath();g.moveTo(a*len,center(a)+lip*.69);g.quadraticCurveTo(mid*len,2*(midline+lip)-(center(a)+center(b))*.5-lip*.67,b*len,center(b)+lip*.65);
+        g.strokeStyle=m.shade;g.lineWidth=Math.max(.29,.15*w);g.globalAlpha=m.a*.69;g.stroke();
+        g.beginPath();g.moveTo(a*len,ya);g.quadraticCurveTo(mid*len,2*(center(mid)+(side-.055)*w)-(ya+yb)/2,b*len,yb);
+        g.strokeStyle=m.light;g.lineWidth=Math.max(.38,.12*w);g.globalAlpha=m.a*.92;g.stroke();
+      }
+    }
+    g.globalAlpha=1;
+  }
+}
+
+function preparePainting(createCanvas,width,height,makeStrokePainter,{W,H,kinds,trackStride}){
 // Coordinates are in canvas-space units. The small pigment field holds numerical
 // studies for the brushes: colour, material and the local direction of the form.
-const W=1200, H=750, horizon=387, focal=675, eye=5.15, TX=910, lampY=184;
+const horizon=387, focal=675, eye=5.15, TX=910, lampY=184;
 const FW=1080, FH=675, fs=FW/W, TAU=2*Math.PI, pi=Math.PI;
 const AIR=0, DISTANT=1, WATER=2, FROTH=3, STONE=4, TOWER=5, METAL=6, SAIL=7, MIST=8;
-const clamp=(v,a=0,b=1)=>v<a?a:v>b?b:v;
 const mix=(a,b,t)=>a+(b-a)*t;
 const smooth=(a,b,n)=>{const t=clamp((n-a)/(b-a));return t*t*(3-2*t)};
 const sq=x=>x*x, bell=x=>Math.exp(-x*x), fract=x=>x-Math.floor(x);
@@ -708,10 +760,6 @@ function makeStudy(){
 }
 
 // Each visible layer is deposited in individual, variable-pressure brush tracks.
-const canvas=document.querySelector('#painting'),wet=document.querySelector('#wet');
-if(innerWidth<650){canvas.width=wet.width=W;canvas.height=wet.height=H}
-const ctx=canvas.getContext('2d',{alpha:false,willReadFrequently:true}),tipCtx=wet.getContext('2d',{willReadFrequently:true}),scale=canvas.width/W;
-ctx.lineJoin=tipCtx.lineJoin='round';
 const batches=[
   {start:.30,end:2.65,name:'炭笔起稿'},
   {start:2.65,end:5.80,name:'赭石底层'},
@@ -721,8 +769,9 @@ const batches=[
   {start:19.10,end:23.05,name:'刻画细节'},
   {start:23.05,end:25,name:'厚涂提亮'}
 ];
-const CARBON=0,GROUND=1,BRUSH=2,GLAZE=3,LINER=4,KNIFE=5;
+const {CARBON,GROUND,BRUSH,GLAZE,LINER,KNIFE}=kinds;
 const buckets=batches.map(()=>[]),tracks=[],tips=[];
+const strokePaint=makeStrokePainter(tips,kinds);
 function hex(r,g,b){
   const h=0x1000000+(clamp(r,0,255)|0)*65536+(clamp(g,0,255)|0)*256+(clamp(b,0,255)|0);return '#'+h.toString(16).slice(1);
 }
@@ -746,67 +795,18 @@ function mark(stage,x0,y0,x1,y1,width,c,bend,opacity,kind,order=0){
     base:hex(...c),light:hex(c[0]+lift*1.06,c[1]+lift,c[2]+lift*.85),shade:hex(c[0]-drop*.91,c[1]-drop,c[2]-drop*1.05)};
   buckets[stage].push(m);
 }
-function strokePaint(g,m,part=1,resolution=scale,study=false){
-  if(part<=.002)return;
-  const {x,y,ux,uy,len,w,bend,kind}=m,tip=tips[m.tip],upper=tip.top,lower=tip.bottom;
-  g.setTransform(resolution*ux,resolution*uy,-resolution*uy,resolution*ux,resolution*x,resolution*y);
-  const center=t=>4*bend*t*(1-t);
-  const at=(arr,t)=>{const f=t*8,j=Math.min(7,Math.floor(f));return mix(arr[j],arr[j+1],f-j)};
-  const last=Math.ceil(part*8);
-  const soft=kind===GROUND||kind===BRUSH||kind===GLAZE;
-  g.globalAlpha=m.a*(soft?.91:1);g.fillStyle=m.base;g.beginPath();
-  g.moveTo(0,-w*upper[0]);
-  for(let j=1;j<=last;j++){
-    const t=Math.min(part,j/8),v=center(t)-w*at(upper,t);
-    if(soft&&j<last){const b=Math.min(part,(j+1)/8);g.quadraticCurveTo(t*len,v,(t+b)*.5*len,(v+center(b)-w*at(upper,b))*.5)}else g.lineTo(t*len,v);
-  }
-  for(let j=last;j>=0;j--){
-    const t=Math.min(part,j/8),v=center(t)+w*at(lower,t);
-    if(soft&&j>0&&j<last){const b=(j-1)/8;g.quadraticCurveTo(t*len,v,(t+b)*.5*len,(v+center(b)+w*at(lower,b))*.5)}else g.lineTo(t*len,v);
-  }
-  g.closePath();g.fill();
-  if(study)return;
-  if(soft&&w>3){g.lineJoin='round';g.strokeStyle=m.base;g.lineWidth=w*.12;g.globalAlpha=m.a*.23;g.stroke()}
-  const count=kind===GLAZE?3:kind===KNIFE?7:w>20?16:w>8?9:w>2.4?5:2;
-  for(let j=0;j<count;j++){
-    const v=tip.fibres[(j*5+m.tip)%17],start=v[0],end=Math.min(part,v[1]);
-    if(start>=end)continue;
-    const off=v[2]*w,mid=(start+end)/2,lean=v[4]*w;
-    const ya=center(start)+off+lean,yb=center(end)+off-lean;
-    const yc=2*(center(mid)+off)-(ya+yb)/2;
-    g.beginPath();g.moveTo(start*len,ya);g.quadraticCurveTo(mid*len,yc,end*len,yb);
-    g.strokeStyle=j%2?m.shade:m.light;
-    g.globalAlpha=m.a*(kind===KNIFE?.67:kind===GLAZE?.25:.52);
-    g.lineWidth=Math.max(kind===KNIFE?.26:.21,w*v[3]*(kind===KNIFE?1.7:1));g.stroke();
-  }
-  if(kind===KNIFE&&w>1.1){
-    const end=Math.min(part,.78+tip.jitter*.14);
-    if(end>.12){
-      const a=.12,b=end,mid=(a+b)/2,side=ux>=0?-.28:.28,ya=center(a)+side*w,yb=center(b)+side*w;
-      const lip=(ux>=0?1:-1)*(.42*w+.15),midline=center(mid);
-      g.beginPath();g.moveTo(a*len,center(a)+lip*.69);g.quadraticCurveTo(mid*len,2*(midline+lip)-(center(a)+center(b))*.5-lip*.67,b*len,center(b)+lip*.65);
-      g.strokeStyle=m.shade;g.lineWidth=Math.max(.29,.15*w);g.globalAlpha=m.a*.69;g.stroke();
-      g.beginPath();g.moveTo(a*len,ya);g.quadraticCurveTo(mid*len,2*(center(mid)+(side-.055)*w)-(ya+yb)/2,b*len,yb);
-      g.strokeStyle=m.light;g.lineWidth=Math.max(.38,.12*w);g.globalAlpha=m.a*.92;g.stroke();
-    }
-  }
-  g.globalAlpha=1;
-}
-function prime(){
-  const width=canvas.width,height=canvas.height,data=ctx.createImageData(width,height);
-  const texture=document.createElement('canvas');texture.width=canvas.width;texture.height=canvas.height;
-  texture.setAttribute('aria-hidden','true');texture.style.cssText='mix-blend-mode:soft-light;opacity:.24;pointer-events:none';wet.after(texture);
-  const tg=texture.getContext('2d'),tooth=tg.createImageData(texture.width,texture.height),r=generator(58021);
+function makePrimer(){
+  const primer=new Uint8ClampedArray(width*height*4),tooth=new Uint8ClampedArray(primer.length),r=generator(58021);
   const rows=new Float32Array(height),cols=new Float32Array(width);
   for(let j=0;j<rows.length;j++)rows[j]=Math.sin(j*1.83+.27*Math.sin(j*.17))*.65+noise(j*.31,12)*.37;
   for(let i=0;i<cols.length;i++)cols[i]=Math.sin(i*1.97+.31*Math.sin(i*.14))*.70+noise(i*.38,23)*.34;
   for(let y=0;y<height;y++)for(let x=0;x<width;x++){
     const k=(y*width+x)*4,slub=rows[y]*cols[x]*2.6+cols[x]*.67+rows[y]*.84+(r()-.5)*2.8;
     const oil=(noise(x*.0083,y*.009)-.5)*4.9,light=slub*1.23+oil;
-    data.data[k]=208+light;data.data[k+1]=195+light;data.data[k+2]=170+light*.9;data.data[k+3]=255;
-    const grain=128+slub*14+(r()-.5)*15;tooth.data[k]=grain;tooth.data[k+1]=grain;tooth.data[k+2]=grain;tooth.data[k+3]=255;
+    primer[k]=208+light;primer[k+1]=195+light;primer[k+2]=170+light*.9;primer[k+3]=255;
+    const grain=128+slub*14+(r()-.5)*15;tooth[k]=grain;tooth[k+1]=grain;tooth[k+2]=grain;tooth[k+3]=255;
   }
-  snapshots.set(0,data);ctx.putImageData(data,0,0);tg.putImageData(tooth,0,0);
+  return {primer,tooth};
 }
 function sketch(){
   let serial=0;
@@ -981,7 +981,7 @@ function refine(x,y,step,architecture=false){
 // A small numerical comparison locates places where a broad brush crossed
 // an edge. Only those passages get a finer brush, in two successive sizes.
 function findEdges(){
-  const res=.68,trial=document.createElement('canvas');trial.width=Math.round(W*res);trial.height=Math.round(H*res);
+  const res=.68,trial=createCanvas(Math.round(W*res),Math.round(H*res));
   const g=trial.getContext('2d',{willReadFrequently:true,alpha:false});
   g.fillStyle='#cfbfa7';g.fillRect(0,0,trial.width,trial.height);
   for(let stage=0;stage<=5;stage++){
@@ -1144,6 +1144,69 @@ function assemble(){
     pass.last=tracks.length;
   }
 }
+  makeStudy();
+  assemble();
+  const packed=new Float64Array(tracks.length*trackStride);
+  const rgb=hex=>parseInt(hex.slice(1),16);
+  for(let i=0;i<tracks.length;i++){
+    const m=tracks[i];
+    packed.set([m.x,m.y,m.ux,m.uy,m.len,m.w,m.bend,m.a,m.kind,m.tip,m.start,m.end,rgb(m.base),rgb(m.light),rgb(m.shade)],i*trackStride);
+  }
+  return {packed,batches,tips,...makePrimer()};
+}
+
+async function loadPainting(width,height){
+  const settings={W,H,kinds,trackStride};
+  if(typeof Worker==='function'&&typeof OffscreenCanvas==='function'){
+    const source=`
+      const clamp=${clamp},makeStrokePainter=${makeStrokePainter},preparePainting=${preparePainting};
+      onmessage=({data:[width,height]})=>{
+        const art=preparePainting((w,h)=>new OffscreenCanvas(w,h),width,height,makeStrokePainter,${JSON.stringify(settings)});
+        postMessage(art,[art.packed.buffer,art.primer.buffer,art.tooth.buffer]);
+      };
+    `;
+    const url=URL.createObjectURL(new Blob([source],{type:'text/javascript'}));
+    let worker;
+    try{
+      worker=new Worker(url);
+      return await new Promise((resolve,reject)=>{
+        worker.onmessage=event=>resolve(event.data);
+        worker.onerror=reject;
+        worker.onmessageerror=reject;
+        worker.postMessage([width,height]);
+      });
+    }catch{
+      // Allow the single-file work to run where blob workers are unavailable.
+    }finally{
+      worker?.terminate();URL.revokeObjectURL(url);
+    }
+  }
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+  const createCanvas=(w,h)=>{
+    const node=document.createElement('canvas');node.width=w;node.height=h;return node;
+  };
+  return preparePainting(createCanvas,width,height,makeStrokePainter,settings);
+}
+
+const canvas=document.querySelector('#painting'),wet=document.querySelector('#wet');
+if(innerWidth<650){
+  canvas.width=wet.width=W;canvas.height=wet.height=H;
+}
+const ctx=canvas.getContext('2d',{alpha:false,willReadFrequently:true}),tipCtx=wet.getContext('2d',{willReadFrequently:true}),scale=canvas.width/W;
+ctx.lineJoin=tipCtx.lineJoin='round';
+let tracks,trackCount,batches,paintStroke;
+function track(index){
+  const i=index*trackStride;
+  const color=n=>'#'+n.toString(16).padStart(6,'0');
+  return {x:tracks[i],y:tracks[i+1],ux:tracks[i+2],uy:tracks[i+3],len:tracks[i+4],w:tracks[i+5],bend:tracks[i+6],a:tracks[i+7],kind:tracks[i+8],tip:tracks[i+9],start:tracks[i+10],end:tracks[i+11],base:color(tracks[i+12]),light:color(tracks[i+13]),shade:color(tracks[i+14])};
+}
+function installPrimer(primer,tooth){
+  const data=new ImageData(primer,canvas.width,canvas.height);
+  const texture=document.createElement('canvas');texture.width=canvas.width;texture.height=canvas.height;
+  texture.setAttribute('aria-hidden','true');texture.style.cssText='mix-blend-mode:soft-light;opacity:.24;pointer-events:none';wet.after(texture);
+  snapshots.set(0,data);ctx.putImageData(data,0,0);
+  texture.getContext('2d').putImageData(new ImageData(tooth,texture.width,texture.height),0,0);
+}
 const stageOut=document.querySelector('#stage'),timeOut=document.querySelector('#time'),slider=document.querySelector('#timeline');
 const playButton=document.querySelector('#play'),screenButton=document.querySelector('#screen'),gallery=document.querySelector('#gallery');
 let next=0,position=0,playing=true,ready=false,origin=0,frame=0,dirty=null,lastLabel='',lastSecond=-1;
@@ -1167,19 +1230,19 @@ function updateReadout(t){
 }
 function drawAt(t){
   position=clamp(t,0,25);wipeTip();
-  let lo=0,hi=tracks.length;
-  while(lo<hi){const k=(lo+hi)>>>1;if(tracks[k].end<=position)lo=k+1;else hi=k}
+  let lo=0,hi=trackCount;
+  while(lo<hi){const k=(lo+hi)>>>1;if(tracks[k*trackStride+11]<=position)lo=k+1;else hi=k}
   let best=next<=lo?next:-1;
   for(const idx of snapshots.keys())if(idx<=lo&&idx>best)best=idx;
   if(best!==next){ctx.putImageData(snapshots.get(best),0,0);next=best}
   while(next<lo){
-    strokePaint(ctx,tracks[next++]);if(cacheAfter.has(next))cache(next);
+    paintStroke(ctx,track(next++),1,scale);if(cacheAfter.has(next))cache(next);
   }
-  if(next<tracks.length&&tracks[next].start<position){
+  if(next<trackCount&&tracks[next*trackStride+10]<position){
     dirty=[W,H,0,0];
-    for(let i=next;i<tracks.length&&tracks[i].start<position;i++){
-      const m=tracks[i],p=clamp((position-m.start)/(m.end-m.start)),pad=m.w+Math.abs(m.bend)+4;
-      strokePaint(tipCtx,m,p,scale,m.kind===BRUSH&&m.w<13);
+    for(let i=next;i<trackCount&&tracks[i*trackStride+10]<position;i++){
+      const m=track(i),p=clamp((position-m.start)/(m.end-m.start)),pad=m.w+Math.abs(m.bend)+4;
+      paintStroke(tipCtx,m,p,scale,m.kind===kinds.BRUSH&&m.w<13);
       const x1=m.x+m.len*m.ux,y1=m.y+m.len*m.uy;
       dirty[0]=Math.min(dirty[0],m.x-pad,x1-pad);dirty[1]=Math.min(dirty[1],m.y-pad,y1-pad);
       dirty[2]=Math.max(dirty[2],m.x+pad,x1+pad);dirty[3]=Math.max(dirty[3],m.y+pad,y1+pad);
@@ -1227,7 +1290,10 @@ document.addEventListener('keydown',event=>{
     event.preventDefault();seek(event.key==='Home'?0:event.key==='End'?25:position+(event.key==='ArrowLeft'?-1:1));
   }
 });
-makeStudy();assemble();prime();
+const art=await loadPainting(canvas.width,canvas.height);
+tracks=art.packed;batches=art.batches;trackCount=tracks.length/trackStride;
+paintStroke=makeStrokePainter(art.tips,kinds);
+installPrimer(art.primer,art.tooth);
 for(const n of [1,3,5])cacheAfter.add(batches[n].last);
 ready=true;drawAt(0);origin=performance.now();frame=requestAnimationFrame(tick);
 })();
