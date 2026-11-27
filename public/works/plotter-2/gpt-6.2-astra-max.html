@@ -1,0 +1,3873 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#D9D9D9" />
+    <meta name="description" content="一台用蓝色圆珠笔现场画山水的绘图仪。" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23111111'/%3E%3Cpath d='M7 29l9-15 5 8 4-7 8 14z' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E"
+    />
+    <title>2号绘图仪</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --mat: #d9d9d9;
+        --paper: #fff;
+        --ink: #1f3fbf;
+        --black: #111;
+        --red: #d93025;
+        --print: #353733;
+        --secondary: #555853;
+        --mono:
+          "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, "PingFang SC",
+          "Microsoft YaHei", monospace;
+        --work-width: min(1320px, calc(100% - clamp(42px, 8vw, 150px)));
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+      body {
+        font: 12px/1.4 var(--mono);
+        letter-spacing: 0.055em;
+        color: var(--black);
+        background-color: var(--mat);
+        background-image:
+          var(--grain, none), linear-gradient(#6e726d12 1px, transparent 1px),
+          linear-gradient(90deg, #6e726d12 1px, transparent 1px),
+          linear-gradient(#6e726d19 1px, transparent 1px),
+          linear-gradient(90deg, #6e726d19 1px, transparent 1px);
+        background-size:
+          112px 112px,
+          20px 20px,
+          20px 20px,
+          100px 100px,
+          100px 100px;
+        background-position: center top;
+        -webkit-font-smoothing: antialiased;
+      }
+      button,
+      input {
+        font: inherit;
+        color: inherit;
+      }
+      button {
+        letter-spacing: inherit;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+      button:disabled {
+        cursor: default;
+      }
+      button:focus-visible,
+      [tabindex]:focus-visible {
+        outline: 2px solid var(--ink);
+        outline-offset: 4px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      h1,
+      h2,
+      p,
+      figure,
+      ul {
+        margin: 0;
+      }
+      svg.icon {
+        width: 18px;
+        height: 18px;
+        display: block;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+      .top {
+        border-bottom: 1px solid #8e918a;
+        background: var(--grain, none), #e6e7e4;
+        box-shadow: 0 1px 0 #ffffffb5;
+      }
+      .top-inner {
+        width: var(--work-width);
+        margin: auto;
+        height: 58px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .brand,
+      .top-meta,
+      .machine-state,
+      .pen-spec {
+        display: flex;
+        align-items: center;
+      }
+      .brand {
+        gap: 12px;
+      }
+      .brand-mark {
+        width: 31px;
+        height: 31px;
+        display: block;
+      }
+      h1 {
+        font-size: 17px;
+        line-height: 1;
+        font-weight: 650;
+        letter-spacing: 0.15em;
+        white-space: nowrap;
+      }
+      .top-meta {
+        height: 20px;
+        gap: 20px;
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .machine-state {
+        gap: 8px;
+      }
+      .led {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--ink);
+        box-shadow: 0 0 0 2px #1f3fbf16;
+      }
+      .led.rest {
+        background: #5b5e58;
+        box-shadow: 0 0 0 2px #42454017;
+      }
+      .pen-spec {
+        gap: 9px;
+        border-left: 1px solid #90938c;
+        padding-left: 19px;
+        color: #42443f;
+      }
+      .ink-line {
+        width: 23px;
+        height: 6px;
+        background: repeating-linear-gradient(116deg, transparent 0 2px, var(--ink) 2px 3px);
+        transform: skewX(-14deg);
+      }
+      .workbench {
+        width: var(--work-width);
+        margin: 0 auto;
+        padding: clamp(17px, 3vh, 36px) 0 17px;
+      }
+      .desk {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) clamp(192px, 18.1vw, 247px);
+        gap: clamp(22px, 3.4vw, 54px);
+        align-items: center;
+      }
+      .machine {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 312 / 191;
+        isolation: isolate;
+        user-select: none;
+        touch-action: manipulation;
+      }
+      .frame,
+      .mechanism,
+      .gate {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .frame,
+      .mechanism {
+        overflow: visible;
+        pointer-events: none;
+      }
+      .frame {
+        z-index: 0;
+      }
+      .gate {
+        z-index: 1;
+        clip-path: inset(1% 1.3% 1.3% 1.3%);
+        pointer-events: none;
+      }
+      .sheet {
+        position: absolute;
+        background: var(--paper);
+        box-shadow:
+          0 0 0 0.55px #4445,
+          1px 2px 2px #25252531,
+          3px 5px 7px #32323224;
+        cursor: crosshair;
+        touch-action: manipulation;
+        pointer-events: auto;
+      }
+      .sheet:focus-visible {
+        outline: 1px dashed var(--ink);
+        outline-offset: 3px;
+      }
+      .sheet canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .mechanism {
+        z-index: 2;
+      }
+      .machine.feeding .sheet {
+        pointer-events: none;
+      }
+      .ledger {
+        position: relative;
+        color: var(--print);
+        padding: 0 2px;
+        font-size: 11px;
+        align-self: center;
+      }
+      .ledger-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 2px solid #40423d;
+        border-bottom: 1px solid #73766f;
+        padding: 9px 0 8px;
+      }
+      .ledger h2 {
+        font-size: 16px;
+        letter-spacing: 0.14em;
+        font-weight: 650;
+      }
+      .ledger-header .number {
+        font-size: 12px;
+        letter-spacing: 0.04em;
+      }
+      .proof {
+        margin: 11px 0 8px;
+      }
+      .proof canvas {
+        display: block;
+        width: 100%;
+        aspect-ratio: 2.72;
+      }
+      .proof figcaption {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 5px 0 11px;
+        font-size: 10px;
+        color: var(--secondary);
+      }
+      .ledger-head,
+      .layer-row {
+        display: grid;
+        grid-template-columns: 14px 1fr auto;
+        column-gap: 8px;
+        align-items: center;
+      }
+      .ledger-head {
+        border-block: 1px solid #868982;
+        font-size: 10px;
+        padding: 5px 0;
+        color: var(--secondary);
+      }
+      .ledger-head span:first-child {
+        grid-column: 2;
+      }
+      .layers {
+        list-style: none;
+        padding: 0;
+      }
+      .layer-row {
+        position: relative;
+        border-bottom: 1px dotted #777a747c;
+        min-height: 26px;
+        line-height: 1.2;
+        color: #4c4f4a;
+      }
+      .layer-row.active {
+        color: var(--ink);
+        font-weight: 650;
+      }
+      .layer-name {
+        letter-spacing: 0.1em;
+      }
+      .layer-count {
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.045em;
+      }
+      .check {
+        display: block;
+        position: relative;
+        justify-self: center;
+        width: 8px;
+        height: 8px;
+        border: 1px solid #7e8279;
+      }
+      .active .check {
+        border-color: var(--ink);
+        background: var(--ink);
+        box-shadow: inset 0 0 0 1px var(--mat);
+      }
+      .done .check {
+        border: 0;
+      }
+      .done .check::after {
+        content: "";
+        position: absolute;
+        left: 1px;
+        top: 0;
+        width: 4px;
+        height: 7px;
+        border-right: 1.4px solid var(--ink);
+        border-bottom: 1.4px solid var(--ink);
+        transform: rotate(41deg);
+      }
+      .total-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0 7px;
+        border-bottom: 1px solid #656860;
+        font-weight: 650;
+      }
+      .mileage {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+        margin-top: 13px;
+      }
+      .meter + .meter {
+        border-left: 1px solid #93978d;
+        padding-left: 13px;
+      }
+      .meter-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--secondary);
+        font-size: 10px;
+      }
+      .trace-key {
+        width: 17px;
+        height: 0;
+        border-top: 2px solid var(--ink);
+      }
+      .trace-key.air {
+        border-top: 1px dashed #484b46;
+      }
+      .meter-value {
+        display: inline-block;
+        font-size: 20px;
+        line-height: 1.5;
+        letter-spacing: -0.055em;
+        font-variant-numeric: tabular-nums;
+      }
+      .unit {
+        font-size: 11px;
+        margin-left: 4px;
+      }
+      .console {
+        position: relative;
+        margin: clamp(14px, 2.4vh, 24px) 0 0;
+        padding: 16px clamp(20px, 2.8vw, 47px) 14px;
+        border: 1px solid #6f716c;
+        border-radius: 6px;
+        background: var(--grain, none), linear-gradient(178deg, #e1e2df 0%, #d5d6d3 46%, #cdcfcb 100%);
+        box-shadow:
+          inset 0 2px 0 #ffffffe3,
+          inset 2px 0 0 #f6f6f275,
+          inset -2px 0 0 #a9aca7,
+          inset 0 -3px 0 #a6a8a3,
+          0 2px 0 #686a65,
+          0 4px 0 #a4a6a0,
+          1px 6px 7px #24272135;
+        display: grid;
+        grid-template-columns:
+          minmax(216px, 1.47fr) minmax(132px, 0.9fr) minmax(93px, 0.64fr) minmax(154px, 1fr)
+          minmax(88px, 0.65fr);
+        align-items: stretch;
+      }
+      .screw {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        border: 1px solid #777973;
+        background:
+          linear-gradient(136deg, transparent 39%, #555750 43% 53%, #f2f3ef 56% 61%, transparent 65%),
+          radial-gradient(circle at 34% 22%, #fafaf8 0%, #bfc0bb 48%, #969992 83%);
+        box-shadow: 0 1px 0 #fff9;
+      }
+      .screw.tl {
+        top: 7px;
+        left: 8px;
+      }
+      .screw.tr {
+        top: 7px;
+        right: 8px;
+      }
+      .screw.bl {
+        bottom: 7px;
+        left: 8px;
+      }
+      .screw.br {
+        bottom: 7px;
+        right: 8px;
+      }
+      .module {
+        position: relative;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .module + .module {
+        border-left: 1px solid #9d9f99;
+        box-shadow: inset 1px 0 0 #f7f8f480;
+      }
+      .module-label {
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 1.2;
+        letter-spacing: 0.13em;
+        white-space: nowrap;
+        color: #383b35;
+      }
+      .readout-module {
+        align-items: stretch;
+        justify-content: center;
+        padding-right: clamp(14px, 2.3vw, 42px);
+        gap: 6px;
+      }
+      .display-bezel {
+        padding: 4px;
+        border: 1px solid #63655f;
+        background: linear-gradient(#555952, #a2a69c);
+        border-radius: 4px;
+        box-shadow:
+          0 1px 0 #fff9,
+          inset 0 1px 2px #4446;
+      }
+      .display {
+        position: relative;
+        overflow: hidden;
+        background-color: #c6cbc4;
+        border: 1px solid #60655e;
+        border-radius: 1px;
+        color: #242b24;
+        background-image: radial-gradient(#303a2b19 0.65px, transparent 0.8px);
+        background-size: 3px 3px;
+        box-shadow: inset 1px 2px 4px #30362e40;
+        padding: 5px 9px 6px;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+      }
+      .display-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 7px;
+      }
+      .tool-state {
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+        letter-spacing: 0.09em;
+      }
+      .time-left {
+        font-size: 10px;
+        white-space: nowrap;
+      }
+      .coords {
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        margin-top: 5px;
+        white-space: pre;
+      }
+      .progress-line {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 4px;
+      }
+      .progress-groove {
+        position: relative;
+        height: 5px;
+        flex: 1;
+        background: repeating-linear-gradient(90deg, #37413528 0 5px, transparent 5px 7px);
+      }
+      .progress-fill {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: repeating-linear-gradient(90deg, #333c31 0 5px, transparent 5px 7px);
+      }
+      .percent {
+        min-width: 32px;
+        text-align: right;
+        font-size: 11px;
+        line-height: 1;
+      }
+      .dial-module {
+        flex-direction: row;
+        gap: clamp(3px, 0.7vw, 12px);
+      }
+      .dial-caption {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        align-items: flex-start;
+      }
+      .dial-caption output {
+        color: var(--ink);
+        font-size: 17px;
+        letter-spacing: -0.065em;
+        font-weight: 650;
+        line-height: 1.2;
+      }
+      .dial-box {
+        position: relative;
+        width: 92px;
+        height: 75px;
+        flex: 0 0 auto;
+        user-select: none;
+      }
+      .dial-scale {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      .detent {
+        position: absolute;
+        z-index: 2;
+        width: 21px;
+        height: 18px;
+        padding: 0;
+        border: 0;
+        transform: translate(-50%, -50%);
+        background: transparent;
+        color: #454840;
+        font-size: 9px;
+        line-height: 1;
+        letter-spacing: 0;
+      }
+      .detent[aria-pressed="true"] {
+        color: var(--ink);
+        font-weight: 800;
+      }
+      .dial {
+        --angle: -40deg;
+        position: absolute;
+        left: 24px;
+        top: 20px;
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        border: 1px solid #32332f;
+        background: repeating-conic-gradient(
+          from -2deg,
+          #161714 0deg 4deg,
+          #4e5049 5deg 7.8deg,
+          #252623 8.8deg 11deg
+        );
+        box-shadow:
+          0 0 0 2px #898c83,
+          0 0 0 3px #bfc1ba,
+          2px 4px 3px #34362e5c;
+        cursor: grab;
+        touch-action: none;
+      }
+      .dial:active {
+        cursor: grabbing;
+      }
+      .dial-face {
+        position: absolute;
+        inset: 4px;
+        border: 1px solid #121310;
+        border-radius: 50%;
+        background: linear-gradient(136deg, #5a5c55, #363833 54%, #272925);
+        box-shadow:
+          inset 1px 1px 1px #8d8f85,
+          inset -1px -1px 2px #20211d;
+      }
+      .dial-hand {
+        position: absolute;
+        inset: 4px;
+        transform: rotate(var(--angle));
+        pointer-events: none;
+      }
+      .dial-hand::before {
+        content: "";
+        position: absolute;
+        left: calc(50% - 1.5px);
+        top: 1px;
+        width: 3px;
+        height: 9px;
+        border-radius: 1px;
+        background: #f0f1eb;
+        box-shadow: 1px 0 1px #20211d;
+      }
+      .audio-switch {
+        width: 48px;
+        height: 42px;
+        position: relative;
+        border: 0;
+        background: transparent;
+      }
+      .switch-base {
+        position: absolute;
+        left: 8px;
+        top: 14px;
+        width: 32px;
+        height: 19px;
+        border: 1px solid #64665f;
+        transform: rotate(-2deg);
+        border-radius: 45%;
+        background: linear-gradient(#676b63, #f2f3ef 28%, #979b92 70%, #d6d8d2);
+        box-shadow: 0 1px 1px #41443e88;
+      }
+      .switch-base::before {
+        content: "";
+        position: absolute;
+        inset: 3px 4px;
+        border-radius: 45%;
+        background: #2c2f29;
+        box-shadow: inset 1px 2px 3px #10110e;
+      }
+      .lever {
+        position: absolute;
+        left: 21px;
+        top: 6px;
+        width: 8px;
+        height: 21px;
+        border: 1px solid #6f736a;
+        border-radius: 5px 5px 3px 3px;
+        transform-origin: 50% 95%;
+        transform: rotate(-53deg);
+        background: linear-gradient(90deg, #74796e, #ecede8 36%, #a6aaa0 72%, #696d63);
+        box-shadow: 2px 1px 2px #171b1540;
+      }
+      .lever::after {
+        content: "";
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        width: 10px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1px solid #81857b;
+        background: radial-gradient(at 30% 25%, #fff, #bbbfb4 58%, #858a7f);
+      }
+      .audio-switch[aria-checked="true"] .lever {
+        transform: rotate(53deg);
+      }
+      .sound-label {
+        display: flex;
+        gap: 5px;
+      }
+      .sound-label b {
+        color: var(--secondary);
+        font-weight: 500;
+      }
+      .key-module {
+        flex-direction: row;
+        gap: clamp(8px, 1vw, 17px);
+      }
+      .key-unit,
+      .stop-module {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .key {
+        position: relative;
+        width: clamp(52px, 4.4vw, 67px);
+        height: 44px;
+        border-radius: 5px;
+        border: 1px solid #383a35;
+        background: linear-gradient(135deg, #60625c, #2a2b28 60%, #464842);
+        box-shadow:
+          0 0 0 2px #92958d,
+          0 0 0 3px #e3e5df,
+          1px 3px 3px #32362d5e;
+        padding: 2px 3px 5px;
+        color: #f1f2ed;
+      }
+      .key-face {
+        width: 100%;
+        height: 100%;
+        display: grid;
+        place-items: center;
+        border-radius: 3px;
+        border: 1px solid #272925;
+        background: linear-gradient(148deg, #484a44, #30322e);
+        box-shadow: inset 0.7px 0.9px 0.7px #74766e;
+      }
+      .key-face svg.icon {
+        width: 20px;
+        height: 20px;
+        stroke-width: 1.55;
+      }
+      .key:active {
+        padding: 3px 3px 2px;
+        transform: translateY(1px);
+      }
+      .key:hover .key-face {
+        filter: brightness(1.13);
+      }
+      .stop {
+        position: relative;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 1px solid #60625b;
+        padding: 3px 4px 6px;
+        background: linear-gradient(135deg, #787b72, #33352f 67%, #74776f);
+        box-shadow:
+          0 0 0 2px #a9aca4,
+          0 0 0 3px #e0e2da,
+          1px 3px 3px #30332d63;
+      }
+      .stop-cap {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        border: 1px solid #9c261d;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(ellipse at 34% 21%, #ed5347 0%, var(--red) 56%, #b5271d 95%);
+        box-shadow:
+          inset 1px 1px 1px #ff9e91a1,
+          0 3px 0 #8f231b,
+          0 4px 2px #282a22b3;
+      }
+      .stop:hover .stop-cap {
+        filter: brightness(1.05);
+      }
+      .stop:active,
+      .stop[aria-pressed="true"] {
+        padding: 5px 4px 4px;
+      }
+      .stop[aria-pressed="true"] .stop-cap {
+        box-shadow:
+          inset 1px 1px 3px #a1251e,
+          0 1px 1px #5e2019;
+      }
+      .stop-symbol {
+        width: 10px;
+        height: 12px;
+        border-left: 3px solid #fff4e9;
+        border-right: 3px solid #fff4e9;
+      }
+      .stop[aria-pressed="true"] .stop-symbol {
+        width: 0;
+        height: 0;
+        border: 0;
+        border-left: 9px solid #fff4e9;
+        border-block: 6px solid transparent;
+        margin-left: 2px;
+      }
+      .stop-module {
+        gap: 6px;
+      }
+      .layer-controls {
+        margin-top: 13px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+      }
+      .layer-controls button {
+        padding: 5px 10px;
+        border: 1px solid #777a70;
+        border-radius: 2px;
+        background: #e1e3dc;
+        box-shadow: 0 1px 0 #fff9;
+        font-size: 11px;
+      }
+      .layer-controls button:disabled {
+        opacity: 0.46;
+      }
+      .footer {
+        margin-top: 17px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: #50534d;
+        font-size: 10px;
+      }
+      .shortcuts,
+      .paper-hint {
+        display: flex;
+        align-items: center;
+      }
+      .shortcuts {
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      .shortcut,
+      .paper-hint {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      kbd {
+        min-width: 16px;
+        padding: 1px 3px;
+        border: 1px solid #9a9d94;
+        border-radius: 2px;
+        box-shadow: 0 1px 0 #eceee7;
+        background: #dfe1db;
+        font: 10px/12px var(--mono);
+        text-align: center;
+      }
+      .paper-hint {
+        gap: 7px;
+      }
+      .paper-hint svg.icon {
+        width: 14px;
+        height: 14px;
+      }
+      @media (min-width: 1001px) and (max-height: 830px) {
+        .top-inner {
+          height: 49px;
+        }
+        .workbench {
+          padding-top: 15px;
+        }
+        .console {
+          margin-top: 14px;
+          padding-block: 12px;
+        }
+        .machine {
+          max-width: calc((100svh - 208px) * 1.64);
+          justify-self: center;
+        }
+        .footer {
+          margin-top: 13px;
+        }
+      }
+      @media (min-width: 1600px) {
+        .workbench {
+          padding-top: 35px;
+        }
+      }
+      @media (max-width: 1000px) {
+        :root {
+          --work-width: calc(100% - 44px);
+        }
+        .desk {
+          grid-template-columns: minmax(0, 1fr) 180px;
+          gap: 18px;
+        }
+        .workbench {
+          padding-top: 19px;
+        }
+        .ledger h2 {
+          font-size: 14px;
+        }
+        .layer-row {
+          min-height: 22px;
+        }
+        .proof {
+          margin: 7px 0 4px;
+        }
+        .proof figcaption {
+          margin: 2px 0 6px;
+        }
+        .mileage {
+          margin-top: 7px;
+        }
+        .meter-value {
+          font-size: 17px;
+        }
+        .ledger-header {
+          padding-block: 6px;
+        }
+        .console {
+          padding: 13px 18px;
+          grid-template-columns:
+            minmax(187px, 1.4fr) minmax(125px, 0.9fr) minmax(72px, 0.6fr) minmax(128px, 0.9fr)
+            minmax(70px, 0.5fr);
+        }
+        .readout-module {
+          padding-right: 13px;
+        }
+        .dial-module {
+          gap: 0;
+        }
+        .dial-caption {
+          gap: 2px;
+        }
+      }
+      @media (max-width: 800px) {
+        .desk {
+          grid-template-columns: 1fr;
+        }
+        .ledger {
+          display: none;
+        }
+        .console {
+          grid-template-columns: 1.58fr 1.05fr 0.62fr 1.1fr 0.65fr;
+        }
+        .dial-module {
+          flex-direction: column;
+          gap: 0;
+        }
+        .dial-caption {
+          flex-direction: row;
+          align-items: baseline;
+          gap: 4px;
+        }
+        .dial-caption output {
+          font-size: 12px;
+        }
+        .dial-box {
+          height: 68px;
+        }
+        .key {
+          width: 46px;
+        }
+        .key-module {
+          gap: 9px;
+        }
+        .readout-module {
+          padding-right: 10px;
+        }
+      }
+      @media (max-width: 640px) {
+        :root {
+          --work-width: calc(100% - 22px);
+        }
+        .top-inner {
+          height: 46px;
+          padding: 0 3px;
+        }
+        .brand {
+          gap: 8px;
+        }
+        .brand-mark {
+          width: 25px;
+          height: 25px;
+        }
+        h1 {
+          font-size: 15px;
+        }
+        .top-meta {
+          font-size: 10px;
+          gap: 10px;
+        }
+        .pen-spec {
+          padding-left: 10px;
+          gap: 4px;
+        }
+        .ink-line {
+          width: 13px;
+        }
+        .workbench {
+          padding: 12px 0 14px;
+        }
+        .machine {
+          aspect-ratio: 183 / 222;
+          max-width: 440px;
+          justify-self: center;
+        }
+        .console {
+          margin-top: 12px;
+          padding: 11px 16px 12px;
+          grid-template-columns: 1fr 1fr 1fr;
+          row-gap: 11px;
+        }
+        .console .module {
+          box-shadow: none;
+        }
+        .readout-module {
+          grid-column: 1 / 3;
+          grid-row: 1;
+          padding: 0 14px 0 1px;
+          gap: 4px;
+        }
+        .dial-module {
+          grid-column: 3;
+          grid-row: 1;
+          flex-direction: row;
+        }
+        .dial-caption {
+          position: absolute;
+          bottom: 0;
+          align-items: baseline;
+          gap: 3px;
+        }
+        .dial-box {
+          height: 75px;
+          transform: translateY(-4px) scale(0.89);
+        }
+        .dial-caption .module-label {
+          font-size: 9px;
+        }
+        .sound-module {
+          grid-row: 2;
+          grid-column: 1;
+          border-left: 0 !important;
+        }
+        .key-module {
+          grid-row: 2;
+          grid-column: 2;
+          gap: 12px;
+          padding-inline: 9px;
+          min-width: 115px;
+        }
+        .stop-module {
+          grid-row: 2;
+          grid-column: 3;
+        }
+        .module-label {
+          font-size: 10px;
+        }
+        .key {
+          width: 39px;
+          height: 31px;
+        }
+        .key-face svg.icon {
+          width: 16px;
+          height: 16px;
+        }
+        .stop {
+          width: 39px;
+          height: 39px;
+        }
+        .stop-symbol {
+          height: 9px;
+          width: 9px;
+        }
+        .key-unit,
+        .stop-module,
+        .sound-module {
+          gap: 4px;
+        }
+        .display {
+          padding: 5px 7px;
+        }
+        .audio-switch {
+          height: 32px;
+        }
+        .switch-base {
+          top: 10px;
+        }
+        .lever {
+          top: 2px;
+        }
+        .footer {
+          justify-content: center;
+          font-size: 10px;
+          margin-top: 13px;
+        }
+        .shortcuts {
+          display: none;
+        }
+      }
+      @media (max-width: 355px) {
+        .pen-spec .pen-type {
+          display: none;
+        }
+        .key-module {
+          min-width: 96px;
+          gap: 7px;
+        }
+        .console {
+          padding-inline: 12px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="top-inner">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+            <rect x=".5" y=".5" width="31" height="31" rx="4" fill="#191a18" />
+            <g
+              fill="none"
+              stroke="#fafbf5"
+              stroke-width="1.35"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M5 11h22M7 8v16m18-16v16M9 23l4.3-5 3.1 3.1 3-4.4 3.6 6.3" />
+              <path d="M13 8h5v5l-2.5 3-2.5-3z" fill="#171815" />
+            </g>
+          </svg>
+          <h1>2号绘图仪</h1>
+        </div>
+        <div class="top-meta">
+          <span class="machine-state"
+            ><i id="led" class="led" aria-hidden="true"></i><span id="machineState">正在归零</span></span
+          >
+          <span class="pen-spec"
+            ><i class="ink-line" aria-hidden="true"></i><span class="pen-type">圆珠笔</span
+            ><span>0.35 mm</span></span
+          >
+        </div>
+      </div>
+    </header>
+    <main class="workbench">
+      <div class="desk">
+        <div class="machine" id="machine" aria-label="笔式绘图仪">
+          <svg class="frame" id="frame" aria-hidden="true"></svg>
+          <div class="gate" id="gate">
+            <div
+              id="sheet"
+              class="sheet"
+              role="button"
+              tabindex="0"
+              aria-label="画纸，点击补画飞鸟，按回车在纸面中央添加"
+            >
+              <canvas id="ink" aria-hidden="true"></canvas><canvas id="wetInk" aria-hidden="true"></canvas>
+            </div>
+          </div>
+          <svg class="mechanism" id="mechanism" aria-hidden="true"></svg>
+        </div>
+        <aside class="ledger" aria-labelledby="ledgerTitle">
+          <div class="ledger-header">
+            <h2 id="ledgerTitle">绘图清单</h2>
+            <span class="number" id="serial">№ 0417</span>
+          </div>
+          <figure class="proof">
+            <canvas id="proof" role="img" aria-label="本张画纸的山水构图预览"></canvas>
+            <figcaption><span>构图预览</span><span id="seedLabel"></span></figcaption>
+          </figure>
+          <div class="ledger-head" aria-hidden="true"><span>图层</span><span>笔数</span></div>
+          <ul class="layers" id="layers"></ul>
+          <div class="total-row"><span>合计</span><span id="totalPaths">0 笔</span></div>
+          <div class="mileage">
+            <div class="meter">
+              <div class="meter-label"><i class="trace-key"></i>落笔里程</div>
+              <span id="drawMeters" class="meter-value">0.00</span><span class="unit">m</span>
+            </div>
+            <div class="meter">
+              <div class="meter-label"><i class="trace-key air"></i>空移里程</div>
+              <span id="airMeters" class="meter-value">0.00</span><span class="unit">m</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+      <section class="console" aria-label="绘图仪控制面板">
+        <i class="screw tl"></i><i class="screw tr"></i><i class="screw bl"></i><i class="screw br"></i>
+        <div class="module readout-module">
+          <span class="module-label">绘图状态</span>
+          <div class="display-bezel">
+            <div class="display">
+              <div class="display-row">
+                <span id="penState" class="tool-state">归零</span
+                ><span class="time-left">剩余 <span id="timeLeft">00:00</span></span>
+              </div>
+              <div class="coords" id="coords">X 000.0 Y 000.0</div>
+              <div
+                id="progress"
+                class="progress-line"
+                role="progressbar"
+                aria-label="绘制进度"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="0"
+              >
+                <div class="progress-groove"><i class="progress-fill" id="fill"></i></div>
+                <span class="percent" id="percent">0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="module dial-module">
+          <div class="dial-box" id="dialBox">
+            <svg id="dialScale" class="dial-scale" viewBox="0 0 92 75" aria-hidden="true"></svg>
+            <div
+              id="dial"
+              class="dial"
+              role="slider"
+              tabindex="0"
+              aria-label="调速旋钮"
+              aria-valuemin="1"
+              aria-valuemax="7"
+              aria-valuenow="3"
+              aria-valuetext="4 倍速"
+              title="拖动、滚动或点击挡位调速"
+            >
+              <i class="dial-face"></i><i class="dial-hand"></i>
+            </div>
+          </div>
+          <div class="dial-caption"><span class="module-label">调速</span><output id="rate">4×</output></div>
+        </div>
+        <div class="module sound-module">
+          <button
+            id="sound"
+            class="audio-switch"
+            type="button"
+            role="switch"
+            aria-checked="false"
+            aria-label="电机声音"
+          >
+            <i class="switch-base"></i><i class="lever"></i>
+          </button>
+          <span class="module-label sound-label">声音 <b id="soundValue">关</b></span>
+        </div>
+        <div class="module key-module">
+          <div class="key-unit">
+            <button
+              class="key"
+              id="finish"
+              type="button"
+              aria-label="完成"
+              aria-keyshortcuts="F"
+              title="完成（F）"
+            >
+              <span class="key-face"
+                ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m5.5 6.5 8 5.5-8 5.5zM17 6v12" /></svg
+              ></span></button
+            ><span class="module-label">完成</span>
+          </div>
+          <div class="key-unit">
+            <button
+              class="key"
+              id="newPaper"
+              type="button"
+              aria-label="换纸"
+              aria-keyshortcuts="N"
+              title="换纸（N）"
+            >
+              <span class="key-face"
+                ><svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 3.5h9l3 3V11M14 4v3h3M5 4v15h7m.5-4H21m-3-3 3 3-3 3" /></svg
+              ></span></button
+            ><span class="module-label">换纸</span>
+          </div>
+        </div>
+        <div class="module stop-module">
+          <button
+            id="pause"
+            class="stop"
+            type="button"
+            aria-label="暂停"
+            aria-keyshortcuts="Space"
+            aria-pressed="false"
+            title="暂停或继续（空格）"
+          >
+            <span class="stop-cap"><i class="stop-symbol"></i></span></button
+          ><span id="pauseLabel" class="module-label">暂停</span>
+        </div>
+        <div id="layerControls" class="layer-controls" hidden style="grid-column: 1/-1">
+          <button type="button" id="previous">上一图层</button><span id="layerPosition"></span
+          ><button type="button" id="next">下一图层</button>
+        </div>
+      </section>
+      <footer class="footer">
+        <div class="shortcuts" aria-label="快捷键">
+          <span class="shortcut"><kbd>空格</kbd> 暂停 / 继续</span
+          ><span class="shortcut"><kbd>F</kbd> 完成</span><span class="shortcut"><kbd>N</kbd> 换纸</span
+          ><span class="shortcut"><kbd>+</kbd><kbd>−</kbd> 调速</span>
+        </div>
+        <span class="paper-hint"
+          ><svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M1.5 6q5 .6 8.4 7.1 1.5-5.9 8.6-8.5" /></svg
+          >点击纸面添加飞鸟</span
+        >
+      </footer>
+      <p id="announce" class="sr" aria-live="polite"></p>
+    </main>
+    <script>
+      "use strict";
+      const $ = (id) => document.getElementById(id);
+      const INK = "#1F3FBF",
+        TAU = Math.PI * 2;
+      const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+      const mix = (a, b, t) => a + (b - a) * t;
+      const smoother = (t) => t * t * (3 - 2 * t);
+      const lengthBetween = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const pad = (n, k) => String(n).padStart(k, "0");
+      const formatCount = (n) => n.toLocaleString("en-US");
+      const mediaSmall = matchMedia("(max-width:640px)");
+      const mediaQuiet = matchMedia("(prefers-reduced-motion:reduce)");
+      function rng(seed) {
+        let s = seed >>> 0;
+        return () => {
+          s = (s + 0x6d2b79f5) >>> 0;
+          let t = Math.imul(s ^ (s >>> 15), 1 | s);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      function makeNoise(random) {
+        const bank = Float64Array.from({ length: 1024 }, () => random() * 2 - 1);
+        function noise(t) {
+          const i = Math.floor(t);
+          return mix(bank[i & 1023], bank[(i + 1) & 1023], smoother(t - i));
+        }
+        return {
+          noise,
+          fbm: (t) =>
+            noise(t) * 0.54 +
+            noise(t * 2.09 + 17) * 0.26 +
+            noise(t * 4.21 + 65) * 0.13 +
+            noise(t * 8.69 + 33) * 0.07,
+        };
+      }
+      const styles = {
+        frame: [0.2, 0.83, 238],
+        sky: [0.24, 0.92, 117],
+        cloud: [0.19, 0.73, 120],
+        bird: [0.3, 0.97, 90],
+        crest: [0.4, 1, 120],
+        inner: [0.31, 0.94, 114],
+        fine: [0.205, 0.76, 103],
+        facet: [0.24, 0.88, 99],
+        dark: [0.29, 0.97, 96],
+        gravel: [0.21, 0.87, 86],
+        water: [0.22, 0.86, 108],
+        forest: [0.3, 0.98, 81],
+        type: [0.23, 0.98, 88],
+      };
+      function stroke(points, kind, weight = 1) {
+        const [width, alpha, feed] = styles[kind];
+        return { points, kind, width: width * weight, alpha, feed };
+      }
+      function shapePaths(data) {
+        return data.split("|").map((line) =>
+          line
+            .trim()
+            .split(/\s+/)
+            .map((p) => p.split(",").map(Number))
+        );
+      }
+      // 每个字用笔画中心线表示。数字各为一条连续路径，落款本身也计入总笔数。
+      const letterData = {
+        山: "1,4 1,9 9,9 9,4|5,1 5,9",
+        水: "5,0.8 5,8.6 4.6,9.5 3.2,8.8|1,3.7 3.6,3.7 2.6,6.7 .8,8.5|8.6,2.5 6.3,4.7|5.2,3.7 6.8,6.6 9.4,8.7",
+        第: "2.3,.5 1.4,2 .4,3|1.9,1.6 4.7,1.6|2.9,1.7 3.5,3|6.2,.5 5.4,2.1 4.8,2.8|5.9,1.6 9.5,1.6|7.2,1.6 7.8,3|1.6,3.6 8.2,3.6 8.2,5.1 1.8,5.1 1.3,6.8 8.8,6.8 8.4,8.6 7.9,9 7,8.6|5.2,3.8 5.2,9.6|4.8,6.9 3.2,8.3 .8,9.3",
+        号: "2.4,1 7.8,1 7.8,3.8 2.4,3.8 2.4,1|.7,5.3 9.4,5.3|3.4,5.5 2.7,7 7.8,7 7.2,9.3 6.5,9.6 4.9,9.1",
+        种: "1,2 4.4,.9|.6,3.6 4.5,3.6|2.8,1.7 2.8,9.6|2.7,3.6 1.9,5.8 .5,7.4|2.9,4.2 4.4,5.8|4.9,2.7 9.2,2.7 9.2,6.7 4.9,6.7 4.9,2.7|7,.6 7,9.6",
+        子: "1.8,1.4 8.2,1.4 5.2,4.4 5.2,8.7 4.7,9.4 3.2,9|.6,5.5 9.4,5.5",
+        支: "1.3,2.4 8.8,2.4|5,.6 5,4.6|2,4.6 7.9,4.6 6.6,6.5 4.6,7.9 2.9,8.9 .9,9.5|2.6,4.9 4,6.7 6.3,8.3 9.2,9.4",
+        笔: "2.6,.6 1.6,2.1 .5,3.2|1.9,1.7 4.7,1.7|3.1,1.8 3.6,3|6.6,.6 5.7,2.2 5,2.9|6.1,1.7 9.4,1.7|7.5,1.8 8,2.9|2.1,4.6 5.3,4.3 8,3.7|1.8,6.1 8.1,5.6|.8,7.7 9.1,7|4.9,4.4 4.9,8.6 5.4,9.3 8.6,9.3 9.2,8.3",
+        0: "1,2 2,.9 4.5,.9 5.6,2 5.6,7.9 4.5,9 2,9 1,7.9 1,2",
+        1: "1.6,2.6 3.6,.9 3.6,9 1.5,9 5.6,9",
+        2: "1,2.6 1.6,1.3 2.6,.9 4.6,.9 5.6,2 5.6,3.6 4.7,5 1,9 5.7,9",
+        3: "1,1.1 5.4,1.1 3.1,4.5 4.4,4.5 5.6,5.6 5.6,7.7 4.6,8.9 2.3,9 1,8",
+        4: "4.7,9 4.7,1 1,6.1 6,6.1",
+        5: "5.4,1.1 1.3,1.1 1.1,4.8 2.1,4.3 4.5,4.3 5.6,5.5 5.6,7.7 4.4,9 2,9 1,8",
+        6: "5.2,1.1 3,.9 1.7,2.5 1,5.1 1.1,7.6 2.2,9 4.5,9 5.6,7.8 5.6,5.7 4.5,4.6 2.4,4.6 1.1,5.6",
+        7: "1,1.1 5.8,1.1 2.5,9",
+        8: "3.3,4.8 1.4,3.6 1.3,2.2 2.3,1 4.4,1 5.4,2.1 5.2,3.6 3.3,4.8 1.1,6.1 1.1,7.7 2.2,9 4.5,9 5.6,7.8 5.5,6.2 3.3,4.8",
+        9: "1.2,8.8 3.4,9 4.9,7.5 5.5,5.1 5.5,2.3 4.3,1 2.2,1 1.1,2.1 1.1,4.3 2.2,5.3 4.2,5.3 5.5,4.4",
+        A: "0.6,9 3.3,1 6.1,9|1.7,6 5,6",
+        B: "1,9 1,1 4.2,1 5.6,2.1 5.6,3.5 4.2,4.7 1,4.7 4.4,4.7 5.9,5.8 5.9,7.6 4.5,9 1,9",
+        C: "5.8,2.2 4.6,1 2.3,1 1,2.5 1,7.5 2.3,9 4.5,9 5.8,7.8",
+        D: "1,9 1,1 3.7,1 5.7,3 5.7,7 3.7,9 1,9",
+        E: "5.6,1 1,1 1,9 5.6,9|1,4.8 4.8,4.8",
+        F: "1,9 1,1 5.8,1|1,4.8 4.8,4.8",
+        "·": "2.3,5 2.7,5.1",
+        ",": "2.8,8.2 2.6,9.2 1.7,10.5",
+      };
+      const glyphs = Object.fromEntries(Object.entries(letterData).map(([k, v]) => [k, shapePaths(v)]));
+      function lettering(text, x, y, size) {
+        const paths = [];
+        for (const ch of text) {
+          if (ch === " ") {
+            x += size * 0.45;
+            continue;
+          }
+          const character = glyphs[ch];
+          if (character)
+            for (const line of character)
+              paths.push(
+                stroke(
+                  line.map(([u, v]) => [x + (u * size) / 10, y + (v * size) / 10]),
+                  "type"
+                )
+              );
+          x += size * (ch.charCodeAt(0) > 255 ? 1.19 : ch === "·" || ch === "," ? 0.46 : 0.75);
+        }
+        return paths;
+      }
+      function dimensions(small) {
+        const w = small ? 154 : 272,
+          h = small ? 194 : 162,
+          left = small ? 13 : 19,
+          top = 18;
+        return { w, h, left, top, sw: w + left + (small ? 16 : 21), sh: h + top + (small ? 10 : 11), small };
+      }
+      function landscape(seed, serial, g) {
+        const { w, h, small } = g,
+          random = rng(seed),
+          { noise, fbm } = makeNoise(random);
+        const range = (a, b) => mix(a, b, random());
+        const x0 = small ? 8 : 10,
+          y0 = small ? 8 : 9,
+          x1 = w - x0,
+          y1 = h - (small ? 17 : 18),
+          iw = x1 - x0,
+          ih = y1 - y0;
+        const layers = [];
+        function layer(id, name) {
+          const l = { id, name, batches: [], paths: [], done: 0 };
+          layers.push(l);
+          return l;
+        }
+        function batch(l, paths, sort = true) {
+          if (paths.length) l.batches.push({ paths, sort });
+        }
+        const lake = random() < 0.72,
+          solar = random() < 0.75,
+          rangeCount = 5 + Math.floor(random() * 4);
+        const frame = layer("frame", "边框定位"),
+          sky = layer("sky", solar ? "日轮与天光" : "月牙与星光"),
+          outline = layer("outline", "山脊轮廓");
+        const distant = layer("distant", "远山细纹"),
+          middle = layer("middle", "岩壁排线"),
+          near = layer("near", "近坡肌理");
+        const foreground = layer("front", lake ? "湖面倒影" : "山麓松林"),
+          label = layer("label", "手写图签");
+        const art = {
+          seed,
+          serial,
+          g,
+          layers,
+          label,
+          sky,
+          frame,
+          birds: [],
+          seedText: pad(seed.toString(16).toUpperCase(), 4),
+          bounds: { x0, y0, x1, y1 },
+          lake,
+          solar,
+          rangeCount,
+        };
+        const frameStrokes = [
+          stroke(
+            [
+              [x0, y0],
+              [x1, y0],
+              [x1, y1],
+              [x0, y1],
+              [x0, y0],
+            ],
+            "frame"
+          ),
+        ];
+        for (const [x, y] of [
+          [x0 - 3.5, y0 - 3.5],
+          [x1 + 3.5, y0 - 3.5],
+          [x1 + 3.5, y1 + 3.5],
+          [x0 - 3.5, y1 + 3.5],
+        ]) {
+          frameStrokes.push(
+            stroke(
+              [
+                [x - 1.8, y],
+                [x + 1.8, y],
+              ],
+              "frame"
+            ),
+            stroke(
+              [
+                [x, y - 1.8],
+                [x, y + 1.8],
+              ],
+              "frame"
+            )
+          );
+        }
+        batch(frame, frameStrokes);
+        // 每一列保存从近到远遇到的最高轮廓，也保存每道山脊各自的可见下界。
+        const columns = Math.ceil(iw / 0.55),
+          step = iw / columns;
+        const grid = (fn) => Float64Array.from({ length: columns + 1 }, (_, j) => fn(j / columns));
+        function sample(arr, x) {
+          const u = clamp((x - x0) / step, 0, columns),
+            j = Math.min(columns - 1, Math.floor(u));
+          return mix(arr[j], arr[j + 1], u - j);
+        }
+        const shorePhase = range(0, 200);
+        const shore = grid((u) =>
+          lake ? y0 + ih * (0.806 + 0.019 * noise(u * 3 + shorePhase) + 0.007 * fbm(u * 12 + shorePhase)) : y1
+        );
+        const ridges = [],
+          hero = Math.floor((rangeCount - 1) * 0.47),
+          heroX = range(0.35, 0.67),
+          mirror = random() < 0.5 ? -1 : 1;
+        const lightFrom = mirror;
+        for (let i = 0; i < rangeCount; i++) {
+          const z = i / (rangeCount - 1),
+            phase = range(3, 990),
+            peaks = [];
+          const base = 0.46 + 0.53 * z;
+          function summit(c, span, height) {
+            peaks.push({
+              c,
+              left: span * range(0.67, 1.22),
+              right: span * range(0.7, 1.32),
+              height,
+              shape: range(0.76, 1.25),
+            });
+          }
+          // 不对称的肩峰、大岩脊和局部碎裂共同决定轮廓。
+          const n = 3 + Math.floor(random() * 3);
+          for (let k = 0; k < n; k++)
+            summit((k + range(-0.32, 0.38)) / (n - 1), range(0.12, 0.3), range(0.055, 0.17) * (1 - 0.17 * z));
+          if (i === hero) {
+            summit(heroX, 0.32, base - range(0.135, 0.225));
+            summit(heroX + mirror * range(0.07, 0.17), range(0.15, 0.24), base - range(0.18, 0.31));
+            summit(heroX - mirror * range(0.19, 0.28), 0.21, base - range(0.32, 0.42));
+          } else if (i < hero) {
+            summit(i % 2 ? 0.8 : 0.2, range(0.18, 0.31), range(0.13, 0.225));
+          } else {
+            const leftPeak = (i - hero) % 2 === 0;
+            const c = leftPeak ? range(-0.07, 0.22) : range(0.8, 1.07);
+            summit(c, range(0.28, 0.5), range(0.16, 0.32));
+            summit(leftPeak ? range(0.68, 0.87) : range(0.18, 0.38), range(0.14, 0.27), range(0.09, 0.2));
+            if (i === rangeCount - 1) summit(mirror === 1 ? -0.02 : 1.02, 0.34, lake ? 0.215 : 0.26);
+          }
+          const ridge = grid((u) => {
+            let relief = 0;
+            for (const p of peaks) {
+              const d = (u - p.c) / (u < p.c ? p.left : p.right);
+              relief = Math.max(relief, p.height * Math.pow(Math.max(0, 1 - Math.abs(d)), p.shape));
+            }
+            const fracture = Math.abs(noise(u * (small ? 12 : 19) + phase * 1.78)) - 0.44;
+            const creases =
+              fbm(u * (small ? 6.4 : 9.3) + phase) * 0.063 +
+              fbm(u * (small ? 20 : 38) + phase * 1.3) * 0.019 +
+              fracture * (i === hero ? 0.027 : 0.013);
+            return y0 + ih * (base - relief + creases + noise(u * 2.2 + phase + 19) * 0.035);
+          });
+          ridges.push({ ridge, phase, z, index: i });
+        }
+        let envelope = shore.slice();
+        for (let i = rangeCount - 1; i >= 0; i--) {
+          ridges[i].floor = envelope;
+          const r = ridges[i].ridge;
+          envelope = Float64Array.from(envelope, (v, j) => Math.min(v, r[j]));
+        }
+        const horizon = envelope;
+        // 在每个采样列边界切分线段，对上下两个线性边界分别求交，保留连续的可见折线。
+        function clipped(points, upper, lower, kind, weight = 1, topInset = 0, bottomInset = 0) {
+          const out = [];
+          let run = null;
+          function emit(a, b, t0, t1) {
+            const v = [mix(a[0], b[0], t0), mix(a[1], b[1], t0)],
+              q = [mix(a[0], b[0], t1), mix(a[1], b[1], t1)];
+            if (lengthBetween(v, q) < 0.0003) return;
+            if (!run || lengthBetween(run[run.length - 1], v) > 0.008) {
+              run = [v];
+              out.push(run);
+            }
+            run.push(q);
+          }
+          function bounds(x) {
+            return [upper ? sample(upper, x) + topInset : y0, lower ? sample(lower, x) - bottomInset : y1];
+          }
+          let a = points[0],
+            limits = bounds(a[0]);
+          for (let i = 1; i < points.length; i++) {
+            const target = points[i],
+              dx = target[0] - a[0],
+              start = a;
+            const first =
+              dx > 0 ? Math.floor((a[0] - x0) / step + 1e-7) + 1 : Math.ceil((a[0] - x0) / step - 1e-7) - 1;
+            let k = first;
+            for (;;) {
+              const tx = Math.abs(dx) > 0.00001 ? (x0 + k * step - start[0]) / dx : Infinity;
+              const atEnd = tx >= 1 - 1e-7 || tx <= 0.0000001;
+              const b = atEnd ? target : [x0 + k * step, mix(start[1], target[1], tx)];
+              const next = bounds(b[0]);
+              let lo = 0,
+                hi = 1;
+              const planes = [
+                [a[0] - x0, b[0] - x0],
+                [x1 - a[0], x1 - b[0]],
+                [a[1] - limits[0], b[1] - next[0]],
+                [limits[1] - a[1], next[1] - b[1]],
+              ];
+              for (const [v, q] of planes) {
+                if (v < -0.000001 && q < -0.000001) {
+                  hi = -1;
+                  break;
+                }
+                if (v < 0 && q >= 0) lo = Math.max(lo, v / (v - q));
+                if (q < 0 && v >= 0) hi = Math.min(hi, v / (v - q));
+              }
+              if (lo < hi) emit(a, b, lo, hi);
+              else run = null;
+              a = b;
+              limits = next;
+              if (atEnd) break;
+              k += dx > 0 ? 1 : -1;
+            }
+          }
+          return out
+            .filter((r) => r.length > 1 && (r.length > 3 || lengthBetween(r[0], r[r.length - 1]) > 0.1))
+            .map((r) => stroke(r, kind, weight));
+        }
+        const fromGrid = (arr) => Array.from(arr, (y, j) => [x0 + j * step, y]);
+        const cx = x0 + iw * (heroX > 0.5 ? range(0.18, 0.31) : range(0.69, 0.82)),
+          cy = y0 + ih * range(0.135, 0.215);
+        const radius = Math.min(iw, ih) * range(0.067, 0.103);
+        function arc(x, y, r, a, b, n, phase = 0) {
+          return Array.from({ length: n + 1 }, (_, i) => {
+            const t = mix(a, b, i / n);
+            const rr = r * (1 + 0.0028 * Math.sin(t * 5 + phase) + 0.0015 * Math.sin(t * 9 + phase));
+            return [x + rr * Math.cos(t), y + rr * Math.sin(t)];
+          });
+        }
+        const disc = [];
+        if (solar) {
+          const rings = Math.floor(radius / 0.9);
+          for (let r = 0; r < rings; r++) {
+            const rr = radius * (1 - r / (rings + 0.24));
+            disc.push(
+              ...clipped(
+                arc(cx, cy, rr, -Math.PI / 2, 1.5 * Math.PI, Math.max(20, Math.ceil(rr * 5)), r * 0.45),
+                null,
+                horizon,
+                "sky",
+                r === 0 ? 1.2 : 0.92,
+                0,
+                0.3
+              )
+            );
+          }
+        } else {
+          // 两段过同一对端点的圆弧形成月牙。
+          const tipAngle = 0.98,
+            side = random() < 0.5 ? -1 : 1,
+            off = radius * 0.68;
+          const tx = radius * Math.cos(tipAngle),
+            ty = radius * Math.sin(tipAngle),
+            innerR = Math.hypot(tx - off, ty),
+            innerA = Math.atan2(ty, tx - off);
+          const crescent = arc(0, 0, radius, tipAngle, TAU - tipAngle, 58);
+          crescent.push(...arc(off, 0, innerR, TAU - innerA, innerA, 43).slice(1));
+          disc.push(
+            ...clipped(
+              crescent.map(([x, y]) => [cx + side * x, cy + y]),
+              null,
+              horizon,
+              "sky",
+              1.2
+            )
+          );
+          for (let j = 0; j < 8; j++) {
+            const x = range(x0 + 3, x1 - 3),
+              y = range(y0 + 3, y0 + ih * 0.29),
+              r = range(0.35, 0.86);
+            if (Math.hypot(x - cx, y - cy) < radius + 4 || y + 2 > sample(horizon, x)) continue;
+            disc.push(
+              stroke(
+                [
+                  [x - r, y],
+                  [x + r, y],
+                ],
+                "cloud"
+              ),
+              stroke(
+                [
+                  [x, y - r * 1.5],
+                  [x, y + r * 1.5],
+                ],
+                "cloud"
+              )
+            );
+          }
+        }
+        batch(sky, disc, false);
+        const clouds = [];
+        if (random() < 0.88) {
+          const banks = 2 + Math.floor(random() * 3);
+          for (let b = 0; b < banks; b++) {
+            const center = b === 0 ? cx + iw * range(-0.11, 0.11) : range(x0 + iw * 0.13, x1 - iw * 0.12);
+            const level = b === 0 ? cy + range(-0.25, 0.85) * radius : range(y0 + ih * 0.085, y0 + ih * 0.36);
+            const lines = 2 + Math.floor(random() * 4),
+              span = iw * range(0.1, 0.26);
+            for (let j = 0; j < lines; j++) {
+              const y = level + j * range(0.74, 1.05),
+                half = span * (0.45 + 0.55 * Math.sin((Math.PI * (j + 1)) / (lines + 1)));
+              const a = Math.max(x0 + 0.4, center - half * range(0.62, 1.1)),
+                bEnd = Math.min(x1 - 0.4, center + half * range(0.66, 1.14));
+              const dy = Math.abs(y - cy),
+                cut = dy < radius + 1.3 ? Math.sqrt((radius + 1.3) ** 2 - dy * dy) : 0;
+              const parts = cut
+                ? [
+                    [a, Math.min(bEnd, cx - cut)],
+                    [Math.max(a, cx + cut), bEnd],
+                  ]
+                : [[a, bEnd]];
+              for (const [p, q] of parts) {
+                if (q - p < 2) continue;
+                clouds.push(
+                  ...clipped(
+                    [
+                      [p, y],
+                      [mix(p, q, 0.42), y + range(-0.14, 0.14)],
+                      [q, y],
+                    ],
+                    null,
+                    horizon,
+                    "cloud"
+                  )
+                );
+              }
+            }
+          }
+        }
+        if (random() < 0.54) {
+          const bx = x0 + iw * (cx < x0 + iw * 0.5 ? range(0.58, 0.76) : range(0.22, 0.42)),
+            by = y0 + ih * range(0.115, 0.23);
+          for (let j = 0; j < 3 + Math.floor(random() * 3); j++) {
+            const bird = flyingBird(
+              bx + j * range(2.6, 4.5),
+              by + Math.sin(j * 0.8) * 1.6 + j * 0.4,
+              range(1.6, 3.8),
+              j
+            );
+            clouds.push(...clipped(bird.points, null, horizon, "bird", 0.76));
+          }
+        }
+        batch(sky, clouds);
+        batch(outline, [stroke(fromGrid(horizon), "crest")], false);
+        const innerLines = [];
+        for (const m of ridges)
+          innerLines.push(
+            ...clipped(fromGrid(m.ridge), horizon, m.floor, "inner", 0.91 + m.z * 0.26, 0.075, 0.07)
+          );
+        if (lake) innerLines.push(stroke(fromGrid(shore), "inner", 1.05));
+        batch(outline, innerLines);
+        function normalAt(m, x, span = 2.5) {
+          return (sample(m.ridge, x + span) - sample(m.ridge, x - span)) / (span * 2);
+        }
+        function shadowAt(m, x) {
+          return clamp(
+            0.46 + normalAt(m, x, 2.2) * lightFrom * 0.82 + 0.29 * noise(((x - x0) / iw) * 9 + m.phase)
+          );
+        }
+        // 从山脊伸向谷底的岩肋组成不规则的扇面。横向取样是等高线，纵向取样是沟壑。
+        // 同一个投影曲面决定两类排线的走向，在山脊和山谷交界处改变线距与受光。
+        function buildSurface(m) {
+          const knots = [],
+            phase = m.phase;
+          let s = x0 - 1,
+            order = 0;
+          while (s < x1 + 1) {
+            let q = Math.min(x1 + 1, s + range(5.4, 14.0) * (small ? 0.86 : 1));
+            if (!order) q = x0 - 1;
+            if (q > x0 + 1 && q < x1 - 2) {
+              const direction = order % 2 ? -1 : 1;
+              let best = direction * sample(m.ridge, q),
+                winner = q;
+              for (let dx = -1.6; dx < 1.8; dx += 0.4) {
+                const n = direction * sample(m.ridge, q + dx);
+                if (n > best) {
+                  best = n;
+                  winner = q + dx;
+                }
+              }
+              q = winner;
+            }
+            const u = (q - x0) / iw,
+              fold = (order % 2 ? 1 : -1) * ih * range(0.022, 0.069);
+            const endShift =
+              (u - heroX) * ih * 0.17 +
+              ih * (0.085 * lightFrom + 0.08 * noise(u * 3.5 + phase + 8)) +
+              clamp(normalAt(m, q, 3), -1.4, 1.4) * 2.15;
+            knots.push({
+              s: q,
+              shift: endShift,
+              bend: range(-3.7, 3.7),
+              fold,
+              toe: y0 + ih * (0.595 + 0.55 * m.z + 0.031 * noise(u * 3.1 + phase)),
+              key: range(0, 900),
+            });
+            s = q;
+            order++;
+          }
+          m.knots = knots;
+          for (let i = 0; i < knots.length - 1; i++) {
+            const a = knots[i],
+              b = knots[i + 1],
+              x = (a.s + b.s) * 0.5;
+            const facet = (b.fold - a.fold) / (b.s - a.s);
+            a.shade = clamp(
+              0.46 + lightFrom * (0.43 * normalAt(m, x, 3) + 0.32 * facet) + 0.13 * noise(x * 0.12 + phase),
+              0.06,
+              0.95
+            );
+          }
+          m.depth = Math.max(19, ...knots.map((k) => k.toe - sample(m.ridge, k.s)));
+        }
+        function panelAt(m, s) {
+          const knots = m.knots;
+          let a = 0,
+            b = knots.length - 2;
+          while (a < b) {
+            const i = (a + b) >> 1;
+            if (knots[i + 1].s < s) a = i + 1;
+            else b = i;
+          }
+          return a;
+        }
+        function surface(m, s, t, idx = panelAt(m, s)) {
+          const a = m.knots[idx],
+            b = m.knots[idx + 1],
+            f = clamp((s - a.s) / (b.s - a.s)),
+            top = sample(m.ridge, s);
+          const swell = 1 - Math.abs(2 * t - 1),
+            knee = Math.sin(Math.PI * t);
+          const grain = fbm(s * 0.09 + m.phase + t * 3.2);
+          const x =
+            s +
+            t * mix(a.shift, b.shift, f) +
+            swell * mix(a.bend, b.bend, f) +
+            knee * 0.95 * noise(s * 0.18 + t * 9 + m.phase);
+          const y =
+            mix(top, mix(a.toe, b.toe, f), t) +
+            (0.52 * knee + 0.48 * swell) * mix(a.fold, b.fold, f) +
+            knee * (1.7 * grain);
+          return [x, y];
+        }
+        ridges.forEach(buildSurface);
+        function contours(m, amount, kind) {
+          const lines = [],
+            spacing = mix(1.03, 1.48, m.z) * amount,
+            rows = Math.ceil(m.depth / spacing);
+          for (let row = 1; row < rows; row++) {
+            const t = row / rows;
+            let pts = [];
+            function flush() {
+              if (pts.length > 1)
+                lines.push(...clipped(pts, m.ridge, m.floor, kind, range(0.88, 1.09), 0.39, 0.37));
+              pts = [];
+            }
+            let span = x0 + range(8, 37),
+              gapEnd = -Infinity;
+            for (let s = x0 - 1; s <= x1 + 1.5; s += 0.7) {
+              const idx = panelAt(m, s),
+                shade = m.knots[idx].shade;
+              if (s > span) {
+                gapEnd = s + range(0.36, 2.8) * (1.36 - shade);
+                span = gapEnd + range(9, 42);
+              }
+              const lightBreak = shade < 0.28 && row % 3 === 1 && noise(s * 0.11 + m.phase + t * 8) > 0.02;
+              if (s < gapEnd || lightBreak) {
+                if (pts.length) flush();
+                continue;
+              }
+              pts.push(surface(m, s, t, idx));
+            }
+            flush();
+          }
+          return lines;
+        }
+        function gullies(m, cross = false) {
+          const lines = [],
+            knots = m.knots;
+          for (let i = 0; i < knots.length - 1; i++) {
+            const a = knots[i],
+              b = knots[i + 1],
+              shade = a.shade,
+              width = b.s - a.s;
+            if (
+              sample(m.floor, (a.s + b.s) / 2) < sample(m.ridge, (a.s + b.s) / 2) - 2 &&
+              sample(m.floor, a.s) < sample(m.ridge, a.s) - 2 &&
+              sample(m.floor, b.s) < sample(m.ridge, b.s) - 2
+            )
+              continue;
+            if (cross) {
+              if (shade < 0.59) continue;
+              const spacing = mix(1.54, 0.82, shade),
+                dt = spacing / Math.max(13, a.toe - sample(m.ridge, a.s));
+              for (let t = range(0.12, 0.32); t < 0.97; t += dt * range(0.91, 1.11)) {
+                const start = range(0.03, 0.39) * (1.12 - shade),
+                  end = range(0.52, 1),
+                  pts = [];
+                for (let q = 0; q <= 7; q++) {
+                  const f = mix(start, end, q / 7),
+                    v = t + (f - 0.5) * lightFrom * 0.081 + 0.008 * noise(f * 2 + t * 3 + a.key);
+                  pts.push(surface(m, mix(a.s, b.s, f), v, i));
+                }
+                lines.push(...clipped(pts, m.ridge, m.floor, "fine", range(0.8, 1.02), 0.46, 0.41));
+              }
+            } else {
+              const stride = mix(1.57, 0.48, shade),
+                kind = shade > 0.67 ? "dark" : "facet";
+              for (let s = a.s + range(0.13, 0.63); s < b.s - 0.15; s += stride * range(0.78, 1.19)) {
+                const f = (s - a.s) / width,
+                  spineSide = lightFrom > 0 ? 1 - f : f;
+                let t = 0.014 + random() ** 2 * mix(0.3, 0.055, shade) + Math.max(0, spineSide - 0.62) * 0.11;
+                for (let pass = 0; pass < 2 && t < 0.98; pass++) {
+                  const end = Math.min(0.99, t + range(0.15, 0.48) * (0.71 + 0.9 * shade)),
+                    pts = [];
+                  if (shade > 0.32 || random() < 0.77) {
+                    const n = Math.max(4, Math.ceil(((end - t) * m.depth) / 1.5));
+                    for (let q = 0; q <= n; q++) {
+                      const d = mix(t, end, q / n);
+                      const fan =
+                        0.16 * width * Math.sin(d * 3.0) * Math.sin(Math.PI * f) * (lightFrom > 0 ? 1 : -1);
+                      pts.push(surface(m, clamp(s + fan, a.s, b.s), d, i));
+                    }
+                    lines.push(...clipped(pts, m.ridge, m.floor, kind, range(0.77, 1.06), 0.32, 0.41));
+                  }
+                  t = end + range(0.023, 0.11) * (1.19 - shade * 0.48);
+                }
+              }
+              if (i > 0 && (i % 2 === 0 || shade > 0.72)) {
+                // 一条带断口的岩肋及其短支脉，从峰顶延伸到坡面。
+                const end = range(0.4, 0.88);
+                for (const [lo, hi] of [
+                  [0.004, end * 0.43],
+                  [end * 0.46, end],
+                ]) {
+                  const pts = [],
+                    n = Math.max(3, Math.ceil(((hi - lo) * m.depth) / 1.2));
+                  for (let q = 0; q <= n; q++) {
+                    const t = mix(lo, hi, q / n);
+                    pts.push(surface(m, a.s, t, i));
+                  }
+                  lines.push(...clipped(pts, m.ridge, m.floor, "inner", range(0.78, 1), 0.19, 0.31));
+                }
+                if (shade > 0.46) {
+                  const pts = [];
+                  for (let q = 0; q <= 10; q++) {
+                    const f = q / 10;
+                    pts.push(surface(m, a.s + width * 0.3 * f ** 1.25, end * (0.32 + 0.48 * f), i));
+                  }
+                  lines.push(...clipped(pts, m.ridge, m.floor, "facet", 0.9, 0.27, 0.38));
+                }
+              }
+            }
+          }
+          return lines;
+        }
+        function debris(m, intensity) {
+          const lines = [],
+            attempts = Math.ceil(iw * ih * 0.093 * intensity);
+          for (let k = 0; k < attempts; k++) {
+            const x = range(x0, x1),
+              y = range(y0, y1),
+              top = sample(m.ridge, x),
+              floor = sample(m.floor, x);
+            if (y < top + 0.5 || y > floor - 0.5) continue;
+            const pattern = 0.5 + 0.5 * fbm(x * 0.075 + m.phase + y * 0.022);
+            if (random() > pattern * 0.68 + 0.29 * shadowAt(m, x)) continue;
+            const len = range(0.4, 1.98) * (1 + m.z * 0.24),
+              dy = range(0.12, 0.47) + Math.abs(normalAt(m, x)) * len * 0.14;
+            const pts = [
+              [x, y],
+              [x + len * 0.42, y - dy],
+              [x + len, y + range(-0.1, 0.14)],
+            ];
+            lines.push(...clipped(pts, m.ridge, m.floor, "gravel", range(0.77, 1.12), 0.24, 0.25));
+          }
+          return lines;
+        }
+        for (const m of ridges) {
+          let lines;
+          const group = m.index < hero ? distant : m.index <= hero + 1 ? middle : near;
+          if (m.index === hero) {
+            lines = [...gullies(m), ...gullies(m, true), ...debris(m, 0.87)];
+          } else if (m.index < hero) {
+            lines = m.index % 2 === 0 ? contours(m, 1.16, "fine") : [...gullies(m), ...debris(m, 0.85)];
+          } else if (m.index === hero + 1) {
+            lines = [...contours(m, 1.02, "facet"), ...gullies(m, true)];
+          } else if (m.index === rangeCount - 1) {
+            lines = [...contours(m, 1.7, "dark"), ...debris(m, 2.7)];
+          } else {
+            lines =
+              m.index % 2 === 0
+                ? [...gullies(m), ...gullies(m, true)]
+                : [...contours(m, 1.2, "facet"), ...debris(m, 1.4)];
+          }
+          batch(group, lines);
+        }
+        function pines(base, scale, xCenter, count, span, under) {
+          const lines = [];
+          for (let k = 0; k < count; k++) {
+            const x = xCenter + range(-span, span),
+              foot = base(x) + range(-0.6, 0.45),
+              tall = scale * range(0.48, 1.28);
+            const bend = range(-0.085, 0.085) * tall;
+            const pts = [
+              [x, foot],
+              [x + bend * 0.4, foot - tall * 0.63],
+              [x + bend, foot - tall],
+            ];
+            lines.push(...clipped(pts, null, under, "forest", 0.86));
+            const tiers = 5 + Math.floor(tall * 0.37);
+            for (let j = 1; j <= tiers; j++) {
+              const f = j / (tiers + 1),
+                y = foot - tall + tall * f * 0.92,
+                xc = x + bend * (1 - f),
+                r = tall * (0.024 + 0.18 * f) * range(0.78, 1.16);
+              const bough = [
+                [xc - r, y + tall * 0.09],
+                [xc - r * 0.62, y + tall * 0.03],
+                [xc - r * 0.72, y + tall * 0.055],
+                [xc, y - tall * 0.042],
+                [xc + r * 0.52, y + tall * 0.024],
+                [xc + r * 0.44, y],
+                [xc + r * range(0.76, 1.18), y + tall * 0.064],
+              ];
+              lines.push(...clipped(bough, null, under, "forest", range(0.8, 1.06)));
+            }
+          }
+          return lines;
+        }
+        if (lake) {
+          const water = [],
+            deep = y1 - Math.min(...shore);
+          const ripPhase = range(0, 900);
+          const pineX = x0 + iw * (mirror > 0 ? range(0.14, 0.26) : range(0.74, 0.86)),
+            half = iw * range(0.052, 0.083);
+          const isletY = sample(shore, pineX) + range(3.7, 5.7),
+            isletH = range(1.0, 1.95);
+          const bankShape = (x) => Math.max(0, 1 - ((x - pineX) / half) ** 2);
+          const bankTop = (x) => isletY - bankShape(x) * (isletH + 0.6 * fbm(x * 0.37 + ripPhase));
+          const bankBottom = (x) => isletY + bankShape(x) * (0.59 + 0.24 * noise(x * 0.24 + ripPhase));
+          const waterline = grid((u) => {
+            const x = x0 + u * iw;
+            return bankShape(x) > 0 ? Math.max(sample(shore, x), bankBottom(x) + 0.3) : sample(shore, x);
+          });
+          const startY = Math.min(...shore);
+          for (let row = 0; row < deep / 0.71; row++) {
+            const y = startY + 0.56 + row * 0.71 + range(-0.17, 0.17);
+            let x = x0 + range(-3, 1.2);
+            while (x < x1) {
+              const u = (x - x0) / iw,
+                bank = sample(shore, x),
+                down = y - bank;
+              const reflectedX = x + noise(y * 0.55 + ripPhase) * Math.max(0, down) * 0.29,
+                sourceY = bank - down / 0.32;
+              const reflected = ridges.find(
+                (m) => sourceY >= sample(m.ridge, reflectedX) && sourceY < sample(m.floor, reflectedX)
+              );
+              const shade = reflected ? reflected.knots[panelAt(reflected, reflectedX)].shade : 0;
+              const width =
+                range(0.72, 3.35) *
+                (reflected ? 1.15 + shade * 2.7 : range(0.6, 1.85)) *
+                (1 + (Math.max(0, down) / deep) * 0.64);
+              const density = reflected
+                ? 0.35 + shade * 0.44 + 0.19 * noise(u * 7 + ripPhase + row * 0.085)
+                : 0.12;
+              if (y < y1 - 0.28 && random() < density + (down < 1.8 ? 0.25 : 0)) {
+                const lift = range(-0.14, 0.14);
+                water.push(
+                  ...clipped(
+                    [
+                      [x, y],
+                      [x + width * 0.41, y + lift],
+                      [x + width, y + range(-0.12, 0.12)],
+                    ],
+                    waterline,
+                    null,
+                    "water",
+                    range(0.75, 1.09) + shade * 0.26,
+                    0.42
+                  )
+                );
+              }
+              x += width + range(0.6, 3.0);
+            }
+          }
+          // 倒置的轮廓拆成小段，再按水波的相位错开。
+          for (const m of ridges.filter((_, i) => i % 2 === 0)) {
+            let x = x0;
+            while (x < x1) {
+              const end = Math.min(x1, x + range(1.5, 6.4)),
+                pts = [];
+              for (let q = x; q <= end + 0.8; q += 0.8) {
+                const xx = Math.min(q, end),
+                  bank = sample(shore, xx);
+                const y = bank + (bank - sample(m.ridge, xx)) * 0.3 + noise(xx * 0.31 + ripPhase) * 0.5;
+                pts.push([xx, y]);
+                if (xx === end) break;
+              }
+              if (pts.length > 1 && random() < 0.56)
+                water.push(...clipped(pts, waterline, null, "cloud", 1.01, 0.45));
+              x = end + range(1.4, 5.8);
+            }
+          }
+          batch(foreground, water);
+          const upper = [],
+            lower = [],
+            bankMarks = [];
+          for (let j = 0; j <= 36; j++) {
+            const x = pineX - half + (2 * half * j) / 36;
+            upper.push([x, bankTop(x)]);
+            lower.push([x, bankBottom(x)]);
+          }
+          bankMarks.push(stroke([...upper, ...lower.reverse()], "inner", 1.1));
+          for (let x = pineX - half + 0.8; x < pineX + half - 0.4; x += range(0.62, 1.32)) {
+            bankMarks.push(
+              stroke(
+                [
+                  [x, bankTop(x) + 0.12],
+                  [x - 0.48, bankBottom(x)],
+                ],
+                "facet",
+                0.93
+              )
+            );
+            if (random() < 0.53) {
+              const y = bankBottom(x) + range(0.44, 1.72);
+              bankMarks.push(
+                stroke(
+                  [
+                    [x - 0.6, y],
+                    [x + range(0.6, 2.4), y + 0.04],
+                  ],
+                  "water",
+                  0.95
+                )
+              );
+            }
+          }
+          batch(foreground, bankMarks);
+          batch(
+            foreground,
+            pines(bankTop, small ? 5.6 : 6.4, pineX, 7 + Math.floor(random() * 4), half * 0.65, null)
+          );
+        } else {
+          const front = ridges[rangeCount - 1],
+            base = (x) => Math.min(y1 - 1, sample(front.ridge, x) + 1.4);
+          for (let j = 0; j < 2; j++) {
+            const x = x0 + iw * (j === 0 ? range(0.13, 0.28) : range(0.7, 0.87));
+            batch(
+              foreground,
+              pines(base, range(7.7, 12.4), x, 6 + Math.floor(random() * 6), iw * range(0.038, 0.075), null)
+            );
+          }
+        }
+        art.baseCount = layers.flatMap((l) => l.batches).reduce((n, b) => n + b.paths.length, 0);
+        setCaption(art, 0);
+        return art;
+      }
+      function setCaption(art, extras) {
+        const { w, h, small } = art.g,
+          x = art.bounds.x0,
+          y = art.bounds.y1 + (small ? 6.7 : 6.8);
+        const make = (n) =>
+          lettering(
+            "山水第 " +
+              pad(art.serial, 4) +
+              " 号 · 种子 " +
+              art.seedText +
+              " · 1 支笔 · " +
+              formatCount(n) +
+              " 笔",
+            x,
+            y,
+            small ? 2.62 : 3.05
+          );
+        const scaleLength = 10,
+          scaleX = w - x - scaleLength;
+        const scale = [
+          stroke(
+            [
+              [scaleX, y + 0.8],
+              [scaleX, y + 2.4],
+              [scaleX + scaleLength, y + 2.4],
+              [scaleX + scaleLength, y + 0.8],
+            ],
+            "type",
+            0.83
+          ),
+          stroke(
+            [
+              [scaleX + 5, y + 1.6],
+              [scaleX + 5, y + 2.4],
+            ],
+            "type",
+            0.83
+          ),
+        ];
+        let count = art.baseCount + extras,
+          paths;
+        do {
+          paths = [...make(count), ...scale];
+          const total = art.baseCount + extras + paths.length;
+          if (total === count) break;
+          count = total;
+        } while (true);
+        art.label.batches = [{ paths, sort: false }];
+        art.label.paths = paths;
+        art.captionCount = count;
+      }
+      function flyingBird(x, y, size, phase = 0) {
+        const tilt = Math.sin(phase * 1.73) * 0.13;
+        return stroke(
+          [
+            [-0.55, -0.17],
+            [-0.37, -0.13],
+            [-0.18, -0.06],
+            [0, 0.15],
+            [0.14, -0.032],
+            [0.31, -0.15],
+            [0.49, -0.21],
+          ].map(([a, b]) => [x + a * size, y + (b + a * tilt) * size]),
+          "bird"
+        );
+      }
+      // 机架、标尺与笔尖共享毫米坐标。只有横梁、线缆和笔架需要逐帧变换。
+      function svgTag(tag, attrs, content = "") {
+        return (
+          "<" +
+          tag +
+          Object.entries(attrs)
+            .map(([k, v]) => " " + k + '="' + v + '"')
+            .join("") +
+          ">" +
+          content +
+          "</" +
+          tag +
+          ">"
+        );
+      }
+      const Srect = (x, y, w, h, fill, rx = 0, extra = {}) =>
+        svgTag("rect", { x, y, width: w, height: h, rx, fill, ...extra });
+      const Sline = (x1, y1, x2, y2, stroke, width, extra = {}) =>
+        svgTag("line", { x1, y1, x2, y2, stroke, "stroke-width": width, ...extra });
+      const Spath = (d, fill, extra = {}) => svgTag("path", { d, fill, ...extra });
+      const Scircle = (cx, cy, r, fill, extra = {}) => svgTag("circle", { cx, cy, r, fill, ...extra });
+      const Stext = (x, y, value, size = 2.1, anchor = "middle") =>
+        svgTag(
+          "text",
+          {
+            x,
+            y,
+            fill: "#555952",
+            "font-size": size,
+            "font-family": "Menlo,Consolas,monospace",
+            "text-anchor": anchor,
+            "letter-spacing": ".08",
+          },
+          value
+        );
+      const G = (id, content) => svgTag("g", { id }, content);
+      function gradient(id, stops, horizontal = false) {
+        return svgTag(
+          "linearGradient",
+          { id, x1: "0%", y1: "0%", x2: horizontal ? "100%" : "0%", y2: horizontal ? "0%" : "100%" },
+          stops
+            .map(([offset, color]) => svgTag("stop", { offset: offset + "%", "stop-color": color }))
+            .join("")
+        );
+      }
+      const hardwareDefs = svgTag(
+        "defs",
+        {},
+        gradient("alloy", [
+          [0, "#626660"],
+          [7, "#f1f2ed"],
+          [17, "#d8dad5"],
+          [44, "#c7c9c4"],
+          [56, "#a3a69f"],
+          [81, "#c5c8c1"],
+          [91, "#eceee8"],
+          [100, "#656960"],
+        ]) +
+          gradient(
+            "sideAlloy",
+            [
+              [0, "#5d605b"],
+              [11, "#babdb6"],
+              [23, "#f0f1ed"],
+              [44, "#bdc0b9"],
+              [69, "#81857c"],
+              [85, "#d5d8d0"],
+              [100, "#6b6f66"],
+            ],
+            true
+          ) +
+          gradient("bar", [
+            [0, "#484b47"],
+            [8, "#e5e7e2"],
+            [17, "#c4c6c0"],
+            [37, "#92958d"],
+            [43, "#555952"],
+            [62, "#a2a69d"],
+            [79, "#d0d3ca"],
+            [92, "#b0b4aa"],
+            [100, "#50554c"],
+          ]) +
+          gradient("darkCase", [
+            [0, "#676a64"],
+            [6, "#4e514b"],
+            [18, "#343732"],
+            [79, "#292b27"],
+            [93, "#1a1c19"],
+            [100, "#10110f"],
+          ]) +
+          gradient("silverRod", [
+            [0, "#595d56"],
+            [18, "#b5b9ae"],
+            [34, "#fbfcf8"],
+            [56, "#d4d8cc"],
+            [82, "#8a8f81"],
+            [100, "#494e43"],
+          ]) +
+          gradient(
+            "penMetal",
+            [
+              [0, "#454942"],
+              [14, "#a7aba2"],
+              [36, "#f4f5ef"],
+              [54, "#c7cabe"],
+              [80, "#9a9e92"],
+              [100, "#52574b"],
+            ],
+            true
+          ) +
+          gradient(
+            "penTube",
+            [
+              [0, "#525951"],
+              [12, "#a2a8a1"],
+              [34, "#eef0ed"],
+              [55, "#cfd4cf"],
+              [83, "#a8ada7"],
+              [100, "#596058"],
+            ],
+            true
+          ) +
+          svgTag(
+            "pattern",
+            { id: "beltY", width: "2.1", height: "1.05", patternUnits: "userSpaceOnUse" },
+            Srect(0, 0, 2.1, 1.05, "#383b35") + Srect(0, 0.05, 2.1, 0.31, "#686c62")
+          ) +
+          svgTag(
+            "pattern",
+            { id: "beltX", width: "1.2", height: "2", patternUnits: "userSpaceOnUse" },
+            Srect(0, 0, 1.2, 2, "#30332e") + Srect(0.08, 0, 0.3, 2, "#666b60")
+          ) +
+          svgTag(
+            "filter",
+            {
+              id: "cast",
+              x: "-20%",
+              y: "-70%",
+              width: "145%",
+              height: "260%",
+              "color-interpolation-filters": "sRGB",
+            },
+            svgTag("feGaussianBlur", { stdDeviation: ".72" })
+          )
+      );
+      function bolt(x, y, r = 0.85, dark = false) {
+        const head = dark ? "#797c74" : "#c9ccc4",
+          border = dark ? "#171a16" : "#6f746a";
+        return (
+          Scircle(x, y + 0.13, r + 0.12, border) +
+          Scircle(x, y, r, head) +
+          Spath("M " + (x - r * 0.61) + " " + (y + r * 0.35) + " l " + r * 1.21 + " " + -r * 0.72, "none", {
+            stroke: dark ? "#272a24" : "#53584c",
+            "stroke-width": r * 0.35,
+            "stroke-linecap": "round",
+          }) +
+          Spath(
+            "M " +
+              (x - r * 0.69) +
+              " " +
+              (y - r * 0.3) +
+              " q " +
+              r * 0.4 +
+              " " +
+              -r * 0.65 +
+              " " +
+              r * 1.04 +
+              " " +
+              -r * 0.44,
+            "none",
+            { stroke: "#eff2e6", "stroke-width": r * 0.16, opacity: ".67" }
+          )
+        );
+      }
+      function buildMachine(g) {
+        const { w, h, left, top, sw, sh, small } = g;
+        const frame = $("frame"),
+          mechanism = $("mechanism"),
+          xL = small ? 4.7 : 7,
+          xR = sw - (small ? 7 : 9),
+          axle = small ? 8.1 : 8.5;
+        frame.setAttribute("viewBox", "0 0 " + sw + " " + sh);
+        mechanism.setAttribute("viewBox", "0 0 " + sw + " " + sh);
+        $("machine").style.aspectRatio = sw + " / " + sh;
+        const sheet = $("sheet").style;
+        sheet.left = (100 * left) / sw + "%";
+        sheet.top = (100 * top) / sh + "%";
+        sheet.width = (100 * w) / sw + "%";
+        sheet.height = (100 * h) / sh + "%";
+        const base = [hardwareDefs];
+        base.push(
+          svgTag(
+            "g",
+            { fill: "#292c27", opacity: ".24", filter: "url(#cast)" },
+            Srect(xL - 2.5, 5.2, xR - xL + 8, 5.8, "inherit", 1) +
+              Srect(xL - 3, 7, 8, sh - 7.5, "inherit", 1) +
+              Srect(xR - 2.5, 7, 7, sh - 7, "inherit", 1) +
+              Srect(xL, sh - 4.6, xR - xL + 3, 4, "inherit", 0.7)
+          )
+        );
+        // 出纸托盘的窄唇位于右导轨背后。
+        base.push(
+          Srect(xR + 1, top + 10, sw - xR - 1.6, h - 18, "url(#sideAlloy)", 0.9, {
+            stroke: "#999d93",
+            "stroke-width": 0.25,
+          })
+        );
+        for (let y = top + 14; y < top + h - 11; y += 3.4)
+          base.push(Sline(xR + 2, y, sw - 1.8, y - 0.7, "#a8aca1", 0.24));
+        base.push(
+          Srect(xL, 2.4, xR - xL, 6.1, "url(#alloy)", 0.55, { stroke: "#74786f", "stroke-width": 0.22 }),
+          Srect(xL, sh - 6.7, xR - xL, 4.1, "url(#alloy)", 0.55, { stroke: "#777b73", "stroke-width": 0.24 })
+        );
+        for (const x of [xL, xR]) {
+          base.push(
+            Srect(x - 3.1, 4.9, 6.2, sh - 9, "url(#sideAlloy)", 0.55, {
+              stroke: "#777b72",
+              "stroke-width": 0.24,
+            }),
+            Srect(x - 0.9, 7.1, 1.8, sh - 14, "url(#beltY)", 0.2),
+            Srect(x + 1.3, 8, 0.35, sh - 16, "#f4f5ef", 0.1)
+          );
+          for (const y of [2.1, sh - 8.8]) {
+            base.push(
+              Srect(x - 4.25, y + 0.5, 8.5, 7.1, "#4a4d46", 1.25),
+              Srect(x - 4.25, y, 8.5, 6.9, "url(#darkCase)", 1.2, {
+                stroke: "#282b26",
+                "stroke-width": 0.24,
+              }),
+              Sline(x - 3.2, y + 0.6, x + 3.2, y + 0.6, "#81857b", 0.22),
+              bolt(x - 1.8, y + 2, 0.62, true),
+              bolt(x + 1.8, y + 4.9, 0.62, true)
+            );
+          }
+        }
+        let ruler = "";
+        for (let i = 0; i <= w; i++) {
+          const x = left + i;
+          if (i > w - 0.01) break;
+          const mark = i % 10 === 0 ? 1.6 : i % 5 === 0 ? 1.11 : 0.6;
+          ruler += "M" + x + " 8.05v-" + mark;
+          if (i % 25 === 0 && i < w - 3) base.push(Stext(x, 5.9, i, 1.75));
+        }
+        base.push(
+          Spath(ruler, "none", { stroke: "#62665d", "stroke-width": 0.17 }),
+          Stext(left + w + 4, 6.6, "mm", 1.7)
+        );
+        const ry = xL + 4.35;
+        let yMarks = "";
+        for (let i = 0; i <= h; i += 2) {
+          const y = top + i;
+          yMarks += "M" + ry + " " + y + "h" + (i % 10 === 0 ? 1.05 : 0.65);
+          if (!small && i % 50 === 0) base.push(Stext(ry + 1.42, y + 0.56, i, 1.59, "start"));
+        }
+        base.push(Spath(yMarks, "none", { stroke: "#797d73", "stroke-width": 0.18 }));
+        frame.innerHTML = base.join("");
+        const beam = [],
+          width = xR - xL;
+        beam.push(
+          Srect(xL - 0.8, 1.35, width + 2, small ? 4.7 : 6.8, "#2e302b", 0.65, {
+            opacity: ".19",
+            filter: "url(#cast)",
+          })
+        );
+        if (small) {
+          beam.push(
+            Srect(xL, -1.95, width, 4.15, "url(#bar)", 0.35),
+            Srect(xL, -0.83, width, 0.84, "#42453f"),
+            Sline(xL, 1.38, xR, 1.38, "#e6e8e2", 0.3)
+          );
+        } else {
+          beam.push(
+            Srect(xL, -2.6, width, 5.75, "url(#bar)", 0.39, { stroke: "#53574e", "stroke-width": 0.19 }),
+            Srect(xL, -1.69, width, 1.4, "#3b3e38"),
+            Srect(xL, -1.5, width, 1.0, "url(#beltX)"),
+            Sline(xL, -2.17, xR, -2.17, "#f3f5ed", 0.21),
+            Sline(xL, 0.11, xR, 0.11, "#e3e6de", 0.32),
+            Sline(xL, 1.6, xR, 1.6, "#6e7268", 0.24),
+            Srect(xL, 2.65, width, 1.22, "url(#silverRod)", 0.12)
+          );
+        }
+        for (const x of [xL, xR]) {
+          if (small) {
+            beam.push(
+              Srect(x - 3.75, -4.25, 7.5, 8.5, "url(#darkCase)", 0.8),
+              bolt(x - 1.5, -2.3, 0.64, true)
+            );
+            continue;
+          }
+          beam.push(
+            Srect(x - 4.45, -4.05, 9.2, 10.4, "#333730", 1, { opacity: ".25", filter: "url(#cast)" }),
+            Srect(x - 4.75, -5.1, 9.5, 10.4, "url(#darkCase)", 1, {
+              stroke: "#1b1e19",
+              "stroke-width": 0.29,
+            }),
+            Srect(x - 3.45, -4.6, 6.9, 0.48, "#6b6f64", 0.18),
+            bolt(x - 2.75, -2.9, 0.65, true),
+            bolt(x + 2.75, 3.1, 0.65, true)
+          );
+          for (let j = 0; j < 3; j++)
+            beam.push(Sline(x - 2.65 + j * 0.95, -0.8, x - 2.65 + j * 0.95, 1.8, "#181b15", 0.34));
+        }
+        beam.push(
+          Spath("", "none", {
+            id: "cable",
+            stroke: "#282b25",
+            "stroke-width": small ? 0.86 : 1.05,
+            "stroke-linecap": "round",
+          }),
+          Spath("", "none", {
+            id: "cableShine",
+            stroke: "#797d71",
+            "stroke-width": small ? 0.15 : 0.2,
+            "stroke-linecap": "round",
+          })
+        );
+        const carriage = [];
+        carriage.push(
+          Srect(-5.65, -5.8, 12, 11.42, "#30342c", 0.96, { opacity: ".27", filter: "url(#cast)" }),
+          Srect(-6.3, -6.1, 12.3, 10.7, "url(#darkCase)", 0.93, { stroke: "#141711", "stroke-width": 0.35 }),
+          Srect(-5.45, -5.35, 10.6, 0.65, "#666a60", 0.15),
+          Srect(-5.5, -4, 2.3, 6.3, "#242721", 0.42),
+          bolt(-4.63, -3.7, 0.6, true),
+          bolt(4.3, 2.9, 0.66, true),
+          svgTag("ellipse", {
+            id: "tipShadow",
+            cx: 1,
+            cy: axle + 0.6,
+            rx: 1.7,
+            ry: 0.47,
+            fill: "#373b32",
+            opacity: ".27",
+          })
+        );
+        const pen =
+          Srect(-1.26, -10.6, 2.58, 12.6, "url(#penTube)", 0.7, { stroke: "#565b51", "stroke-width": 0.22 }) +
+          Srect(-0.41, -9.85, 0.63, 7.55, "#31509b", 0.21) +
+          Srect(-0.9, -9.5, 0.27, 7.8, "#f8fbf8", 0.1) +
+          Srect(-1.25, -10.9, 2.53, 1.45, "#373c35", 0.45) +
+          Spath(
+            "M .72 -10.24 Q 1.85 -10.35 1.9 -9.52 L 2.03 -4.88 Q 1.98 -4.3 1.46 -4.24 L 1.24 -4.37 1.33 -9.18 .70 -9.28 Z",
+            "#d93025",
+            { stroke: "#9e2b23", "stroke-width": 0.12 }
+          ) +
+          Srect(-1.33, 1.2, 2.7, 3.35, "url(#penMetal)", 0.3) +
+          Spath(
+            "M -1.28 4.21 L 1.29 4.21 .29 " + (axle - 0.68) + " -.23 " + (axle - 0.68) + " Z",
+            "url(#penMetal)",
+            { stroke: "#656a60", "stroke-width": 0.15 }
+          ) +
+          Spath(
+            "M -.24 " + (axle - 0.84) + " L .28 " + (axle - 0.84) + " .09 " + axle + " -.08 " + axle + " Z",
+            INK
+          );
+        carriage.push(
+          G("penLift", pen),
+          Srect(-2.32, -2.6, 4.73, 3.55, "url(#darkCase)", 0.69, { stroke: "#191c16", "stroke-width": 0.17 }),
+          Srect(-1.94, -2.05, 3.85, 0.5, "#7e8378", 0.2),
+          Srect(-1.8, -0.25, 3.65, 0.43, "#1b1e18", 0.12),
+          Sline(3.5, -3.6, 4.8, -3.6, "#a4a89c", 0.25),
+          Sline(3.5, -2.75, 4.8, -2.75, "#a4a89c", 0.25)
+        );
+        beam.push(G("carriage", carriage.join("")));
+        mechanism.innerHTML = G("beam", beam.join(""));
+        return {
+          axle,
+          xL,
+          xR,
+          beam: $("beam"),
+          carriage: $("carriage"),
+          pen: $("penLift"),
+          shadow: $("tipShadow"),
+          cable: $("cable"),
+          shine: $("cableShine"),
+        };
+      }
+      function drawMachine(pose) {
+        const m = machineParts,
+          g = art.g,
+          x = g.left + pose.x,
+          y = g.top + pose.y - m.axle,
+          lift = pose.lift;
+        m.beam.setAttribute("transform", "translate(0 " + y.toFixed(3) + ")");
+        m.carriage.setAttribute("transform", "translate(" + x.toFixed(3) + " 0)");
+        m.pen.setAttribute(
+          "transform",
+          "translate(" + (0.47 * lift).toFixed(3) + " " + (-2.75 * lift).toFixed(3) + ")"
+        );
+        m.shadow.setAttribute("cx", (0.2 + 1.1 * lift).toFixed(2));
+        m.shadow.setAttribute("cy", (m.axle + 0.2 + 0.65 * lift).toFixed(2));
+        m.shadow.setAttribute("opacity", (0.18 + 0.13 * lift).toFixed(2));
+        const anchor = m.xL + 2,
+          loop = Math.min(g.small ? 9 : 16, Math.max(4.3, (m.xR - x) * 0.72));
+        const arch = g.small ? 3.9 : 6.5,
+          join = Math.max(anchor + 2, x - loop * 0.86);
+        const cable =
+          "M " +
+          anchor +
+          " -4.6 C " +
+          (anchor + 3) +
+          " -7.1 " +
+          (join - 4) +
+          " -3.9 " +
+          join +
+          " -4.5 S " +
+          (x + loop * 0.8) +
+          " -3.4 " +
+          (x + loop) +
+          " -6.0 C " +
+          (x + loop * 1.22) +
+          " " +
+          (-6.4 - arch) +
+          " " +
+          (x + loop * 0.22) +
+          " " +
+          (-7.5 - arch) +
+          " " +
+          (x + 3.35) +
+          " -5.1";
+        m.cable.setAttribute("d", cable);
+        m.shine.setAttribute("d", cable);
+        m.shine.setAttribute("transform", "translate(0 -.21)");
+      }
+      function simplify(points, tolerance = 0.03) {
+        if (points.length < 3) return points.slice();
+        const keep = new Uint8Array(points.length),
+          last = points.length - 1,
+          stack = [0, last];
+        keep[0] = keep[last] = 1;
+        while (stack.length) {
+          const right = stack.pop(),
+            left = stack.pop(),
+            a = points[left],
+            b = points[right],
+            dx = b[0] - a[0],
+            dy = b[1] - a[1],
+            ll = dx * dx + dy * dy;
+          let high = tolerance * tolerance,
+            split = 0;
+          for (let i = left + 1; i < right; i++) {
+            const q = points[i],
+              u = ll ? clamp(((q[0] - a[0]) * dx + (q[1] - a[1]) * dy) / ll) : 0;
+            const ex = q[0] - a[0] - dx * u,
+              ey = q[1] - a[1] - dy * u,
+              err = ex * ex + ey * ey;
+            if (err > high) {
+              high = err;
+              split = i;
+            }
+          }
+          if (split) {
+            keep[split] = 1;
+            stack.push(left, split, split, right);
+          }
+        }
+        return points.filter((_, i) => keep[i]);
+      }
+      // 带加减速段的梯形速度曲线。短线段的峰值由两端速度和可用距离共同决定。
+      function ramp(length, v0, v1, maximum, accel) {
+        const peak = Math.min(maximum, Math.sqrt(Math.max(0, accel * length + (v0 * v0 + v1 * v1) * 0.5)));
+        const ta = Math.max(0, (peak - v0) / accel),
+          td = Math.max(0, (peak - v1) / accel);
+        const da = (v0 + peak) * ta * 0.5,
+          dd = (v1 + peak) * td * 0.5;
+        const cruise = Math.max(0, length - da - dd),
+          tc = peak > 0 ? cruise / peak : 0;
+        return { length, v0, v1, peak, accel, ta, tc, td, da, cruise, time: ta + tc + td };
+      }
+      function rampAt(r, t) {
+        t = clamp(t, 0, r.time);
+        if (t <= r.ta) return [r.v0 * t + 0.5 * r.accel * t * t, r.v0 + r.accel * t];
+        t -= r.ta;
+        if (t <= r.tc) return [r.da + r.peak * t, r.peak];
+        t -= r.tc;
+        return [
+          Math.min(r.length, r.da + r.cruise + r.peak * t - 0.5 * r.accel * t * t),
+          Math.max(0, r.peak - r.accel * t),
+        ];
+      }
+      function compileStroke(p, seed) {
+        if (p.segments) return;
+        const random = rng(seed),
+          clean = simplify(p.points),
+          pts = [clean[0]],
+          wave = p.kind === "type" ? 0.006 : p.kind === "frame" ? 0.011 : 0.026;
+        for (let i = 1; i < clean.length; i++) {
+          const a = pts.at(-1),
+            b = clean[i],
+            dx = b[0] - a[0],
+            dy = b[1] - a[1],
+            len = Math.hypot(dx, dy);
+          if (len < 0.002) continue;
+          const n = Math.ceil(len / (p.kind === "frame" ? 7.6 : 4.2));
+          for (let j = 1; j < n; j++) {
+            const shift = (random() * 2 - 1) * wave;
+            pts.push([a[0] + (dx * j) / n - (dy / len) * shift, a[1] + (dy * j) / n + (dx / len) * shift]);
+          }
+          pts.push(b);
+        }
+        const n = pts.length,
+          v = new Float64Array(n),
+          dist = new Float64Array(n),
+          feed = p.feed,
+          accel = feed * 32;
+        for (let i = 1; i < n; i++) dist[i] = lengthBetween(pts[i - 1], pts[i]);
+        for (let i = 1; i < n - 1; i++) {
+          const prev = pts[i - 1],
+            curr = pts[i],
+            next = pts[i + 1];
+          const dot = clamp(
+            ((curr[0] - prev[0]) * (next[0] - curr[0]) + (curr[1] - prev[1]) * (next[1] - curr[1])) /
+              (dist[i] * dist[i + 1]),
+            -1,
+            1
+          );
+          v[i] = feed * (0.12 + 0.88 * ((1 + dot) / 2) ** 2);
+        }
+        for (let i = 1; i < n; i++) v[i] = Math.min(v[i], Math.sqrt(v[i - 1] ** 2 + 2 * accel * dist[i]));
+        for (let i = n - 2; i >= 0; i--)
+          v[i] = Math.min(v[i], Math.sqrt(v[i + 1] ** 2 + 2 * accel * dist[i + 1]));
+        const seg = [];
+        let time = 0,
+          length = 0;
+        for (let i = 1; i < n; i++) {
+          const r = ramp(dist[i], v[i - 1], v[i], feed, accel);
+          r.startTime = time;
+          r.startLength = length;
+          r.tone = Math.min(4, Math.round((4 * r.length) / Math.max(0.000001, r.time * feed)));
+          seg.push(r);
+          time += r.time;
+          length += r.length;
+        }
+        p.points = pts;
+        let minX = pts[0][0],
+          maxX = minX,
+          minY = pts[0][1],
+          maxY = minY;
+        for (const [x, y] of pts) {
+          minX = Math.min(minX, x);
+          maxX = Math.max(maxX, x);
+          minY = Math.min(minY, y);
+          maxY = Math.max(maxY, y);
+        }
+        p.inkBounds = [minX - 2, minY - 2, maxX - minX + 4, maxY - minY + 4];
+        p.segments = seg;
+        p.length = length;
+        p.time = time;
+        p.alpha *= 0.94 + 0.06 * random();
+      }
+      function nearestOrder(paths, start) {
+        const open = paths.slice(),
+          out = [];
+        let here = start;
+        while (open.length) {
+          let best = Infinity,
+            idx = 0,
+            flip = false;
+          for (let i = 0; i < open.length; i++) {
+            const pts = open[i].points,
+              a = pts[0],
+              b = pts.at(-1),
+              d0 = (a[0] - here[0]) ** 2 + (a[1] - here[1]) ** 2,
+              d1 = (b[0] - here[0]) ** 2 + (b[1] - here[1]) ** 2;
+            if (d0 < best) {
+              best = d0;
+              idx = i;
+              flip = false;
+            }
+            if (d1 < best) {
+              best = d1;
+              idx = i;
+              flip = true;
+            }
+          }
+          const p = open[idx];
+          open[idx] = open.at(-1);
+          open.pop();
+          if (flip) p.points.reverse();
+          here = p.points.at(-1);
+          out.push(p);
+        }
+        return out;
+      }
+      function prepareArt(a) {
+        let here = [0, 0],
+          index = 0;
+        for (const l of a.layers) {
+          const paths = [];
+          for (const b of l.batches) {
+            const sorted = b.sort ? nearestOrder(b.paths, here) : b.paths;
+            for (const p of sorted) {
+              p.layer = l;
+              compileStroke(p, a.seed + Math.imul(++index, 2131));
+              paths.push(p);
+              here = p.points.at(-1);
+            }
+          }
+          l.paths = paths;
+        }
+      }
+      function partialStroke(p, time) {
+        const seg = p.segments;
+        let lo = 0,
+          hi = seg.length - 1;
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1;
+          if (seg[mid].startTime + seg[mid].time <= time) lo = mid + 1;
+          else hi = mid;
+        }
+        const s = seg[lo],
+          [distance, velocity] = rampAt(s, time - s.startTime),
+          f = clamp(distance / s.length),
+          a = p.points[lo],
+          b = p.points[lo + 1];
+        return {
+          index: lo,
+          f,
+          x: mix(a[0], b[0], f),
+          y: mix(a[1], b[1], f),
+          vx: (velocity * (b[0] - a[0])) / s.length,
+          vy: (velocity * (b[1] - a[1])) / s.length,
+          drawn: s.startLength + distance,
+        };
+      }
+      function paint(ctx, p, part = null) {
+        const s = p.segments,
+          pts = p.points,
+          limit = part ? part.index : s.length - 1;
+        if (limit < 0) return;
+        ctx.strokeStyle = INK;
+        ctx.fillStyle = INK;
+        ctx.lineWidth = p.width;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.globalAlpha = Math.min(1, p.alpha * 1.04);
+        ctx.beginPath();
+        ctx.arc(pts[0][0], pts[0][1], p.width * 0.61 + 0.013, 0, TAU);
+        ctx.fill();
+        let tone = -1;
+        for (let i = 0; i <= limit; i++) {
+          if (tone !== s[i].tone) {
+            if (tone !== -1) ctx.stroke();
+            tone = s[i].tone;
+            ctx.globalAlpha = p.alpha * (1 - (0.136 * tone) / 4);
+            ctx.beginPath();
+            ctx.moveTo(pts[i][0], pts[i][1]);
+          }
+          if (part && i === limit) ctx.lineTo(part.x, part.y);
+          else ctx.lineTo(pts[i + 1][0], pts[i + 1][1]);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      function trip(from, to, rapid = false) {
+        const len = lengthBetween(from, to);
+        return { from, to, profile: ramp(len, 0, 0, rapid ? 510 : 344, rapid ? 11900 : 8300) };
+      }
+      const PARK = [1.4, -2.6];
+      function strokeJob(p, from) {
+        const frame = p.kind === "frame",
+          lower = frame ? 0.043 : 0.065,
+          raise = frame ? 0.046 : 0.069;
+        const move = trip(from, p.points[0], frame),
+          travel = move.profile.time,
+          start = travel + lower,
+          raised = start + p.time;
+        return {
+          p,
+          kind: "stroke",
+          from,
+          end: p.points.at(-1),
+          move,
+          travel,
+          lower,
+          raise,
+          start,
+          raised,
+          duration: raised + raise,
+        };
+      }
+      function moveJob(from, end, kind, minTime = 0) {
+        const move = trip(from, end);
+        return { kind, from, end, move, duration: Math.max(move.profile.time, minTime) };
+      }
+      function getJobs(a) {
+        const jobs = [
+          moveJob([7, 4.5], [-0.48, -0.28], "home", 0.65),
+          moveJob([-0.48, -0.28], [0.16, 0.07], "home", 0.18),
+          moveJob([0.16, 0.07], [0, 0], "home", 0.17),
+        ];
+        let from = [0, 0];
+        for (const l of a.layers)
+          for (const p of l.paths) {
+            const j = strokeJob(p, from);
+            jobs.push(j);
+            from = j.end;
+          }
+        jobs.push(moveJob(from, PARK, "park"));
+        return jobs;
+      }
+      function travelPose(move, time) {
+        const r = move.profile,
+          [dist, speed] = rampAt(r, time),
+          f = r.length ? clamp(dist / r.length) : 1;
+        const dx = move.to[0] - move.from[0],
+          dy = move.to[1] - move.from[1];
+        return {
+          x: mix(move.from[0], move.to[0], f),
+          y: mix(move.from[1], move.to[1], f),
+          vx: r.length ? (speed * dx) / r.length : 0,
+          vy: r.length ? (speed * dy) / r.length : 0,
+          air: dist,
+          drawn: 0,
+          lift: 1,
+          pen: "抬笔",
+        };
+      }
+      function poseAt(job, t) {
+        if (!job) return { x: PARK[0], y: PARK[1], lift: 1, air: 0, drawn: 0, vx: 0, vy: 0, pen: "抬笔" };
+        if (!job.p) {
+          const ratio = job.duration ? job.move.profile.time / job.duration : 0;
+          const pos = travelPose(job.move, t * ratio);
+          pos.vx *= ratio;
+          pos.vy *= ratio;
+          pos.pen = job.kind === "home" ? "归零" : "抬笔";
+          return pos;
+        }
+        if (t < job.travel) return travelPose(job.move, t);
+        const p = job.p,
+          first = p.points[0],
+          air = job.move.profile.length;
+        if (t < job.start)
+          return {
+            x: first[0],
+            y: first[1],
+            lift: 1 - smoother(clamp((t - job.travel) / job.lower)),
+            air,
+            drawn: 0,
+            vx: 0,
+            vy: 0,
+            pen: "抬笔",
+          };
+        if (t < job.raised) {
+          const part = partialStroke(p, t - job.start);
+          return {
+            x: part.x,
+            y: part.y,
+            vx: part.vx,
+            vy: part.vy,
+            lift: 0,
+            air,
+            drawn: part.drawn,
+            part,
+            pen: "落笔",
+          };
+        }
+        return {
+          x: job.end[0],
+          y: job.end[1],
+          lift: smoother(clamp((t - job.raised) / job.raise)),
+          air,
+          drawn: p.length,
+          vx: 0,
+          vy: 0,
+          full: true,
+          pen: "抬笔",
+        };
+      }
+      class MotorSound {
+        constructor() {
+          this.enabled = false;
+          this.ctx = null;
+          this.axes = [];
+          this.nextClick = 0;
+        }
+        async toggle() {
+          if (this.enabled) {
+            this.enabled = false;
+            this.rest();
+            return;
+          }
+          const Context = window.AudioContext || window.webkitAudioContext;
+          if (!Context) throw new Error("声音不可用");
+          if (!this.ctx) {
+            this.ctx = new Context();
+            const c = this.ctx;
+            this.bus = c.createGain();
+            this.bus.gain.value = 0.48;
+            this.bus.connect(c.destination);
+            this.axes = ["triangle", "sawtooth"].map((type, i) => {
+              const osc = c.createOscillator(),
+                filter = c.createBiquadFilter(),
+                gain = c.createGain();
+              osc.type = type;
+              osc.frequency.value = 48;
+              filter.type = "lowpass";
+              filter.frequency.value = i ? 540 : 860;
+              gain.gain.value = 0;
+              osc.connect(filter);
+              filter.connect(gain);
+              gain.connect(this.bus);
+              osc.start();
+              return { osc, gain };
+            });
+            this.noise = c.createBuffer(1, Math.ceil(c.sampleRate * 0.035), c.sampleRate);
+            const data = this.noise.getChannelData(0),
+              rand = rng(317);
+            for (let i = 0; i < data.length; i++)
+              data[i] = (rand() * 2 - 1) * Math.exp(-i / (data.length * 0.17));
+          }
+          await this.ctx.resume();
+          this.enabled = true;
+        }
+        rest() {
+          if (this.ctx)
+            for (const a of this.axes) a.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.018);
+        }
+        drive(x, y) {
+          if (!this.enabled) return;
+          const now = this.ctx.currentTime;
+          [x, y].forEach((v, i) => {
+            const a = this.axes[i],
+              speed = Math.abs(v);
+            a.osc.frequency.setTargetAtTime(38 + i * 13 + Math.min(610, Math.sqrt(speed) * 13.7), now, 0.024);
+            a.gain.gain.setTargetAtTime(
+              speed < 0.25 ? 0 : Math.min(i ? 0.031 : 0.044, 0.011 + Math.sqrt(speed) * 0.00098),
+              now,
+              0.019
+            );
+          });
+        }
+        click(down) {
+          if (!this.enabled) return;
+          const c = this.ctx,
+            now = c.currentTime;
+          if (now + 0.012 < this.nextClick) return;
+          const t = Math.max(now, this.nextClick);
+          this.nextClick = t + 0.013;
+          const src = c.createBufferSource(),
+            filter = c.createBiquadFilter(),
+            gain = c.createGain();
+          src.buffer = this.noise;
+          filter.type = "bandpass";
+          filter.frequency.value = down ? 1220 : 1960;
+          filter.Q.value = 0.84;
+          gain.gain.value = down ? 0.68 : 0.44;
+          src.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.bus);
+          src.onended = () => {
+            src.disconnect();
+            filter.disconnect();
+            gain.disconnect();
+          };
+          src.start(t);
+        }
+      }
+      const motors = new MotorSound(),
+        speeds = [1, 2, 4, 8, 16, 32, 64];
+      let rate = 2,
+        art,
+        machineParts,
+        run,
+        back,
+        wet,
+        wetBounds = null,
+        pixelRatio = 0,
+        quiet = mediaQuiet.matches,
+        shown = 0;
+      let changing = false,
+        finishAfterFeed = false,
+        paused = false,
+        raf = 0,
+        lastTick = 0,
+        lastReadout = -Infinity,
+        lastAudio = 0;
+      let feedAnimation = null,
+        feedVersion = 0,
+        serial = 417,
+        seed = 0,
+        recentSeeds = new Set();
+      function freshSeed() {
+        let v;
+        do {
+          v = globalThis.crypto?.getRandomValues
+            ? crypto.getRandomValues(new Uint16Array(1))[0]
+            : Math.floor(Math.random() * 65536);
+        } while (recentSeeds.has(v));
+        if (recentSeeds.size >= 4096) recentSeeds.clear();
+        recentSeeds.add(v);
+        return v;
+      }
+      function makeRun(jobs) {
+        return {
+          jobs,
+          i: 0,
+          t: 0,
+          elapsed: 0,
+          ink: 0,
+          air: 0,
+          total: jobs.reduce((n, j) => n + j.duration, 0),
+        };
+      }
+      function recount() {
+        run.elapsed = 0;
+        run.ink = 0;
+        run.air = 0;
+        run.total = 0;
+        for (const l of art.layers) l.done = 0;
+        for (let i = 0; i < run.jobs.length; i++) {
+          const j = run.jobs[i];
+          run.total += j.duration;
+          if (i >= run.i) continue;
+          run.elapsed += j.duration;
+          run.air += j.move.profile.length;
+          if (j.p) {
+            run.ink += j.p.length;
+            j.p.layer.done++;
+          }
+        }
+      }
+      function erase(ctx) {
+        if (!ctx) return;
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.restore();
+      }
+      function paintHistory() {
+        erase(back);
+        erase(wet);
+        wetBounds = null;
+        if (quiet) {
+          for (const l of art.layers.slice(0, shown)) for (const p of l.paths) paint(back, p);
+        } else
+          for (let i = 0; i < run.i; i++) {
+            const p = run.jobs[i].p;
+            if (p) paint(back, p);
+          }
+      }
+      function fitCanvases(force = false) {
+        const sheet = $("sheet"),
+          ratio = Math.min(3, Math.max(1.5, window.devicePixelRatio || 1)),
+          w = Math.max(1, Math.round(sheet.clientWidth * ratio)),
+          h = Math.max(1, Math.round(sheet.clientHeight * ratio));
+        if (!force && $("ink").width === w && $("ink").height === h) return;
+        pixelRatio = ratio;
+        // 两层都采用一致的栅格化路径，逐笔累积与一次成图保留相同的抗锯齿边缘。
+        for (const id of ["ink", "wetInk"]) {
+          const c = $(id);
+          c.width = w;
+          c.height = h;
+          const ctx = c.getContext("2d", { willReadFrequently: true });
+          ctx.setTransform(w / art.g.w, 0, 0, h / art.g.h, 0, 0);
+          if (id === "ink") back = ctx;
+          else wet = ctx;
+        }
+        paintHistory();
+        drawProof();
+      }
+      function drawProof() {
+        const c = $("proof"),
+          b = art.bounds,
+          iw = b.x1 - b.x0,
+          ih = b.y1 - b.y0;
+        if (!c.clientWidth) return;
+        const aspect = (iw + 8) / (ih + 8);
+        c.style.aspectRatio = String(aspect);
+        const w = Math.round(c.clientWidth * Math.max(pixelRatio, 2)),
+          h = Math.round(w / aspect);
+        c.width = w;
+        c.height = h;
+        const ctx = c.getContext("2d"),
+          sc = w / (iw + 8);
+        ctx.setTransform(sc, 0, 0, sc, (-b.x0 + 4) * sc, (-b.y0 + 4) * sc);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = INK;
+        for (const l of art.layers) {
+          if (l === art.frame || l === art.label) continue;
+          for (const p of l.paths) {
+            ctx.globalAlpha = Math.min(1, p.alpha * 1.06);
+            ctx.lineWidth = p.width * (l.id === "outline" ? 1.7 : 1.25);
+            ctx.beginPath();
+            p.points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+            ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = 0.7;
+        ctx.lineWidth = 0.46;
+        for (const [x, y, sx, sy] of [
+          [b.x0, b.y0, 1, 1],
+          [b.x1, b.y0, -1, 1],
+          [b.x0, b.y1, 1, -1],
+          [b.x1, b.y1, -1, -1],
+        ]) {
+          ctx.beginPath();
+          ctx.moveTo(x - 1.6 * sx, y + 3 * sy);
+          ctx.lineTo(x - 1.6 * sx, y - 1.6 * sy);
+          ctx.lineTo(x + 3 * sx, y - 1.6 * sy);
+          ctx.stroke();
+        }
+      }
+      function buildLedger() {
+        $("serial").textContent = "№ " + pad(art.serial, 4);
+        $("seedLabel").textContent = "种子 " + art.seedText;
+        $("layers").replaceChildren();
+        for (const l of art.layers) {
+          const row = document.createElement("li");
+          row.className = "layer-row";
+          const check = document.createElement("i");
+          check.className = "check";
+          check.setAttribute("aria-hidden", "true");
+          const name = document.createElement("span");
+          name.className = "layer-name";
+          name.textContent = l.name;
+          const n = document.createElement("span");
+          n.className = "layer-count";
+          n.textContent = formatCount(l.paths.length);
+          row.append(check, name, n);
+          $("layers").append(row);
+          l.row = row;
+        }
+        $("totalPaths").textContent = formatCount(art.layers.reduce((n, l) => n + l.paths.length, 0)) + " 笔";
+      }
+      function reducedTotals() {
+        let ink = 0,
+          air = 0,
+          time = 0;
+        const visible = new Set(art.layers.slice(0, shown));
+        for (const j of run.jobs) {
+          if (
+            (j.p && visible.has(j.p.layer)) ||
+            (!j.p && (j.kind === "home" ? shown > 0 : shown === art.layers.length))
+          ) {
+            ink += j.p?.length || 0;
+            air += j.move.profile.length;
+            time += j.duration;
+          }
+        }
+        return { ink, air, time };
+      }
+      function display(pose) {
+        const job = run.jobs[run.i],
+          complete = !job,
+          view = quiet && shown < art.layers.length;
+        const state = changing
+          ? "正在换纸"
+          : quiet
+            ? view
+              ? "分层查看"
+              : "绘制完成"
+            : complete
+              ? "绘制完成"
+              : paused
+                ? "已暂停"
+                : job.kind === "home"
+                  ? "正在归零"
+                  : "绘制中";
+        $("machineState").textContent = state;
+        $("led").classList.toggle("rest", paused || complete || changing);
+        $("penState").textContent = changing ? "换纸" : view ? "分层" : pose.pen;
+        $("pause").setAttribute("aria-pressed", String(paused));
+        $("pause").setAttribute("aria-label", paused ? "继续" : "暂停");
+        $("pauseLabel").textContent = paused ? "继续" : "暂停";
+        $("pause").disabled = quiet || complete || changing;
+        let ink = run.ink + pose.drawn,
+          air = run.air + pose.air,
+          time = run.elapsed + run.t;
+        if (view) {
+          const m = reducedTotals();
+          ink = m.ink;
+          air = m.air;
+          time = m.time;
+        }
+        const pct =
+          !view && complete ? 100 : Math.min(99, Math.floor((100 * time) / Math.max(0.0001, run.total)));
+        const sec = quiet ? 0 : Math.ceil(Math.max(0, run.total - time) / speeds[rate]);
+        $("timeLeft").textContent = pad(Math.floor(sec / 60), 2) + ":" + pad(sec % 60, 2);
+        $("coords").textContent =
+          "X " + pose.x.toFixed(1).padStart(5, " ") + "   Y " + pose.y.toFixed(1).padStart(5, " ");
+        $("percent").textContent = pct + "%";
+        $("fill").style.width = pct + "%";
+        $("progress").setAttribute("aria-valuenow", pct);
+        $("drawMeters").textContent = (ink / 1000).toFixed(2);
+        $("airMeters").textContent = (air / 1000).toFixed(2);
+        for (const [i, l] of art.layers.entries()) {
+          const done = quiet ? i < shown : l.done === l.paths.length,
+            active = !quiet && job?.p?.layer === l;
+          l.row.classList.toggle("done", done);
+          l.row.classList.toggle("active", active);
+          if (active) l.row.setAttribute("aria-current", "step");
+          else l.row.removeAttribute("aria-current");
+          l.row.setAttribute(
+            "aria-label",
+            l.name + "，" + l.paths.length + " 笔，" + (done ? "已完成" : active ? "绘制中" : "待绘制")
+          );
+        }
+        $("layerControls").hidden = !quiet;
+        if (quiet) {
+          $("previous").disabled = shown <= 0;
+          $("next").disabled = shown >= art.layers.length;
+          $("layerPosition").textContent = shown + " / " + art.layers.length;
+        }
+      }
+      function render(force = false, now = performance.now()) {
+        const job = run.jobs[run.i],
+          pose = poseAt(quiet ? null : job, run.t);
+        if (wetBounds) {
+          wet.clearRect(...wetBounds);
+          wetBounds = null;
+        }
+        if (!quiet && job?.p && (pose.part || pose.full)) {
+          paint(wet, job.p, pose.part);
+          wetBounds = job.p.inkBounds;
+        }
+        if (!changing) drawMachine(pose);
+        if (force || now - lastReadout > 90) {
+          display(pose);
+          lastReadout = now;
+        }
+        if (motors.enabled && !paused && !changing && !quiet && now - lastAudio > 18) {
+          motors.drive(pose.vx * speeds[rate], pose.vy * speeds[rate]);
+          lastAudio = now;
+        }
+      }
+      function halt() {
+        if (raf) cancelAnimationFrame(raf);
+        raf = 0;
+        lastTick = 0;
+        motors.rest();
+      }
+      function startClock() {
+        if (!raf && !quiet && !paused && !changing && !document.hidden && run.i < run.jobs.length) {
+          lastTick = performance.now();
+          raf = requestAnimationFrame(tick);
+        }
+      }
+      function tick(now) {
+        raf = 0;
+        if (paused || changing || quiet || document.hidden) return;
+        let budget = Math.max(0, Math.min(0.12, (now - lastTick) / 1000)) * speeds[rate];
+        lastTick = now;
+        while (budget > 1e-9 && run.i < run.jobs.length) {
+          const j = run.jobs[run.i],
+            step = Math.min(budget, j.duration - run.t),
+            next = run.t + step;
+          if (j.p && motors.enabled) {
+            if (run.t < j.start && next >= j.start) motors.click(true);
+            if (run.t < j.raised && next >= j.raised) motors.click(false);
+          }
+          run.t = next;
+          budget -= step;
+          if (run.t + 1e-8 < j.duration) break;
+          if (j.p) {
+            paint(back, j.p);
+            j.p.layer.done++;
+            run.ink += j.p.length;
+          }
+          run.air += j.move.profile.length;
+          run.elapsed += j.duration;
+          run.i++;
+          run.t = 0;
+        }
+        const done = run.i === run.jobs.length;
+        render(done, now);
+        if (done) {
+          motors.rest();
+          $("announce").textContent = "山水第 " + pad(art.serial, 4) + " 号绘制完成。";
+        } else raf = requestAnimationFrame(tick);
+      }
+      function finishDrawing() {
+        if (changing) {
+          finishAfterFeed = true;
+          return;
+        }
+        halt();
+        paused = false;
+        run.i = run.jobs.length;
+        run.t = 0;
+        shown = art.layers.length;
+        recount();
+        paintHistory();
+        render(true);
+        motors.rest();
+        $("announce").textContent = "山水第 " + pad(art.serial, 4) + " 号绘制完成。";
+      }
+      function pauseDrawing() {
+        if (quiet || changing || run.i >= run.jobs.length) return;
+        paused = !paused;
+        if (paused) halt();
+        else startClock();
+        render(true);
+        $("announce").textContent = paused ? "绘制已暂停。" : "继续绘制。";
+      }
+      function installBird(u, v, update = true) {
+        const w = art.g.w,
+          h = art.g.h,
+          phase = art.birds.length + art.seed * 0.006;
+        const x = clamp(u * w, 2.4, w - 2.4),
+          y = clamp(v * h, 1.4, h - 1.4);
+        art.birds.push({ u, v });
+        let l = art.layers.find((item) => item.id === "visitors");
+        if (!l) {
+          l = { id: "visitors", name: "补绘飞鸟", batches: [], paths: [], done: 0 };
+          art.layers.push(l);
+        }
+        const bird = flyingBird(x, y, 3.5 + 0.72 * Math.sin(phase), phase);
+        bird.layer = l;
+        compileStroke(bird, art.seed + art.birds.length * 3527);
+        l.paths.push(bird);
+        const end = run.i >= run.jobs.length;
+        if (end) {
+          const from = run.jobs.at(-1)?.end || PARK,
+            j = strokeJob(bird, from);
+          run.jobs.push(j, moveJob(j.end, PARK, "park"));
+        } else {
+          const lock = run.i + 1,
+            tail = run.jobs.slice(lock);
+          const signing = art.label.done > 0 || run.jobs[run.i]?.p?.layer === art.label;
+          // 还未落笔的图签可重新排字。签好名后的飞鸟由清单另行记录，纸面保留原始墨迹。
+          if (!signing) {
+            const pos = tail.findIndex((j) => j.p?.layer === art.label);
+            if (pos >= 0) {
+              const n = art.label.paths.length;
+              setCaption(art, art.birds.length);
+              for (const [i, p] of art.label.paths.entries()) {
+                p.layer = art.label;
+                compileStroke(p, art.seed + 81731 + i);
+              }
+              tail.splice(pos, n, ...art.label.paths.map((p) => ({ p })));
+            }
+          }
+          let insert = 0;
+          while (
+            insert < tail.length &&
+            (tail[insert].kind === "home" || [art.frame, art.sky, l].includes(tail[insert].p?.layer))
+          )
+            insert++;
+          tail.splice(insert, 0, { p: bird });
+          if (tail.at(-1)?.kind !== "park") tail.push({ kind: "park", end: PARK });
+          run.jobs.length = lock;
+          let from = run.jobs.at(-1).end;
+          for (const old of tail) {
+            const j = old.p
+              ? strokeJob(old.p, from)
+              : moveJob(from, old.end, old.kind, old.kind === "home" ? old.duration : 0);
+            run.jobs.push(j);
+            from = j.end;
+          }
+        }
+        recount();
+        if (!update) return;
+        buildLedger();
+        drawProof();
+        if (quiet) {
+          finishDrawing();
+        } else {
+          render(true);
+          startClock();
+        }
+        $("announce").textContent = quiet ? "已补绘一只飞鸟。" : "一只飞鸟已加入待绘队列。";
+      }
+      function loadPaper(number, code, g) {
+        halt();
+        serial = number;
+        seed = code;
+        paused = false;
+        art = landscape(code, number, g);
+        prepareArt(art);
+        machineParts = buildMachine(g);
+        run = makeRun(getJobs(art));
+        shown = art.layers.length;
+        buildLedger();
+        fitCanvases(true);
+        render(true);
+      }
+      function inspectLayer(delta) {
+        if (!quiet || changing) return;
+        shown = clamp(shown + delta, 0, art.layers.length);
+        paintHistory();
+        render(true);
+        $("announce").textContent = shown ? "已显示至" + art.layers[shown - 1].name + "。" : "空白画纸。";
+      }
+      function setRate(index) {
+        rate = clamp(index, 0, speeds.length - 1);
+        const value = speeds[rate],
+          dial = $("dial");
+        dial.style.setProperty("--angle", -129 + rate * 43 + "deg");
+        dial.setAttribute("aria-valuenow", rate + 1);
+        dial.setAttribute("aria-valuetext", value + " 倍速");
+        $("rate").textContent = value + "×";
+        document
+          .querySelectorAll(".detent")
+          .forEach((b, i) => b.setAttribute("aria-pressed", String(i === rate)));
+        if (run) render(true);
+      }
+      function buildDial() {
+        const scale = [],
+          box = $("dialBox"),
+          dial = $("dial"),
+          cx = 46.5,
+          cy = 42.5;
+        for (let j = 0; j <= 24; j++) {
+          const angle = ((-129 + (j * 258) / 24) * Math.PI) / 180,
+            r = j % 4 === 0 ? 29 : 26.5;
+          scale.push(
+            Sline(
+              cx + Math.sin(angle) * 24.3,
+              cy - Math.cos(angle) * 24.3,
+              cx + Math.sin(angle) * r,
+              cy - Math.cos(angle) * r,
+              "#686c62",
+              j % 4 === 0 ? 1.3 : 0.7
+            )
+          );
+        }
+        $("dialScale").innerHTML = scale.join("");
+        speeds.forEach((v, i) => {
+          const a = ((-129 + i * 43) * Math.PI) / 180,
+            b = document.createElement("button");
+          b.type = "button";
+          b.className = "detent";
+          b.textContent = v;
+          b.style.left = cx + Math.sin(a) * 36 + "px";
+          b.style.top = cy - Math.cos(a) * 35 + "px";
+          b.setAttribute("aria-label", v + " 倍速");
+          b.addEventListener("click", () => setRate(i));
+          box.append(b);
+        });
+        let drag = null;
+        dial.addEventListener("pointerdown", (e) => {
+          if (e.button !== 0) return;
+          e.preventDefault();
+          dial.focus({ preventScroll: true });
+          drag = { id: e.pointerId, x: e.clientX, y: e.clientY, rate, moved: false };
+          dial.setPointerCapture(e.pointerId);
+        });
+        dial.addEventListener("pointermove", (e) => {
+          if (!drag || drag.id !== e.pointerId) return;
+          const d = drag.y - e.clientY + (e.clientX - drag.x) * 0.67;
+          if (Math.abs(d) > 4) drag.moved = true;
+          if (drag.moved) setRate(drag.rate + Math.round(d / 12));
+        });
+        dial.addEventListener("pointerup", (e) => {
+          if (!drag || drag.id !== e.pointerId) return;
+          if (!drag.moved) {
+            const r = dial.getBoundingClientRect(),
+              dx = e.clientX - r.left - r.width / 2,
+              dy = e.clientY - r.top - r.height / 2;
+            if (Math.hypot(dx, dy) < r.width * 0.18) setRate((rate + 1) % 7);
+            else setRate(Math.round(((Math.atan2(dx, -dy) * 180) / Math.PI + 129) / 43));
+          }
+          drag = null;
+        });
+        dial.addEventListener("lostpointercapture", () => {
+          drag = null;
+        });
+        box.addEventListener(
+          "wheel",
+          (e) => {
+            e.preventDefault();
+            if (e.deltaY) setRate(rate - Math.sign(e.deltaY));
+          },
+          { passive: false }
+        );
+        dial.addEventListener("keydown", (e) => {
+          if (["ArrowRight", "ArrowUp", "ArrowLeft", "ArrowDown", "Home", "End"].includes(e.key)) {
+            e.preventDefault();
+            setRate(
+              e.key === "Home"
+                ? 0
+                : e.key === "End"
+                  ? 6
+                  : rate + (e.key === "ArrowRight" || e.key === "ArrowUp" ? 1 : -1)
+            );
+          }
+        });
+        setRate(2);
+      }
+      function grain() {
+        const c = document.createElement("canvas");
+        c.width = c.height = 112;
+        const ctx = c.getContext("2d"),
+          im = ctx.createImageData(112, 112),
+          random = rng(81241);
+        for (let i = 0; i < im.data.length; i += 4) {
+          const v = random() > 0.5 ? 255 : 0;
+          im.data[i] = im.data[i + 1] = im.data[i + 2] = v;
+          im.data[i + 3] = Math.floor(random() * 10);
+        }
+        ctx.putImageData(im, 0, 0);
+        document.documentElement.style.setProperty("--grain", "url(" + c.toDataURL() + ")");
+      }
+      let targetSheet = null;
+      function parkForFeed(version) {
+        const from = poseAt(run.jobs[run.i], run.t),
+          start = performance.now();
+        return new Promise((resolve) => {
+          function move(now) {
+            if (version !== feedVersion || quiet || document.hidden) {
+              resolve();
+              return;
+            }
+            const t = clamp((now - start) / 255),
+              f = smoother(clamp((t - 0.18) / 0.82));
+            drawMachine({
+              x: mix(from.x, PARK[0], f),
+              y: mix(from.y, PARK[1], f),
+              lift: mix(from.lift, 1, smoother(clamp(t / 0.22))),
+            });
+            if (t === 1) resolve();
+            else requestAnimationFrame(move);
+          }
+          requestAnimationFrame(move);
+        });
+      }
+      async function slidePaper(frames, options) {
+        const el = $("sheet");
+        if (!el.animate || quiet) return;
+        const ani = el.animate(frames, { ...options, fill: "both" });
+        feedAnimation = ani;
+        try {
+          await ani.finished;
+        } catch {}
+        if (feedAnimation === ani) {
+          el.style.transform = frames.at(-1).transform;
+          ani.cancel();
+          feedAnimation = null;
+        }
+      }
+      function settleFeed() {
+        ++feedVersion;
+        if (feedAnimation) {
+          const a = feedAnimation;
+          feedAnimation = null;
+          a.cancel();
+        }
+        $("sheet").style.transform = "";
+        changing = false;
+        $("machine").classList.remove("feeding");
+        $("machine").removeAttribute("aria-busy");
+        if (targetSheet) {
+          loadPaper(targetSheet.serial, targetSheet.seed, dimensions(mediaSmall.matches));
+          targetSheet = null;
+        }
+        if (quiet || finishAfterFeed) finishDrawing();
+        else {
+          render(true);
+          startClock();
+        }
+        finishAfterFeed = false;
+      }
+      async function changePaper() {
+        if (changing) return;
+        halt();
+        changing = true;
+        paused = false;
+        finishAfterFeed = false;
+        const version = ++feedVersion;
+        targetSheet = { serial: serial + 1, seed: freshSeed() };
+        $("machine").classList.add("feeding");
+        $("machine").setAttribute("aria-busy", "true");
+        display(poseAt(run.jobs[run.i], run.t));
+        if (quiet || document.hidden) {
+          settleFeed();
+          return;
+        }
+        await parkForFeed(version);
+        if (version !== feedVersion) return;
+        await slidePaper([{ transform: "translateX(0)" }, { transform: "translateX(116%)" }], {
+          duration: 450,
+          easing: "cubic-bezier(.51,.01,.82,.52)",
+        });
+        if (version !== feedVersion) return;
+        $("sheet").style.transform = "translateX(-116%)";
+        loadPaper(targetSheet.serial, targetSheet.seed, dimensions(mediaSmall.matches));
+        drawMachine({ x: PARK[0], y: PARK[1], lift: 1 });
+        await slidePaper([{ transform: "translateX(-116%)" }, { transform: "translateX(0)" }], {
+          duration: 530,
+          easing: "cubic-bezier(.21,.7,.22,1)",
+        });
+        if (version !== feedVersion) return;
+        targetSheet = null;
+        changing = false;
+        $("sheet").style.transform = "";
+        $("machine").classList.remove("feeding");
+        $("machine").removeAttribute("aria-busy");
+        if (mediaSmall.matches !== art.g.small) reformat();
+        if (finishAfterFeed || quiet) finishDrawing();
+        else {
+          render(true);
+          startClock();
+        }
+        $("announce").textContent = "已换入山水第 " + pad(serial, 4) + " 号。";
+      }
+      function reformat() {
+        if (!art || changing || mediaSmall.matches === art.g.small) return;
+        const done = run.i >= run.jobs.length,
+          wasPaused = paused,
+          fraction = (run.elapsed + run.t) / run.total,
+          birds = art.birds.slice(),
+          layerLimit = shown;
+        loadPaper(serial, seed, dimensions(mediaSmall.matches));
+        for (const b of birds) installBird(b.u, b.v, false);
+        if (birds.length) {
+          buildLedger();
+          drawProof();
+        }
+        if (done || quiet) {
+          finishDrawing();
+          if (quiet) {
+            shown = Math.min(layerLimit, art.layers.length);
+            paintHistory();
+            render(true);
+          }
+          return;
+        }
+        let target = run.total * fraction;
+        while (run.i < run.jobs.length && target >= run.jobs[run.i].duration) {
+          target -= run.jobs[run.i].duration;
+          run.i++;
+        }
+        run.t = target;
+        recount();
+        paused = wasPaused;
+        paintHistory();
+        render(true);
+        startClock();
+      }
+      function onMedia(m, fn) {
+        if (m.addEventListener) m.addEventListener("change", fn);
+        else m.addListener(fn);
+      }
+      $("pause").addEventListener("click", pauseDrawing);
+      $("finish").addEventListener("click", finishDrawing);
+      $("newPaper").addEventListener("click", changePaper);
+      $("previous").addEventListener("click", () => inspectLayer(-1));
+      $("next").addEventListener("click", () => inspectLayer(1));
+      $("sound").addEventListener("click", async () => {
+        const sw = $("sound");
+        sw.disabled = true;
+        try {
+          await motors.toggle();
+          sw.setAttribute("aria-checked", String(motors.enabled));
+          $("soundValue").textContent = motors.enabled ? "开" : "关";
+        } catch {
+          $("soundValue").textContent = "不可用";
+          $("announce").textContent = "浏览器未能开启电机声音。";
+        } finally {
+          sw.disabled = false;
+        }
+      });
+      $("sheet").addEventListener("click", (e) => {
+        if (changing) return;
+        const r = $("sheet").getBoundingClientRect();
+        installBird((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+      });
+      $("sheet").addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !changing) {
+          e.preventDefault();
+          installBird(0.5, 0.32);
+        }
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+        const k = e.key.toLowerCase();
+        if (k === " " || e.code === "Space") {
+          e.preventDefault();
+          if (!e.repeat) pauseDrawing();
+        } else if (k === "f" && !e.repeat) {
+          e.preventDefault();
+          finishDrawing();
+        } else if (k === "n" && !e.repeat) {
+          e.preventDefault();
+          changePaper();
+        } else if (k === "+" || k === "=") {
+          e.preventDefault();
+          setRate(rate + 1);
+        } else if (k === "-" || k === "−" || k === "_") {
+          e.preventDefault();
+          setRate(rate - 1);
+        }
+      });
+      onMedia(mediaQuiet, () => {
+        quiet = mediaQuiet.matches;
+        if (changing) {
+          settleFeed();
+          return;
+        }
+        if (quiet) finishDrawing();
+        else {
+          shown = art.layers.length;
+          paintHistory();
+          render(true);
+          startClock();
+        }
+      });
+      onMedia(mediaSmall, reformat);
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          halt();
+          if (changing) settleFeed();
+        } else {
+          render(true);
+          startClock();
+        }
+      });
+      grain();
+      buildDial();
+      loadPaper(serial, freshSeed(), dimensions(mediaSmall.matches));
+      if (quiet) finishDrawing();
+      else startClock();
+      const refit = () => {
+        if (!art) return;
+        reformat();
+        fitCanvases();
+        render(true);
+      };
+      if ("ResizeObserver" in window) new ResizeObserver(refit).observe($("sheet"));
+      window.addEventListener("resize", refit, { passive: true });
+    </script>
+  </body>
+</html>

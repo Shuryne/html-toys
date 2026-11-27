@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>2号绘图仪</title>
+<style>
+:root{
+  --mat:#D9D9D9; --ink:#1F3FBF; --black:#111111; --red:#D93025;
+  --print:#26282B;
+  --grid:32px;
+  --mono:"SF Mono","SFMono-Regular",ui-monospace,Menlo,Monaco,Consolas,"Liberation Mono","PingFang SC","Hiragino Sans GB","Noto Sans Mono CJK SC","Noto Sans CJK SC","Microsoft YaHei",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background-color:var(--mat);
+  background-image:
+    linear-gradient(rgba(255,255,255,.62) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.62) 1px,transparent 1px),
+    linear-gradient(rgba(255,255,255,.3) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.3) 1px,transparent 1px);
+  background-size:calc(var(--grid)*5) calc(var(--grid)*5),calc(var(--grid)*5) calc(var(--grid)*5),var(--grid) var(--grid),var(--grid) var(--grid);
+  background-position:var(--gx,0) var(--gy,0);
+  font-family:var(--mono);color:var(--print);
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+#title{margin:0;padding:12px 18px 0;font-size:11px;font-weight:500;letter-spacing:.34em;color:var(--print)}
+#title .model-number{letter-spacing:0;margin-inline-end:.34em}
+#main{flex:1;display:flex;min-height:0;position:relative}
+#stageWrap{flex:1;position:relative;min-width:0;min-height:0}
+#stage{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:manipulation;cursor:crosshair}
+
+/* —— 丝印绘图清单 —— */
+#list{display:none;width:270px;flex:none;padding:26px 26px 20px 4px;font-size:11px;letter-spacing:.08em;color:rgba(17,17,17,.8);overflow:hidden}
+#list h2{margin:0 0 4px;font-size:11px;font-weight:600;letter-spacing:.42em}
+#list .sub{font-size:9.5px;letter-spacing:.14em;opacity:.7;margin-bottom:10px;border-bottom:1.5px solid rgba(17,17,17,.7);padding-bottom:7px}
+#rows{list-style:none;margin:0;padding:0}
+#rows li{display:flex;align-items:baseline;gap:7px;padding:3.5px 0 3px;border-bottom:1px dashed rgba(17,17,17,.2);white-space:nowrap}
+#rows .bx{flex:none;width:9px;height:9px;border:1px solid rgba(17,17,17,.75);position:relative;top:1px}
+#rows li.done .bx::after{content:"";position:absolute;left:1px;top:-3px;width:3.5px;height:7px;border:solid rgba(17,17,17,.9);border-width:0 1.6px 1.6px 0;transform:rotate(40deg)}
+#rows .nm{flex:1;overflow:hidden;text-overflow:ellipsis}
+#rows .ct{font-variant-numeric:tabular-nums;opacity:.85}
+#rows li.cur .nm::before{content:"▸ ";}
+#rows li.cur{font-weight:600}
+#rows li.skip{opacity:.38}
+#stats{margin-top:12px;border-top:1.5px solid rgba(17,17,17,.7);padding-top:8px;font-size:10.5px;line-height:1.85}
+#stats div{display:flex;justify-content:space-between}
+#stats b{font-weight:600;font-variant-numeric:tabular-nums}
+#list .foot{margin-top:14px;font-size:9px;letter-spacing:.2em;opacity:.55}
+@media (min-width:1100px) and (min-height:560px){#list{display:block}}
+
+/* —— 控制面板 —— */
+#panel{
+  position:relative;flex:none;margin:6px auto 14px;width:min(980px,calc(100% - 24px));
+  display:flex;align-items:center;gap:20px;padding:14px 26px 12px;border-radius:12px;
+  background:
+    repeating-linear-gradient(90deg,rgba(255,255,255,.10) 0 1px,rgba(0,0,0,.025) 1px 3px),
+    linear-gradient(#E9EBED,#C6CACE 55%,#B7BBC0);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85),inset 0 -2px 0 rgba(0,0,0,.14),0 1px 2px rgba(0,0,0,.3),0 10px 22px rgba(0,0,0,.18);
+  user-select:none;-webkit-user-select:none;
+}
+.screw{position:absolute;width:9px;height:9px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#f4f5f6,#9aa0a6 70%,#6d7277);
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.7)}
+.screw::after{content:"";position:absolute;left:1.5px;right:1.5px;top:4px;height:1px;background:rgba(0,0,0,.55);transform:rotate(var(--r,30deg))}
+.screw.a{left:8px;top:8px}.screw.b{right:8px;top:8px;--r:-20deg}.screw.c{left:8px;bottom:8px;--r:70deg}.screw.d{right:8px;bottom:8px;--r:10deg}
+.ctl{display:flex;flex-direction:column;align-items:center;flex:none}
+.lbl{margin-top:7px;font-size:9px;letter-spacing:.2em;color:#3b3e42;text-shadow:0 1px 0 rgba(255,255,255,.65);white-space:nowrap}
+.lbl kbd{font:inherit;opacity:.6;letter-spacing:.05em}
+
+/* 液晶屏 */
+.lcdBox{flex:1 1 320px;min-width:0;padding:5px;border-radius:6px;background:#141414;box-shadow:0 1px 0 rgba(255,255,255,.75),inset 0 1px 2px rgba(255,255,255,.12)}
+#lcd{position:relative;padding:7px 10px 6px;border-radius:3px;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.035) 0 1px,transparent 1px 3px),linear-gradient(#C3C7C2,#B4B8B3);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.45);
+  color:#151715;font-size:12px;line-height:1.55;letter-spacing:.05em;white-space:pre;overflow:hidden;font-variant-numeric:tabular-nums}
+#lcd div{overflow:hidden;text-overflow:clip;text-shadow:1px 1px 0 rgba(0,0,0,.08)}
+
+/* 滚花旋钮 */
+.knobWrap{position:relative;width:104px;height:74px}
+#knob{position:absolute;left:28px;top:12px;width:48px;height:48px;border-radius:50%;cursor:grab;touch-action:none;outline:none;
+  background:repeating-conic-gradient(#303030 0 5deg,#0c0c0c 5deg 10deg);
+  box-shadow:0 0 0 2px #0a0a0a,0 4px 7px rgba(0,0,0,.45),0 1px 0 3px rgba(255,255,255,.35)}
+#knob:focus-visible{box-shadow:0 0 0 2px #0a0a0a,0 0 0 4px rgba(17,17,17,.4),0 4px 7px rgba(0,0,0,.45)}
+#knob .cap{position:absolute;inset:7px;border-radius:50%;background:radial-gradient(circle at 38% 30%,#fbfbfc,#c9cdd1 48%,#8e9399);box-shadow:inset 0 -1px 2px rgba(0,0,0,.35)}
+#knob .cap::before{content:"";position:absolute;inset:3px;border-radius:50%;background:repeating-radial-gradient(circle,rgba(255,255,255,.16) 0 1px,rgba(0,0,0,.05) 1px 2px)}
+#knob .tick{position:absolute;left:50%;top:3px;width:2.5px;height:11px;margin-left:-1.25px;background:#111;border-radius:2px}
+.knobWrap .sc{position:absolute;font-size:8.5px;letter-spacing:0;color:#2f3236;transform:translate(-50%,-50%);cursor:pointer;padding:2px;text-shadow:0 1px 0 rgba(255,255,255,.6)}
+.knobWrap .sc.on{color:#000;font-weight:700}
+
+/* 拨杆 */
+#lever{position:relative;width:38px;height:58px;border:0;padding:0;background:none;cursor:pointer;outline:none}
+#lever .plate{position:absolute;left:7px;top:15px;width:24px;height:28px;border-radius:5px;background:linear-gradient(#d9dcdf,#9ea3a8);box-shadow:inset 0 0 0 1px rgba(0,0,0,.35),0 1px 0 rgba(255,255,255,.7)}
+#lever .nut{position:absolute;left:12px;top:22px;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#f2f3f4,#7c8186);box-shadow:0 0 0 1.5px #111}
+#lever .arm{position:absolute;left:16.5px;top:4px;width:5px;height:26px;border-radius:3px;transform-origin:50% 25px;transform:rotate(152deg);transition:transform .16s cubic-bezier(.5,1.8,.5,1);
+  background:linear-gradient(90deg,#7f858a,#f4f5f6 45%,#9aa0a6)}
+#lever .arm::before{content:"";position:absolute;left:-2.5px;top:-5px;width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#a6abb0 70%,#6c7176)}
+#lever[aria-pressed="true"] .arm{transform:rotate(28deg)}
+#lever:focus-visible .plate{box-shadow:0 0 0 2px rgba(17,17,17,.45)}
+.lvTxt{position:absolute;left:44px;font-size:8.5px;color:#3b3e42}
+.lvTxt.on{top:6px}.lvTxt.off{bottom:6px}
+
+/* 键帽 */
+.key{width:60px;height:44px;border:0;border-radius:7px;cursor:pointer;outline:none;
+  background:linear-gradient(#2e2e2e,#121212 60%,#0b0b0b);color:#ECECEC;font:11px var(--mono);letter-spacing:.16em;padding-left:.16em;
+  box-shadow:0 0 0 1.5px #050505,0 3px 0 #000,0 6px 9px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.2);
+  transition:transform .05s,box-shadow .05s}
+.key:active,.key.down{transform:translateY(2.5px);box-shadow:0 0 0 1.5px #050505,0 .5px 0 #000,0 2px 4px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.12)}
+.key:focus-visible{box-shadow:0 0 0 1.5px #050505,0 3px 0 #000,0 0 0 4px rgba(17,17,17,.35)}
+.key.sm{width:52px;height:36px;font-size:10px;letter-spacing:.06em}
+.key:disabled{opacity:.45;cursor:default}
+
+/* 蘑菇头暂停键 */
+.mushBase{position:relative;width:70px;height:70px;border-radius:50%;background:radial-gradient(circle,#1a1a1a 58%,#050505 60%,#2a2a2a 66%,#0e0e0e 72%);box-shadow:0 1px 0 rgba(255,255,255,.7),0 3px 6px rgba(0,0,0,.3)}
+#pause{position:absolute;left:6px;top:4px;width:58px;height:58px;border:0;border-radius:50%;cursor:pointer;outline:none;
+  background:radial-gradient(circle at 36% 28%,rgba(255,255,255,.55),rgba(255,255,255,0) 30%),radial-gradient(circle at 50% 55%,#D93025 55%,#a8231b 100%);
+  box-shadow:0 5px 0 #7a1a13,0 7px 10px rgba(0,0,0,.4),inset 0 -3px 6px rgba(0,0,0,.25);transition:transform .07s,box-shadow .07s}
+#pause[aria-pressed="true"]{transform:translateY(4px) scale(.97);box-shadow:0 1px 0 #7a1a13,0 2px 4px rgba(0,0,0,.4),inset 0 -2px 5px rgba(0,0,0,.3)}
+#pause:focus-visible{outline:2px solid rgba(17,17,17,.5);outline-offset:4px}
+
+.rm-only{display:none!important}
+body.rm .rm-only{display:flex!important}
+body.rm .anim-only{opacity:.4;pointer-events:none}
+.sep{width:1px;align-self:stretch;margin:4px 0;background:linear-gradient(transparent,rgba(0,0,0,.22),transparent);box-shadow:1px 0 0 rgba(255,255,255,.5)}
+
+@media (max-width:760px){
+  #title{padding:10px 14px 0;font-size:10.5px}
+  #panel{flex-wrap:wrap;justify-content:center;gap:12px 14px;padding:12px 14px 10px;margin:4px auto 10px;width:calc(100% - 16px)}
+  .lcdBox{flex:1 1 100%;order:-1}
+  #lcd{font-size:11px;padding:6px 8px 5px}
+  .sep{display:none}
+  .knobWrap{transform:scale(.92);margin:-4px -6px}
+  .key{width:54px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <h1 id="title"><span class="model-number">2号</span>绘图仪</h1>
+  <div id="main">
+    <div id="stageWrap"><canvas id="stage" aria-label="绘图仪与画纸。点击纸面，可让机器补画一只飞鸟"></canvas></div>
+    <aside id="list" aria-label="绘图清单">
+      <h2>绘图清单</h2>
+      <div class="sub" id="listSub">山水第 0000 号 · 种子 0000</div>
+      <ul id="rows"></ul>
+      <div id="stats">
+        <div><span>落笔绘制</span><b id="stDraw">0.00 米</b></div>
+        <div><span>抬笔空移</span><b id="stTravel">0.00 米</b></div>
+        <div><span>本张笔数</span><b id="stStrokes">0 / 0</b></div>
+        <div><span>已出纸</span><b id="stSheets">0 张</b></div>
+      </div>
+      <div class="foot">点击纸面 · 补画飞鸟</div>
+    </aside>
+  </div>
+  <div id="panel">
+    <i class="screw a"></i><i class="screw b"></i><i class="screw c"></i><i class="screw d"></i>
+    <div class="lcdBox"><div id="lcd" role="status" aria-live="off"><div id="lcd1">&nbsp;</div><div id="lcd2">&nbsp;</div></div></div>
+    <div class="sep"></div>
+    <div class="ctl anim-only">
+      <div class="knobWrap" id="knobWrap">
+        <div id="knob" role="slider" tabindex="0" aria-label="调速" aria-valuemin="1" aria-valuemax="64" aria-valuenow="4" aria-valuetext="4×"><div class="cap"></div><div class="tick"></div></div>
+      </div>
+      <div class="lbl">调速 <kbd>+ −</kbd></div>
+    </div>
+    <div class="ctl">
+      <div style="position:relative;width:60px;height:58px">
+        <button id="lever" aria-pressed="false" aria-label="声音开关"><span class="plate"></span><span class="arm"></span><span class="nut"></span></button>
+        <span class="lvTxt on">开</span><span class="lvTxt off">关</span>
+      </div>
+      <div class="lbl">声音</div>
+    </div>
+    <div class="sep"></div>
+    <div class="ctl rm-only" style="flex-direction:row;gap:10px;align-items:flex-start">
+      <div class="ctl"><button class="key sm" id="btnPrev">上一图层</button><div class="lbl">上一图层 <kbd>←</kbd></div></div>
+      <div class="ctl"><button class="key sm" id="btnNext">下一图层</button><div class="lbl">下一图层 <kbd>→</kbd></div></div>
+    </div>
+    <div class="ctl anim-only"><button class="key" id="btnFinish">完成</button><div class="lbl">完成 <kbd>F</kbd></div></div>
+    <div class="ctl"><button class="key" id="btnNew">换纸</button><div class="lbl">换纸 <kbd>N</kbd></div></div>
+    <div class="ctl anim-only"><div class="mushBase"><button id="pause" aria-pressed="false" aria-label="暂停"></button></div><div class="lbl" id="pauseLbl">暂停 <kbd>空格</kbd></div></div>
+  </div>
+</div>
+<script>
+'use strict';
+/* ============ 基础工具 ============ */
+const TAU=Math.PI*2;
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const smooth=t=>t*t*(3-2*t);
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function makeRng(seed){
+  const f=mulberry32(seed*2654435761>>>0);
+  const R={f,
+    range:(a,b)=>a+(b-a)*f(),
+    int:(a,b)=>Math.floor(a+(b-a+1)*f()),
+    pick:arr=>arr[Math.floor(f()*arr.length)],
+    chance:p=>f()<p,
+    gauss:()=>{let u=0,v=0;while(!u)u=f();while(!v)v=f();return Math.sqrt(-2*Math.log(u))*Math.cos(TAU*v);}
+  };
+  return R;
+}
+function makeNoise(rnd){
+  const perm=[...Array(256).keys()];
+  for(let i=255;i>0;i--){const j=Math.floor(rnd()*(i+1));const t=perm[i];perm[i]=perm[j];perm[j]=t;}
+  const p=new Uint8Array(512);for(let i=0;i<512;i++)p[i]=perm[i&255];
+  const gx=new Float32Array(256),gy=new Float32Array(256);
+  for(let i=0;i<256;i++){const a=rnd()*TAU;gx[i]=Math.cos(a);gy[i]=Math.sin(a);}
+  const fade=t=>t*t*t*(t*(t*6-15)+10);
+  function n2(x,y){
+    const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,X=xi&255,Y=yi&255;
+    const u=fade(xf),v=fade(yf);
+    const aa=p[p[X]+Y],ab=p[p[X]+Y+1],ba=p[p[X+1]+Y],bb=p[p[X+1]+Y+1];
+    const x1=lerp(gx[aa]*xf+gy[aa]*yf,gx[ba]*(xf-1)+gy[ba]*yf,u);
+    const x2=lerp(gx[ab]*xf+gy[ab]*(yf-1),gx[bb]*(xf-1)+gy[bb]*(yf-1),u);
+    return lerp(x1,x2,v)*1.42;
+  }
+  function fbm(x,y,oct=4,gain=.5){let s=0,a=1,f=1,n=0;for(let i=0;i<oct;i++){s+=a*n2(x*f,y*f);n+=a;a*=gain;f*=2.03;}return s/n;}
+  return {n2,fbm};
+}
+const hex4=n=>n.toString(16).toUpperCase().padStart(4,'0');
+const pad4=n=>String(n).padStart(4,'0');
+const thousands=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+
+/* ============ 单线矢量字形（图签用） ============ */
+const GLYPH_SRC={
+'山':'10|5,0.8 5,9;1.4,3.6 1.4,9 8.6,9 8.6,3.6',
+'水':'10|5,0.6 5,9.2 3.9,8.4;0.9,3.4 3.7,3.4 0.8,8.3;8.7,2.3 5.7,4.7;5.6,4.1 9.1,8.9',
+'第':'10|2.6,0.3 1.1,2.3;2,1.4 4.3,1.4;6.9,0.3 5.4,2.3;6.3,1.4 9.1,1.4;2,3.4 8,3.4 8,5.4 2,5.4 2,7.4 8.7,7.4 8.3,9.3 7.3,8.8;5,2.8 5,9.7;4.6,7.6 1.4,9.7',
+'号':'10|2.6,0.8 2.6,3.9 7.4,3.9 7.4,0.8 2.6,0.8;0.9,5.4 9.1,5.4;3.4,5.4 2.9,7.1 7.6,7.1 7.2,9.3 5.8,8.8',
+'种':'10|3.9,0.7 0.9,1.9;0.4,3.4 4.4,3.4;2.4,1.6 2.4,9.5;2.3,4.1 0.3,7.2;2.6,4.5 4.1,6.1;5.3,3 5.3,6.8 9.6,6.8 9.6,3 5.3,3;7.45,0.5 7.45,9.6',
+'子':'10|2,1.4 8,1.4 5,3.9 5,9.3 3.8,8.5;0.7,5.5 9.3,5.5',
+'支':'10|1,2.5 9,2.5;5,0.5 5,4.5;2.2,4.6 7.8,4.6 1.6,9.4;3.3,5.9 9.1,9.4',
+'笔':'10|2.6,0.3 1.1,2.3;2,1.4 4.3,1.4;6.9,0.3 5.4,2.3;6.3,1.4 9.1,1.4;7.5,3.1 2.4,4.2;2.2,5.7 7.8,5.3;1.4,7.5 8.6,7.1;5,3.9 5,8.8 5.7,9.4 9,9.4 9.1,8.3',
+'0':'6|3,0.8 4.3,1.3 5.1,2.6 5.4,5 5.1,7.4 4.3,8.7 3,9.2 1.7,8.7 0.9,7.4 0.6,5 0.9,2.6 1.7,1.3 3,0.8',
+'1':'6|1.6,2.5 3.3,0.8 3.3,9.2',
+'2':'6|0.9,2.8 1.4,1.5 2.4,0.9 3.6,0.9 4.7,1.6 5.1,2.8 4.8,4.2 0.7,9.2 5.4,9.2',
+'3':'6|0.8,1.7 2,0.9 3.6,0.85 4.8,1.7 4.9,3.2 4,4.4 2.4,4.8 4,5 5.2,6.2 5.2,7.9 4.2,9 2.6,9.3 1.4,9 0.6,8.2',
+'4':'6|4.1,9.4 4.1,0.8 0.6,6.6 5.6,6.6',
+'5':'6|5,0.9 1.2,0.9 0.9,4.6 2.4,4 3.8,4 5,4.9 5.4,6.6 4.9,8.3 3.6,9.2 2.1,9.2 0.7,8.4',
+'6':'6|4.8,1.4 3.6,0.8 2.2,1 1.1,2.3 0.6,4.6 0.7,7.2 1.5,8.8 3,9.3 4.4,8.9 5.2,7.6 5.1,6 4.1,4.9 2.8,4.7 1.6,5.2 0.8,6.2',
+'7':'6|0.6,0.9 5.4,0.9 2.4,9.4',
+'8':'6|3,0.8 4.4,1.3 4.8,2.6 4.3,3.9 3,4.6 1.7,3.9 1.2,2.6 1.6,1.3 3,0.8;3,4.6 4.6,5.4 5.3,7 4.7,8.6 3,9.2 1.3,8.6 0.7,7 1.4,5.4 3,4.6',
+'9':'6|5.2,3.6 4.4,4.6 3,5 1.6,4.6 0.8,3.4 0.9,1.9 1.9,0.9 3.3,0.8 4.6,1.5 5.2,3 5.2,5.6 4.7,7.8 3.6,9.1 2.2,9.3 1,8.6',
+'A':'6|0.4,9.4 3,0.8 5.6,9.4;1.3,6.4 4.7,6.4',
+'B':'6|0.8,9.2 0.8,0.8 3.5,0.8 4.5,1.3 4.8,2.6 4.3,4 3.1,4.7 0.8,4.7;3.1,4.7 4.5,5.2 5.2,6.5 5,8.3 3.8,9.2 0.8,9.2',
+'C':'6|5.2,2 4.2,1 2.8,0.8 1.5,1.4 0.7,3 0.6,5 0.8,7 1.6,8.6 2.9,9.2 4.3,9 5.3,7.9',
+'D':'6|0.8,0.8 0.8,9.2 2.8,9.2 4.4,8.5 5.3,6.8 5.4,5 5.2,3.2 4.3,1.5 2.8,0.8 0.8,0.8',
+'E':'6|5.2,0.8 0.8,0.8 0.8,9.2 5.2,9.2;0.8,4.9 4.4,4.9',
+'F':'6|5.2,0.8 0.8,0.8 0.8,9.2;0.8,4.9 4.2,4.9',
+'·':'4|2,4.4 2.55,4.75 2.55,5.25 2,5.6 1.45,5.25 1.45,4.75 2,4.4',
+',':'3|1.6,8.4 1.6,9.4 0.9,10.7',
+' ':'3|'
+};
+const GLYPHS={};
+for(const ch in GLYPH_SRC){
+  const [w,body]=GLYPH_SRC[ch].split('|');
+  GLYPHS[ch]={w:+w,cjk:+w===10,strokes:body?body.split(';').map(s=>s.trim().split(/\s+/).map(q=>q.split(',').map(Number))):[]};
+}
+/* 把一行字排成折线：size 为字高（毫米），返回 {strokes,width} */
+function layoutText(str,x0,y0,size){
+  const k=size/10;let x=x0;const out=[];
+  for(const ch of str){
+    const g=GLYPHS[ch]||GLYPHS[' '];
+    for(const s of g.strokes)out.push(s.map(([gx,gy])=>[x+gx*k,y0+gy*k]));
+    x+=(g.w+(g.cjk?1.7:1.3))*k;
+  }
+  return {strokes:out,width:x-x0};
+}
+
+/* ============ 折线几何 ============ */
+function plLen(p){let s=0;for(let i=1;i<p.length;i++)s+=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);return s;}
+function densify(p,step){
+  const out=[p[0]];
+  for(let i=1;i<p.length;i++){
+    const a=p[i-1],b=p[i],d=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.max(1,Math.ceil(d/step));
+    for(let k=1;k<=n;k++){const t=k/n;out.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);}
+  }
+  return out;
+}
+function simplify(p,eps){
+  if(p.length<3)return p;
+  const keep=new Uint8Array(p.length);keep[0]=keep[p.length-1]=1;
+  const st=[[0,p.length-1]];
+  while(st.length){
+    const [i,j]=st.pop();if(j<=i+1)continue;
+    const a=p[i],b=p[j],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy);
+    let md=-1,mi=-1;
+    for(let k=i+1;k<j;k++){
+      const d=L<1e-6?Math.hypot(p[k][0]-a[0],p[k][1]-a[1]):Math.abs((p[k][0]-a[0])*dy-(p[k][1]-a[1])*dx)/L;
+      if(d>md){md=d;mi=k;}
+    }
+    if(md>eps){keep[mi]=1;st.push([i,mi],[mi,j]);}
+  }
+  return p.filter((_,k)=>keep[k]);
+}
+/* 依据可见性谓词把折线切成可见段，交界处二分求精 */
+function clipPoly(p,vis,step=0.6,minLen=0.35){
+  if(p.length<2)return [];
+  const d=densify(p,step),runs=[];
+  let pv=vis(d[0][0],d[0][1]),cur=pv?[d[0]]:null;
+  for(let i=1;i<d.length;i++){
+    const a=d[i-1],b=d[i],v=vis(b[0],b[1]);
+    if(v!==pv){
+      let lo=0,hi=1;
+      for(let k=0;k<7;k++){const m=(lo+hi)/2;if(vis(a[0]+(b[0]-a[0])*m,a[1]+(b[1]-a[1])*m)===pv)lo=m;else hi=m;}
+      const t=pv?lo:hi,c=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+      if(pv){cur.push(c);runs.push(cur);cur=null;}else cur=[c];
+      pv=v;
+    }
+    if(v&&cur)cur.push(b);
+  }
+  if(cur)runs.push(cur);
+  const out=[];
+  for(const r of runs)if(r.length>1&&plLen(r)>=minLen)out.push(simplify(r,0.025));
+  return out;
+}
+function convex(pts){
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for(const [x,y] of pts){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}
+  return {pts,x0,y0,x1,y1};
+}
+function inConvex(c,x,y){
+  if(x<c.x0||x>c.x1||y<c.y0||y>c.y1)return false;
+  const P=c.pts;let sign=0;
+  for(let i=0;i<P.length;i++){
+    const a=P[i],b=P[(i+1)%P.length],cr=(b[0]-a[0])*(y-a[1])-(b[1]-a[1])*(x-a[0]);
+    if(cr!==0){const s=cr>0?1:-1;if(!sign)sign=s;else if(s!==sign)return false;}
+  }
+  return true;
+}
+/* 贪心最近邻排序，可反转笔画方向，缩短空移 */
+function orderStrokes(list,start){
+  const n=list.length,used=new Uint8Array(n),out=[];
+  let cx=start[0],cy=start[1];
+  for(let k=0;k<n;k++){
+    let best=-1,bd=Infinity,rev=false;
+    for(let i=0;i<n;i++){
+      if(used[i])continue;
+      const s=list[i],a=s[0],b=s[s.length-1];
+      const da=(a[0]-cx)**2+(a[1]-cy)**2;if(da<bd){bd=da;best=i;rev=false;}
+      const db=(b[0]-cx)**2+(b[1]-cy)**2;if(db<bd){bd=db;best=i;rev=true;}
+    }
+    used[best]=1;const s=rev?list[best].slice().reverse():list[best];
+    out.push(s);const e=s[s.length-1];cx=e[0];cy=e[1];
+  }
+  return out;
+}
+/* 几乎察觉不到的笔迹摆动 */
+function wobble(p,rnd,amp){
+  const d=p.length>2||plLen(p)>3?densify(p,2.6):p;
+  if(d.length<3)return d;
+  const ph=rnd()*TAU,fr=rnd()*.5+.6;let s=0;const out=[d[0]];
+  for(let i=1;i<d.length-1;i++){
+    const a=d[i-1],b=d[i],c=d[i+1];s+=Math.hypot(b[0]-a[0],b[1]-a[1]);
+    let nx=-(c[1]-a[1]),ny=c[0]-a[0];const l=Math.hypot(nx,ny)||1;nx/=l;ny/=l;
+    const o=amp*Math.sin(ph+s*fr)*(.6+.4*Math.sin(ph*2.3+s*.21));
+    out.push([b[0]+nx*o,b[1]+ny*o]);
+  }
+  out.push(d[d.length-1]);
+  return out;
+}
+
+/* ============ 山水构图：山脊与排线 ============ */
+const STYLE_NAME={contour:'坡势线',rain:'雨丝',stipple:'碎石'};
+function generate(seed,num,portrait){
+  const R=makeRng(seed),N=makeNoise(R.f);
+  const W=portrait?210:297,H=portrait?297:210,M=portrait?11:10;
+  const L=M+1.5,Rt=W-M-1.5,T=M+1.5,B=H-M-1.5,AW=Rt-L,AH=B-T;
+  const DX=.5,NX=Math.ceil(W/DX)+2,GAP=.7;
+  const sample=(a,x)=>{let f=x/DX;if(f<0)f=0;if(f>NX-1.001)f=NX-1.001;const j=f|0;return a[j]+(a[j+1]-a[j])*(f-j);};
+
+  /* 图签框：按五位笔数预留宽度 */
+  const TS=portrait?2.5:2.9;
+  const labelFor=n=>`山水第 ${pad4(num)} 号 · 种子 ${hex4(seed)} · 1 支笔 · ${thousands(n)} 笔`;
+  const tbW=layoutText(labelFor(88888),0,0,TS).width+6,tbH=TS+3.8;
+  const tbX=W-M-tbW,tbY=H-M-tbH;
+  const occ=[convex([[tbX-1.6,tbY-1.6],[W,tbY-1.6],[W,H],[tbX-1.6,H]])];
+  const blocked=(x,y)=>{for(let k=0;k<occ.length;k++)if(inConvex(occ[k],x,y))return true;return false;};
+  const inArt=(x,y)=>x>=L&&x<=Rt&&y>=T&&y<=B;
+
+  const lake=R.chance(.45);
+  const WL=lake?T+AH*R.range(.64,.75):B+50;
+
+  /* —— 5–8 道山脊，由远及近 —— */
+  const nR=R.int(5,8),rid=[];
+  for(let i=0;i<nR;i++){
+    const t=i/(nR-1);
+    const base=lake?lerp(T+AH*.30,WL-AH*.035,t):lerp(T+AH*.33,T+AH*.80,t);
+    const amp=AH*lerp(.10,.24,t)*R.range(.8,1.3);
+    const fq=lerp(2.9,1.25,t)*R.range(.8,1.3)/AW;
+    const ridged=R.chance(.5),off=R.range(0,500),tilt=R.range(-.1,.1)*AH;
+    const pk=[],np=R.int(0,t<.7?2:1);
+    for(let k=0;k<np;k++)pk.push([R.range(L+AW*.06,Rt-AW*.06),R.range(9,30)*(portrait?.8:1),AH*R.range(.07,.2)*(1-t*.55)]);
+    const y=new Float32Array(NX);
+    for(let j=0;j<NX;j++){
+      const x=j*DX,n=N.fbm(x*fq+off,i*7.31+.5,5,.5);
+      const sh=ridged?Math.pow(1-Math.min(1,Math.abs(n)*1.3),2)*1.25-.15:n*.75+.5;
+      let v=base-amp*sh-tilt*((x-L)/AW-.5);
+      for(const [px,pw,ph] of pk){const d=(x-px)/pw;v-=ph*Math.exp(-d*d)*(1+.3*N.n2(x*.09,i*3.1));}
+      const top=T+9;if(v<top)v=top-(top-v)*.3;
+      y[j]=Math.max(v,T+3);
+    }
+    rid.push({i,t,y});
+  }
+  /* 遮挡轮廓：每道山脊只被更近的山脊遮住；太靠后看不见的就抬高 */
+  const hz=new Array(nR);
+  const acc=new Float32Array(NX).fill(1e9);
+  for(let i=nR-1;i>=0;i--){
+    const r=rid[i];
+    if(i<nR-1){
+      for(let it=0;it<14;it++){
+        let vis=0,cnt=0;
+        for(let x=L;x<=Rt;x+=2){cnt++;if(sample(r.y,x)<sample(acc,x)-2.5)vis++;}
+        if(vis/cnt>=.3)break;
+        for(let j=0;j<NX;j++)r.y[j]=Math.max(T+3,r.y[j]-AH*.035);
+      }
+    }
+    hz[i]=acc.slice();
+    for(let j=0;j<NX;j++)acc[j]=Math.min(acc[j],r.y[j]);
+  }
+  const sky=acc;
+
+  /* —— 日月位置决定光向 —— */
+  const cands=[];
+  for(let k=0;k<14;k++){const x=lerp(L+AW*.13,Rt-AW*.13,k/13);cands.push([x,sample(sky,x)]);}
+  cands.sort((a,b)=>b[1]-a[1]);
+  const sx=clamp(cands[R.int(0,5)][0]+R.range(-6,6),L+20,Rt-20);
+  const isSun=R.chance(.58);
+  let sr=(isSun?R.range(9,16.5):R.range(7,11.5))*(portrait?.88:1);
+  const skyAt=sample(sky,sx);
+  let sy=T+AH*R.range(.11,.24);
+  if(T+sr+3>skyAt-sr*.35-3)sr=Math.max(5,(skyAt-T-6)/1.35);
+  sy=clamp(sy,T+sr+3,Math.max(T+sr+3,skyAt-sr*.35-3));
+  const lightSign=sx<W/2?1:-1;
+
+  for(const r of rid){
+    const s=new Float32Array(NX),ss=new Float32Array(NX);
+    for(let j=1;j<NX-1;j++)s[j]=(r.y[j+1]-r.y[j-1])/(2*DX);
+    for(let j=0;j<NX;j++){let a=0,c=0;for(let q=-6;q<=6;q++){const jj=j+q;if(jj>=0&&jj<NX){a+=s[jj];c++;}}ss[j]=a/c;}
+    r.s=ss;
+    r.tone=lerp(.28,.9,r.t)*R.range(.85,1.1);
+    r.D=lerp(15,46,r.t)*R.range(.8,1.2)*(lake?.9:1);
+    r.noff=R.range(0,300);
+  }
+  const shadow=(r,x)=>clamp(sample(r.s,x)*lightSign*1.5-.1,0,1);
+  const depth=(r,x)=>r.D*(.5+.65*(N.n2(x*.018+r.noff,r.i*2.7)*.5+.5))*(1+.45*shadow(r,x));
+
+  /* 排线风格：相邻山体不重复 */
+  let prev='';
+  for(const r of rid){
+    let st;do{st=R.pick(['contour','rain','stipple']);}while(st===prev);
+    r.style=st;prev=st;
+    r.cross=r.t>.25&&R.chance(st==='rain'?.45:.7);
+  }
+  if(!rid.some(r=>r.cross))rid[nR-1-R.int(0,1)].cross=true;
+
+  /* —— 松树先占位，作为遮挡体 —— */
+  const trees=[];
+  if(!lake){
+    const near=rid[nR-1],nT=R.int(3,9),cx=R.range(L+AW*.12,Rt-AW*.12);
+    for(let k=0;k<nT*4&&trees.length<nT;k++){
+      const x=clamp(cx+R.gauss()*AW*.13,L+6,Rt-6),yn=sample(near.y,x);
+      if(yn>B-8)continue;
+      const yb=R.range(yn+4,B+2),f=clamp((yb-yn)/(B-yn),0,1);
+      const h=lerp(13,38,f)*R.range(.8,1.2)*(portrait?.92:1);
+      if(yb-h<T+6)continue;
+      if(trees.some(q=>Math.abs(q.x-x)<q.w*.4&&Math.abs(q.yb-yb)<7))continue;
+      trees.push({x,yb,h,w:h*R.range(.3,.4)});
+    }
+    trees.sort((a,b)=>a.yb-b.yb);
+    for(const q of trees)q.occ=convex([[q.x,q.yb-q.h-.7],[q.x+q.w/2+.9,q.yb-q.h*.04],[q.x-q.w/2-.9,q.yb-q.h*.04]]);
+    occ.push(...trees.map(q=>q.occ));
+  }
+
+  /* —— 排线生成器 —— */
+  function hContour(r,out){
+    const gap=lerp(2.0,1.3,r.t)*R.range(.9,1.12),K=Math.ceil(r.D*1.9/gap);
+    for(let k=1;k<=K;k++){
+      const ph=R.range(0,99);let seg=null,len=0,lim=R.range(12,32),skip=0;
+      for(let x=L;x<=Rt;x+=.8){
+        const y0=sample(r.y,x),dm=depth(r,x),sh=shadow(r,x);
+        const off=k*gap*(1+k*.02)+N.n2(x*.03+ph,k*.71)*gap*.5;
+        const on=skip<=0&&off<dm&&(N.n2(x*.05+ph,k*.37+r.i*5)*.5+.5)>lerp(.18,.72,off/dm)-sh*.25;
+        if(on){
+          if(!seg){seg=[];len=0;}else len+=.8;
+          seg.push([x,y0+off]);
+          if(len>lim){out.push(seg);seg=null;skip=R.int(1,2);lim=R.range(12,32);}
+        }else{skip--;if(seg){if(seg.length>1)out.push(seg);seg=null;}}
+      }
+      if(seg&&seg.length>1)out.push(seg);
+    }
+  }
+  function hRain(r,out){
+    const sp=lerp(1.7,1.05,r.t)*R.range(.9,1.1);
+    for(let x=L+R.range(0,sp);x<=Rt;x+=sp*R.range(.7,1.3)){
+      const steep=clamp((Math.abs(sample(r.s,x))-.1)/.85,0,1);
+      if(steep<.1&&R.chance(.65))continue;
+      const len=depth(r,x)*(.22+.9*steep)*R.range(.5,1.05);
+      if(len<1)continue;
+      const y0=sample(r.y,x)+R.range(.4,1.8);
+      if(len>12&&R.chance(.55)){
+        const c=len*R.range(.3,.65),g=R.range(.8,2.2);
+        out.push([[x,y0],[x,y0+c]],[[x,y0+c+g],[x,y0+len]]);
+      }else out.push([[x,y0],[x,y0+len]]);
+    }
+  }
+  function hStipple(r,out){
+    const cell=lerp(3.0,2.0,r.t);
+    for(let x=L;x<Rt;x+=cell){
+      const dm=depth(r,x)*1.1;
+      for(let d=0;d<dm;d+=cell){
+        const px=x+R.f()*cell,base=sample(r.y,px),py=base+d+R.f()*cell;
+        const dep=clamp((py-base)/dm,0,1);
+        const p=.36*r.tone*Math.pow(1-dep,.8)*(.45+.75*(N.n2(px*.06+r.noff,py*.06)*.5+.5))+shadow(r,px)*.15;
+        if(R.f()>p)continue;
+        const ang=Math.atan(sample(r.s,px))+R.range(-.45,.45),l=R.range(.8,2.3);
+        const c=Math.cos(ang)*l/2,s=Math.sin(ang)*l/2;
+        out.push([[px-c,py-s],[px+c,py+s]]);
+      }
+    }
+  }
+  function hatchLines(ang,sp,x0,y0,x1,y1){
+    const dx=Math.cos(ang),dy=Math.sin(ang),nx=-dy,ny=dx,cs=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
+    let a0=1e9,a1=-1e9,b0=1e9,b1=-1e9;
+    for(const [x,y] of cs){const a=x*nx+y*ny,b=x*dx+y*dy;a0=Math.min(a0,a);a1=Math.max(a1,a);b0=Math.min(b0,b);b1=Math.max(b1,b);}
+    const out=[];
+    for(let c=a0+R.f()*sp;c<a1;c+=sp*R.range(.85,1.15))out.push([[nx*c+dx*b0,ny*c+dy*b0],[nx*c+dx*b1,ny*c+dy*b1]]);
+    return out;
+  }
+  function hCross(r,out){
+    const sp=lerp(1.9,1.25,r.t)*R.range(.9,1.1);
+    let y0=1e9,y1=-1e9;for(let x=L;x<=Rt;x+=2){const v=sample(r.y,x);y0=Math.min(y0,v);y1=Math.max(y1,v);}
+    y1=Math.min(B,y1+r.D*1.7);
+    const a1=lightSign>0?.95:Math.PI-.95,a2=a1+(lightSign>0?1.35:-1.35);
+    const p1=(x,y)=>{const sh=shadow(r,x);return sh>.16&&y-sample(r.y,x)<depth(r,x)*(.35+.8*sh);};
+    const p2=(x,y)=>{const sh=shadow(r,x);return sh>.5&&y-sample(r.y,x)<depth(r,x)*(.25+.5*sh);};
+    for(const l of hatchLines(a1,sp,L,y0,Rt,y1))out.push([l,p1]);
+    for(const l of hatchLines(a2,sp*1.15,L,y0,Rt,y1))out.push([l,p2]);
+  }
+
+  const layers=[];
+  const ridgeLayers=[];
+  for(const r of rid){
+    const Hh=hz[r.i];
+    const visO=(x,y)=>inArt(x,y)&&y<sample(Hh,x)-GAP&&y<WL-.6&&!blocked(x,y);
+    const visB=(x,y)=>visO(x,y)&&y>sample(r.y,x)+.45;
+    const line=[];for(let x=L;x<=Rt+1e-6;x+=DX)line.push([x,sample(r.y,x)]);
+    let outline=clipPoly(line,visO,.5,.8);
+    if(r.i%2){outline=outline.reverse().map(p=>p.slice().reverse());}
+    const raw=[];
+    if(r.style==='contour')hContour(r,raw);else if(r.style==='rain')hRain(r,raw);else hStipple(r,raw);
+    const hatch=[];
+    for(const p of raw)hatch.push(...clipPoly(p,visB,.6,.45));
+    if(r.cross){const rc=[];hCross(r,rc);for(const [p,pr] of rc)hatch.push(...clipPoly(p,(x,y)=>pr(x,y)&&visB(x,y),.6,.6));}
+    ridgeLayers.push({key:'ridge'+r.i,name:`山脊 ${r.i+1} · ${STYLE_NAME[r.style]}${r.cross?' + 交叉':''}`,
+      groups:[{strokes:outline,keep:true,feed:'ridge'},{strokes:hatch,keep:false,feed:'hatch'}]});
+  }
+
+  /* —— 天空：日或月、云带、飞鸟（只在天际线以上） —— */
+  const visS=(x,y)=>inArt(x,y)&&y<sample(sky,x)-GAP&&y<WL-.6&&!blocked(x,y);
+  const circ=(cx,cy,r,a0=0)=>{const n=Math.max(24,Math.round(r*6)),p=[];for(let k=0;k<=n;k++){const a=a0+k/n*TAU;p.push([cx+Math.cos(a)*r,cy+Math.sin(a)*r]);}return p;};
+  const skyS=[];let skyName;
+  if(isSun){
+    if(R.chance(.5)){
+      skyName='天空 · 同心圆太阳';
+      const g=R.range(1.05,1.55);
+      for(let r=sr;r>.9;r-=g)skyS.push(...clipPoly(circ(sx,sy,r,R.f()*TAU),visS,.6,.6));
+    }else{
+      skyName='天空 · 螺旋太阳';
+      const g=R.range(.95,1.35),dir=R.chance(.5)?1:-1,a0=R.f()*TAU,p=[];
+      let th=0;
+      while(true){const r=g*th/TAU+.4;if(r>sr)break;p.push([sx+Math.cos(a0+dir*th)*r,sy+Math.sin(a0+dir*th)*r]);th+=Math.min(.5,.6/Math.max(.6,r));}
+      skyS.push(...clipPoly(p,visS,.6,.6));
+    }
+  }else{
+    skyName='天空 · 月牙与星';
+    const ds=R.chance(.5)?1:-1,cx2=sx+sr*.42*ds,cy2=sy-sr*.2,r2=sr*.9;
+    const outIn=(x,y)=>(x-cx2)**2+(y-cy2)**2>=r2*r2;
+    const inOut=(x,y)=>(x-sx)**2+(y-sy)**2<=sr*sr;
+    skyS.push(...clipPoly(circ(sx,sy,sr),(x,y)=>visS(x,y)&&outIn(x,y),.5,.6));
+    skyS.push(...clipPoly(circ(cx2,cy2,r2),(x,y)=>visS(x,y)&&(x-sx)**2+(y-sy)**2<=sr*sr*1.01,.5,.6));
+    for(let r=sr-.85;r>1;r-=.85)skyS.push(...clipPoly(circ(sx,sy,r),(x,y)=>visS(x,y)&&inOut(x,y)&&outIn(x,y),.5,.5));
+    const ns=R.int(5,11),stars=[];
+    for(let k=0;k<ns*14&&stars.length<ns;k++){
+      const x=R.range(L+5,Rt-5),y=R.range(T+4,T+AH*.45);
+      if(y>sample(sky,x)-9||Math.hypot(x-sx,y-sy)<sr+7||stars.some(s=>Math.hypot(s[0]-x,s[1]-y)<14))continue;
+      stars.push([x,y]);
+    }
+    for(const [x,y] of stars){
+      if(R.chance(.55)){
+        const r=R.range(1.1,2),a0=-Math.PI/2+R.range(-.3,.3),p=[];
+        for(let k=0;k<=5;k++){const a=a0+k*TAU*2/5;p.push([x+Math.cos(a)*r,y+Math.sin(a)*r]);}
+        skyS.push(...clipPoly(p,visS,.5,.3));
+      }else{const r=R.range(.8,1.5);skyS.push(...clipPoly([[x-r,y],[x+r,y]],visS,.5,.3),...clipPoly([[x,y-r],[x,y+r]],visS,.5,.3));}
+    }
+  }
+  layers.push({key:'sky',name:skyName,groups:[{strokes:skyS,keep:false,feed:'hatch'}]});
+
+  if(R.chance(.6)){
+    const cl=[],nb=R.int(2,5),visC=(x,y)=>visS(x,y)&&Math.hypot(x-sx,y-sy)>sr+2.6;
+    for(let b=0;b<nb;b++){
+      const yb=b===0?sy+R.range(-.5,.5)*sr:R.range(T+5,T+AH*.42);
+      const xc=b===0?sx+R.range(-.4,.4)*AW*.2:R.range(L+AW*.1,Rt-AW*.1);
+      const hl=AW*R.range(.1,.26),m=R.int(2,4),gp=R.range(1.2,1.8),ph=R.range(0,TAU),wl=R.range(30,60);
+      for(let q=0;q<m;q++){
+        const y=yb+q*gp,x0=xc-hl*R.range(.6,1)+q*R.range(-6,6),x1=xc+hl*R.range(.6,1)+q*R.range(-6,6),p=[];
+        for(let x=x0;x<=x1;x+=1.2)p.push([x,y+Math.sin(ph+x/wl*TAU)*.35]);
+        if(p.length>1)cl.push(...clipPoly(p,visC,.6,1.2));
+      }
+    }
+    if(cl.length)layers.push({key:'cloud',name:'云带',groups:[{strokes:cl,keep:false,feed:'hatch'}]});
+  }
+  if(R.chance(.45)){
+    const bs=[],nb=R.int(4,9);
+    let bx=R.range(L+AW*.15,Rt-AW*.15);const by=R.range(T+AH*.08,T+AH*.3);
+    if(Math.hypot(bx-sx,by-sy)<sr+18)bx=clamp(sx+(bx<sx?-1:1)*(sr+26),L+15,Rt-15);
+    for(let k=0;k<nb;k++)bs.push(...clipPoly(birdShape(bx+R.gauss()*9,by+R.gauss()*4.5,R.range(1.4,3),R.range(-.25,.25)),visS,.4,.4));
+    if(bs.length)layers.push({key:'birds',name:'飞鸟 ×'+nb,groups:[{strokes:bs,keep:false,feed:'hatch'}]});
+  }
+
+  /* —— 前景：湖与倒影，或松树 —— */
+  const fg=[];
+  if(lake){
+    const lk=[];
+    for(let x=L;x<Rt;){const l=R.range(3,14);if(R.chance(.75))lk.push([[x,WL+.3],[Math.min(Rt,x+l),WL+.3]]);x+=l+R.range(.8,3);}
+    let y=WL+1.1,row=0;
+    while(y<B-.3){
+      const fy=(y-WL)/(B-WL),ph=R.range(0,99);
+      let x0=null,len=0,lim=R.range(2,10),gapTo=-1;
+      for(let x=L;x<=Rt+.01;x+=.5){
+        const xr=x+Math.sin(y*1.7+ph)*.9*fy+N.n2(x*.05,y*.4)*1.3*fy,yr=WL-(y-WL)/.86;
+        let tone=0;
+        for(let i=nR-1;i>=0;i--){const yi=sample(rid[i].y,xr);if(yi<=yr){const dep=(yr-yi)/rid[i].D;tone=rid[i].tone*(dep<1?1-dep*.75:.1);break;}}
+        if(tone===0&&Math.abs(xr-sx)<sr*.9)tone=.6*(1-Math.abs(xr-sx)/(sr*.9));
+        tone=tone*(1-fy*.55)*.9+.035;
+        const on=x>gapTo&&(N.n2(x*.23+ph,row*.9)*.5+.5)<tone&&!blocked(x,y);
+        if(on){
+          if(x0===null){x0=x;len=0;}else len+=.5;
+          if(len>=lim){lk.push([[x0,y],[x0+len,y]]);x0=null;lim=R.range(2,10);gapTo=x+R.range(.6,1.8);}
+        }else if(x0!==null){if(len>.6)lk.push([[x0,y],[x0+len,y]]);x0=null;}
+      }
+      if(x0!==null&&len>.6)lk.push([[x0,y],[x0+len,y]]);
+      y+=lerp(.95,2.4,fy*fy)*R.range(.9,1.1);row++;
+    }
+    fg.push({key:'lake',name:'湖面与倒影',groups:[{strokes:lk,keep:false,feed:'hatch'}]});
+  }else if(trees.length){
+    const ps=[];
+    for(let k=0;k<trees.length;k++){
+      const q=trees[k],nearer=trees.slice(k+1).map(o=>o.occ);
+      const vis=(x,y)=>{if(!inArt(x,y)||inConvex(occ[0],x,y))return false;for(const o of nearer)if(inConvex(o,x,y))return false;return true;};
+      const top=q.yb-q.h;
+      ps.push(...clipPoly([[q.x,q.yb],[q.x,top+q.h*.05]],vis,.6,.5));
+      for(const side of [-1,1]){
+        const n=Math.max(5,Math.round(q.h/(side<0?2.1:2.6))),p=[[q.x,top]];
+        for(let s=1;s<=n;s++){const f=s/n,hw=q.w/2*Math.pow(f,.85)*R.range(.72,1.12)*(side<0?1:.82);p.push([q.x+(s%2?side:-side)*hw,top+q.h*.9*f]);}
+        ps.push(...clipPoly(p,vis,.5,.5));
+      }
+    }
+    fg.push({key:'pines',name:'松树 ×'+trees.length,groups:[{strokes:ps,keep:false,feed:'hatch'}]});
+  }
+
+  /* —— 边框与四角定位十字 —— */
+  const cross=[],cm=M/2;
+  for(const [cx,cy] of [[cm,cm],[W-cm,cm],[W-cm,H-cm],[cm,H-cm]]){
+    const a=Math.min(3.4,cm-.9);
+    cross.push([[cx-a,cy],[cx+a,cy]],[[cx,cy-a],[cx,cy+a]],circ(cx,cy,a*.48));
+  }
+  const frame={key:'frame',name:'边框与定位十字',groups:[
+    {strokes:[[[M,M],[W-M,M],[W-M,H-M],[M,H-M],[M,M]]],keep:true,feed:'frame'},
+    {strokes:cross,keep:false,feed:'frame'}]};
+
+  /* —— 图签：笔数里也算上图签自己的笔画 —— */
+  const all=[frame,...layers,...ridgeLayers,...fg];
+  let base=1;for(const ly of all)for(const g of ly.groups)base+=g.strokes.length;
+  let n=base,lab='',txt=null;
+  for(let it=0;it<6;it++){
+    lab=labelFor(n);txt=layoutText(lab,tbX+3,tbY+1.9,TS);
+    const nn=base+txt.strokes.length;if(nn===n)break;n=nn;
+  }
+  all.push({key:'title',name:'图签',groups:[
+    {strokes:[[[tbX,H-M],[tbX,tbY],[W-M,tbY]]],keep:true,feed:'frame'},
+    {strokes:txt.strokes,keep:true,feed:'text'}]});
+  return {W,H,M,seed,num,portrait,label:lab,total:n,layers:all,art:{L,Rt,T,B},lake,isSun};
+}
+function birdShape(x,y,s,a){
+  const P=[[-1,-.38],[-.62,-.3],[-.3,-.08],[0,.28],[.3,-.08],[.62,-.3],[1,-.38]];
+  const c=Math.cos(a),sn=Math.sin(a);
+  return P.map(([u,v])=>[x+(u*c-v*sn)*s,y+(u*sn+v*c)*s]);
+}
+
+/* ============ 运动规划：梯形速度、转角减速 ============ */
+const FEED={frame:360,ridge:95,hatch:55,text:28,bird:40};   // 落笔进给 mm/s
+const A_DRAW=1400,A_RAPID=2600,V_RAPID=150,JDEV=.06;        // 加速度、空移速度、转角偏差
+const T_DROP=.075,T_LIFT=.06,T_JOLT=.46,T_WAIT=.28;
+function segProfile(L,vi,vo,V,a){
+  let vp=V,da=(V*V-vi*vi)/(2*a),dd=(V*V-vo*vo)/(2*a),tc;
+  if(da+dd>L){
+    vp=Math.max(Math.sqrt(Math.max(0,(2*a*L+vi*vi+vo*vo)/2)),vi,vo);
+    da=(vp*vp-vi*vi)/(2*a);dd=(vp*vp-vo*vo)/(2*a);tc=0;
+  }else tc=(L-da-dd)/V;
+  const ta=(vp-vi)/a,td=(vp-vo)/a;
+  return [L,vi,vp,vo,ta,tc,td];
+}
+function planPath(pts,V,a){
+  const n=pts.length-1;
+  if(n<1)return {n:0,prof:new Float64Array(0),T:0,len:0,ux:[],uy:[],cum:[0],a};
+  const Ls=new Float64Array(n),ux=new Float64Array(n),uy=new Float64Array(n),cum=new Float64Array(n+1);let len=0;
+  for(let k=0;k<n;k++){const dx=pts[k+1][0]-pts[k][0],dy=pts[k+1][1]-pts[k][1],l=Math.hypot(dx,dy)||1e-9;Ls[k]=l;ux[k]=dx/l;uy[k]=dy/l;len+=l;cum[k+1]=len;}
+  const vj=new Float64Array(n+1);
+  for(let k=1;k<n;k++){
+    const c=-(ux[k-1]*ux[k]+uy[k-1]*uy[k]),sh=Math.sqrt(Math.max(0,(1-c)/2));
+    vj[k]=sh>.9999?V:Math.min(V,Math.sqrt(a*JDEV*sh/(1-sh)));
+  }
+  for(let k=n-1;k>=0;k--)vj[k]=Math.min(vj[k],Math.sqrt(vj[k+1]*vj[k+1]+2*a*Ls[k]));
+  for(let k=0;k<n;k++)vj[k+1]=Math.min(vj[k+1],Math.sqrt(vj[k]*vj[k]+2*a*Ls[k]));
+  const prof=new Float64Array(n*8);let t=0;
+  for(let k=0;k<n;k++){
+    const P=segProfile(Ls[k],vj[k],vj[k+1],V,a);
+    for(let q=0;q<7;q++)prof[k*8+q]=P[q];
+    prof[k*8+7]=t;t+=P[4]+P[5]+P[6];
+  }
+  return {n,prof,T:t,len,ux,uy,a,cum};
+}
+/* 段内 t 时刻的位移与速度 */
+function segAt(pf,o,t,a,out){
+  const L=pf[o],vi=pf[o+1],vp=pf[o+2],ta=pf[o+4],tc=pf[o+5],td=pf[o+6];
+  if(t<=ta){out.s=vi*t+.5*a*t*t;out.v=vi+a*t;}
+  else if(t<=ta+tc){out.s=vi*ta+.5*a*ta*ta+vp*(t-ta);out.v=vp;}
+  else{const t2=Math.min(t-ta-tc,td);out.s=vi*ta+.5*a*ta*ta+vp*tc+vp*t2-.5*a*t2*t2;out.v=vp-a*t2;}
+  if(out.s>L)out.s=L;
+}
+function dedupe(p){const o=[p[0]];for(let i=1;i<p.length;i++){const q=o[o.length-1];if(Math.hypot(p[i][0]-q[0],p[i][1]-q[1])>1e-4)o.push(p[i]);}return o;}
+function makeStroke(pts,layer,feed){
+  const st={pts,layer,feed};
+  st.draw=planPath(pts,feed,A_DRAW);
+  const av=st.draw.T>0?st.draw.len/st.draw.T:0;
+  st.alpha=.95-.22*clamp(av/110,0,1);
+  return st;
+}
+function setTravel(st,from){
+  st.from=[from[0],from[1]];
+  st.travel=planPath(dedupe([st.from,st.pts[0]]),st.feed>=200?430:V_RAPID,st.feed>=200?5200:A_RAPID);
+  st.dur=st.travel.T+T_DROP+st.draw.T+T_LIFT;
+}
+function buildPlan(comp){
+  const rnd=mulberry32(comp.seed^0x5bd1e995),plan=[];let cur=[0,0];
+  comp.layers.forEach((ly,li)=>{
+    ly.first=plan.length;
+    for(const g of ly.groups){
+      let list=g.strokes.filter(s=>s.length>1);
+      if(!g.keep)list=orderStrokes(list,cur);
+      for(const s0 of list){
+        const p=dedupe(s0);if(p.length<2)continue;
+        const st=makeStroke(wobble(p,rnd,.045),li,FEED[g.feed]);
+        setTravel(st,cur);plan.push(st);cur=st.pts[st.pts.length-1];
+      }
+    }
+    ly.last=plan.length;ly.count=ly.last-ly.first;
+  });
+  return plan;
+}
+
+/* ============ 执行器：逐笔推进机器时间 ============ */
+const EX={plan:[],i:0,phase:'idle',pt:0,x:0,y:0,z:1,v:0,vx:0,vy:0,seg:0,cur:{x:0,y:0},
+  jobT:0,doneT:0,introT:0,homeT:0,intro:null,home:null,start:[0,0],drawn:0,travel:0,done:true,birds:[],jx:0,jy:0};
+const _o={s:0,v:0};
+function startJob(plan,from){
+  Object.assign(EX,{plan,i:0,pt:0,seg:0,doneT:0,drawn:0,travel:0,done:false,start:[from[0],from[1]],z:1});
+  EX.intro=planPath(dedupe([from,[0,0]]),V_RAPID*.8,A_RAPID);
+  EX.introT=EX.intro.T+T_JOLT+T_WAIT;
+  EX.phase=EX.intro.n?'intro':'jolt';
+  recomputeTotal();
+}
+function recomputeTotal(){
+  const last=EX.plan.length?EX.plan[EX.plan.length-1].pts.slice(-1)[0]:[0,0];
+  EX.home=planPath(dedupe([last,[0,0]]),V_RAPID,A_RAPID);
+  let s=EX.introT;for(const st of EX.plan)s+=st.dur;
+  EX.jobT=s+EX.home.T;
+}
+function phaseDur(){
+  const st=EX.plan[EX.i];
+  switch(EX.phase){
+    case 'intro':return EX.intro.T;case 'jolt':return T_JOLT;case 'wait':return T_WAIT;
+    case 'mv':return st.travel.T;case 'dn':return T_DROP;case 'dw':return st.draw.T;case 'up':return T_LIFT;
+    case 'home':return EX.home.T;
+  }
+  return Infinity;
+}
+/* 已用机器时间（用于进度与剩余时间） */
+function elapsedT(){
+  if(EX.done)return EX.jobT;
+  let t=EX.doneT;
+  if(EX.phase==='intro')return EX.pt;
+  if(EX.phase==='jolt')return EX.intro.T+EX.pt;
+  if(EX.phase==='wait')return EX.intro.T+T_JOLT+EX.pt;
+  if(EX.phase==='home')return EX.jobT-EX.home.T+EX.pt;
+  const st=EX.plan[EX.i];if(!st)return t;
+  if(EX.phase==='mv')return t+EX.pt;t+=st.travel.T;
+  if(EX.phase==='dn')return t+EX.pt;t+=T_DROP;
+  if(EX.phase==='dw')return t+EX.pt;t+=st.draw.T;
+  return t+EX.pt;
+}
+function pathPos(P,pts,t,o){  // 在规划好的路径上取 t 时刻位置
+  if(!P.n){o.k=0;o.x=pts[0][0];o.y=pts[0][1];o.v=o.vx=o.vy=o.s=0;return;}
+  let k=o.k||0;const pf=P.prof;
+  while(k<P.n-1&&t>=pf[(k+1)*8+7])k++;
+  segAt(pf,k*8,t-pf[k*8+7],P.a,_o);
+  o.k=k;o.x=pts[k][0]+P.ux[k]*_o.s;o.y=pts[k][1]+P.uy[k]*_o.s;o.v=_o.v;o.vx=_o.v*P.ux[k];o.vy=_o.v*P.uy[k];o.s=_o.s;
+}
+const _pp={k:0};
+function updatePos(){
+  const st=EX.plan[EX.i];EX.jx=EX.jy=0;
+  const setv=(v,vx,vy)=>{EX.v=v;EX.vx=vx;EX.vy=vy;};
+  switch(EX.phase){
+    case 'intro':_pp.k=0;pathPos(EX.intro,[EX.start,[0,0]],EX.pt,_pp);EX.x=_pp.x;EX.y=_pp.y;EX.z=1;setv(_pp.v,_pp.vx,_pp.vy);break;
+    case 'jolt':{const t=EX.pt,e=Math.exp(-t*9);EX.x=0;EX.y=0;EX.jx=-1.3*e*Math.sin(t*41);EX.jy=-.9*e*Math.sin(t*41+.7);EX.z=1;setv(0,0,0);break;}
+    case 'wait':EX.x=0;EX.y=0;EX.z=1;setv(0,0,0);break;
+    case 'mv':_pp.k=0;pathPos(st.travel,[st.from,st.pts[0]],EX.pt,_pp);EX.x=_pp.x;EX.y=_pp.y;EX.z=1;setv(_pp.v,_pp.vx,_pp.vy);EX.curTravel=_pp.s||0;break;
+    case 'dn':EX.x=st.pts[0][0];EX.y=st.pts[0][1];EX.z=1-smooth(clamp(EX.pt/T_DROP,0,1));setv(0,0,0);break;
+    case 'dw':{_pp.k=EX.seg;pathPos(st.draw,st.pts,EX.pt,_pp);EX.seg=_pp.k;EX.x=_pp.x;EX.y=_pp.y;EX.z=0;setv(_pp.v,_pp.vx,_pp.vy);
+      EX.curDrawn=st.draw.cum[_pp.k]+_pp.s;break;}
+    case 'up':{const e=st.pts[st.pts.length-1];EX.x=e[0];EX.y=e[1];EX.z=smooth(clamp(EX.pt/T_LIFT,0,1));setv(0,0,0);break;}
+    case 'home':{const last=EX.plan.length?EX.plan[EX.plan.length-1].pts.slice(-1)[0]:[0,0];_pp.k=0;pathPos(EX.home,dedupe([last,[0,0]]),EX.pt,_pp);
+      EX.x=_pp.x;EX.y=_pp.y;EX.z=1;setv(_pp.v,_pp.vx,_pp.vy);break;}
+    default:EX.z=1;setv(0,0,0);
+  }
+}
+function beginStroke(){
+  takeBird();
+  if(EX.i<EX.plan.length){EX.phase='mv';EX.pt=0;EX.seg=0;EX.curTravel=0;EX.curDrawn=0;}
+  else{EX.phase='home';EX.pt=0;}
+}
+/* 补画飞鸟：在当前一笔结束后插入 */
+function takeBird(){
+  if(!EX.birds.length)return;
+  const b=EX.birds.shift(),li=ensureExtraLayer();
+  const from=EX.i>0?EX.plan[EX.i-1].pts.slice(-1)[0]:[EX.x,EX.y];
+  const st=makeStroke(wobble(birdShape(b[0],b[1],R0.range(1.8,2.8),R0.range(-.3,.3)),Math.random,.04),li,FEED.bird);
+  st.bird=true;setTravel(st,from);
+  EX.plan.splice(EX.i,0,st);
+  const nx=EX.plan[EX.i+1];if(nx)setTravel(nx,st.pts[st.pts.length-1]);
+  comp.layers[li].count++;comp.layers[li].last=EX.plan.length;
+  recomputeTotal();
+}
+function endPhase(){
+  const st=EX.plan[EX.i];
+  switch(EX.phase){
+    case 'intro':EX.phase='jolt';sfx('clunk');break;
+    case 'jolt':EX.phase='wait';break;
+    case 'wait':EX.doneT=EX.introT;beginStroke();return;
+    case 'mv':EX.travel+=st.travel.len;EX.phase='dn';break;
+    case 'dn':EX.phase='dw';EX.seg=0;inkDot(st);sfx('down');break;
+    case 'dw':EX.drawn+=st.draw.len;inkStroke(st);EX.phase='up';sfx('up');break;
+    case 'up':EX.doneT+=st.dur;EX.i++;beginStroke();return;
+    case 'home':EX.travel+=EX.home.len;
+      if(EX.birds.length){EX.doneT=EX.jobT-EX.home.T;beginStroke();if(EX.phase==='mv'){EX.plan[EX.i].from=[0,0];setTravel(EX.plan[EX.i],[0,0]);recomputeTotal();}return;}
+      EX.phase='idle';EX.done=true;EX.x=0;EX.y=0;onJobDone();return;
+  }
+  EX.pt=0;
+}
+function advance(dt){
+  let guard=0;
+  while(dt>0&&EX.phase!=='idle'&&guard++<4000){
+    const rem=phaseDur()-EX.pt;
+    if(dt<rem){EX.pt+=dt;updatePos();return;}
+    dt-=Math.max(0,rem);EX.pt=phaseDur();updatePos();endPhase();updatePos();
+  }
+}
+
+/* ============ 渲染：画纸、墨迹、绘图仪 ============ */
+const cv=document.getElementById('stage'),sctx=cv.getContext('2d');
+const ink=document.createElement('canvas'),ictx=ink.getContext('2d');
+const V={s:1,dpr:1,k:1,ox:0,oy:0,x0:0,y0:0,sw:1,sh:1,mobile:false,cw:0,ch:0,lw:.3};
+const BLK='#111111',RED='#D93025',INK='31,63,191';
+let comp=null,paperX=0,sheets=0,viewLayer=-1;
+function stageBox(){
+  const W=comp.W,H=comp.H;
+  return V.mobile?{x0:-24,y0:-50,x1:W+24,y1:H+12}:{x0:-68,y0:-70,x1:W+68,y1:H+30};
+}
+function layout(){
+  const r=cv.parentElement.getBoundingClientRect();
+  V.dpr=Math.min(2.5,window.devicePixelRatio||1);V.cw=r.width;V.ch=r.height;
+  V.mobile=window.innerWidth<700;
+  const b=stageBox();V.x0=b.x0;V.y0=b.y0;V.sw=b.x1-b.x0;V.sh=b.y1-b.y0;
+  V.s=Math.max(.2,Math.min(V.cw/V.sw,V.ch/V.sh));
+  V.ox=(V.cw-V.sw*V.s)/2;V.oy=(V.ch-V.sh*V.s)/2;
+  cv.width=Math.max(1,Math.round(V.cw*V.dpr));cv.height=Math.max(1,Math.round(V.ch*V.dpr));
+  V.k=V.s*V.dpr;V.lw=Math.max(.3,.95/V.s);
+  const g=10*V.s,px=r.left+V.ox-V.x0*V.s,py=r.top+V.oy-V.y0*V.s,bs=document.body.style;
+  bs.setProperty('--grid',g+'px');bs.setProperty('--gx',(px%(g*5))+'px');bs.setProperty('--gy',(py%(g*5))+'px');
+  ink.width=Math.max(1,Math.round(comp.W*V.k));ink.height=Math.max(1,Math.round(comp.H*V.k));
+  redrawInk();
+}
+/* —— 墨迹 —— */
+function inkPrep(c){c.globalCompositeOperation='multiply';c.lineCap='round';c.lineJoin='round';c.lineWidth=V.lw;}
+function tracePath(c,pts,n,ex,ey){c.beginPath();c.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<=n;i++)c.lineTo(pts[i][0],pts[i][1]);if(ex!==undefined)c.lineTo(ex,ey);}
+function dotOn(c,st){c.fillStyle=`rgba(${INK},.92)`;c.beginPath();c.arc(st.pts[0][0],st.pts[0][1],V.lw*.95,0,TAU);c.fill();}
+function lineOn(c,st){c.strokeStyle=`rgba(${INK},${st.alpha})`;tracePath(c,st.pts,st.pts.length-1);c.stroke();}
+function inkDot(st){ictx.setTransform(V.k,0,0,V.k,0,0);inkPrep(ictx);dotOn(ictx,st);}
+function inkStroke(st){ictx.setTransform(V.k,0,0,V.k,0,0);inkPrep(ictx);lineOn(ictx,st);}
+function redrawInk(){
+  ictx.setTransform(1,0,0,1,0,0);ictx.globalCompositeOperation='source-over';ictx.clearRect(0,0,ink.width,ink.height);
+  ictx.setTransform(V.k,0,0,V.k,0,0);inkPrep(ictx);
+  const P=EX.plan;
+  for(let i=0;i<P.length;i++){
+    const st=P[i];let line,dot;
+    if(viewLayer>=0){line=dot=st.layer<=viewLayer;}
+    else{line=i<EX.i||EX.done||(i===EX.i&&EX.phase==='up');dot=line||(i===EX.i&&EX.phase==='dw');}
+    if(dot)dotOn(ictx,st);
+    if(line)lineOn(ictx,st);
+  }
+}
+/* —— 几何小工具 —— */
+function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
+function alu(c,x0,y0,x1,y1,hi){const g=c.createLinearGradient(x0,y0,x1,y1);g.addColorStop(0,hi?'#F7F8F9':'#E8EAEC');g.addColorStop(.45,'#C9CDD1');g.addColorStop(1,'#959AA0');return g;}
+function softShadow(c,x,y,w,h,r,a){for(let q=0;q<3;q++){c.fillStyle=`rgba(0,0,0,${a/(q+1.6)})`;rr(c,x-q*.8,y-q*.8,w+q*1.6,h+q*1.6,r+q);c.fill();}}
+function screwDot(c,x,y,r){c.fillStyle='#9aa0a6';c.beginPath();c.arc(x,y,r,0,TAU);c.fill();c.strokeStyle='rgba(0,0,0,.55)';c.lineWidth=r*.35;c.beginPath();c.moveTo(x-r*.7,y);c.lineTo(x+r*.7,y);c.stroke();}
+
+/* —— 整幅舞台 —— */
+function drawStage(){
+  const c=sctx,W=comp.W,H=comp.H,mob=V.mobile;
+  c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-over';c.clearRect(0,0,cv.width,cv.height);
+  c.setTransform(V.k,0,0,V.k,V.dpr*(V.ox-V.x0*V.s),V.dpr*(V.oy-V.y0*V.s));
+  const lim=mob?{a:V.x0-1,b:V.x0+V.sw+1}:{a:-46,b:W+46};
+  if(!mob)drawHousing(c,-64,'进纸'),drawHousing(c,W+46,'出纸');
+  // 画纸
+  c.save();c.beginPath();c.rect(lim.a,-80,lim.b-lim.a,H+120);c.clip();
+  softShadow(c,paperX+.6,1.2,W,H,.6,.09);
+  c.fillStyle='#FFFFFF';c.fillRect(paperX,0,W,H);
+  c.drawImage(ink,paperX,0,W,H);
+  if(viewLayer<0&&EX.phase==='dw'&&swap.ph===''){
+    const st=EX.plan[EX.i];c.save();c.translate(paperX,0);inkPrep(c);
+    c.strokeStyle=`rgba(${INK},${st.alpha})`;tracePath(c,st.pts,EX.seg,EX.x,EX.y);c.stroke();c.restore();
+  }
+  drawMarkers(c);
+  c.restore();
+  if(!mob)drawStack(c,W+46);
+  drawRails(c);
+  drawGantry(c,EX.x+EX.jx,EX.y,EX.z,EX.jy);
+}
+function drawHousing(c,x,label){
+  const H=comp.H;
+  softShadow(c,x+.5,-8,18,H+26,2.5,.1);
+  c.fillStyle=alu(c,x,0,x+18,0);rr(c,x,-9,18,H+26,2.5);c.fill();
+  c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=.3;c.stroke();
+  c.fillStyle=BLK;c.fillRect(label==='进纸'?x+15.6:x,-4,2.4,H+16);
+  screwDot(c,x+9,-4.5,1.3);screwDot(c,x+9,H+12.5,1.3);
+  c.save();c.translate(x+8.6,H/2);c.rotate(-Math.PI/2);c.fillStyle='rgba(17,17,17,.62)';
+  c.font='500 3.2px '+getComputedStyle(document.body).fontFamily;c.textAlign='center';c.textBaseline='middle';
+  c.fillText(label.split('').join(' '),0,0);c.restore();
+}
+function drawStack(c,x){
+  const n=Math.min(sheets,9);
+  for(let i=0;i<n;i++){c.fillStyle=i%2?'#f4f4f4':'#ffffff';c.fillRect(x-1.4-i*.32,-3+i*.25,1.1,comp.H+10);}
+}
+function drawMarkers(c){
+  if(!EX.birds.length)return;
+  c.save();c.globalCompositeOperation='source-over';c.strokeStyle='rgba(17,17,17,.38)';c.lineWidth=.28;c.setLineDash([.7,.7]);
+  for(const [x,y] of EX.birds){c.beginPath();c.arc(paperX+x,y,2.2,0,TAU);c.stroke();}
+  c.restore();
+}
+function drawRails(c){
+  const W=comp.W,H=comp.H,mob=V.mobile,rw=mob?8:13,y0=mob?-46:-64,y1=H+(mob?8:26);
+  for(const cx of mob?[-14,W+14]:[-25,W+25]){
+    softShadow(c,cx-rw/2+1.6,y0+2,rw,y1-y0,1.5,.12);
+    c.fillStyle=alu(c,cx-rw/2,0,cx+rw/2,0,true);rr(c,cx-rw/2,y0,rw,y1-y0,1.5);c.fill();
+    c.strokeStyle='rgba(0,0,0,.3)';c.lineWidth=.25;c.stroke();
+    c.fillStyle='rgba(0,0,0,.28)';c.fillRect(cx-.5,y0+3,1,y1-y0-6);
+    if(!mob){
+      c.fillStyle='rgba(17,17,17,.75)';c.fillRect(cx+3.2,y0+14,.7,y1-y0-18);c.fillRect(cx-3.9,y0+14,.7,y1-y0-18);
+      softShadow(c,cx-10+1.2,y0-8+1.6,20,20,2,.12);
+      c.fillStyle=BLK;rr(c,cx-10,y0-8,20,20,2);c.fill();
+      c.fillStyle='#2a2a2a';rr(c,cx-8,y0-6,16,16,1.2);c.fill();
+      c.fillStyle=alu(c,cx-3,y0-1,cx+3,y0+5);c.beginPath();c.arc(cx,y0+2,3,0,TAU);c.fill();
+      for(const [dx,dy] of [[-6,-4],[6,-4],[-6,8],[6,8]]){c.fillStyle='#777';c.beginPath();c.arc(cx+dx,y0+2+dy,.8,0,TAU);c.fill();}
+    }else{c.fillStyle=BLK;rr(c,cx-rw/2-.5,y0-2,rw+1,6,1.2);c.fill();}
+  }
+}
+function drawGantry(c,px,py,z,jy){
+  const W=comp.W,mob=V.mobile,by=py-(mob?22:26)+jy*.5,bh=mob?9:14,ex=mob?-20:-36,ew=W-2*ex;
+  const rx=mob?[-14,W+14]:[-25,W+25];
+  // 横梁投影与横梁
+  softShadow(c,ex+3,by-bh/2+5,ew,bh,2,.11);
+  c.fillStyle=alu(c,0,by-bh/2,0,by+bh/2,true);rr(c,ex,by-bh/2,ew,bh,mob?1.5:2);c.fill();
+  c.strokeStyle='rgba(0,0,0,.32)';c.lineWidth=.25;c.stroke();
+  if(!mob){
+    c.fillStyle='rgba(0,0,0,.22)';c.fillRect(ex+2,by-2.6,ew-4,.6);c.fillRect(ex+2,by+2,ew-4,.6);
+    c.fillStyle='rgba(17,17,17,.85)';c.fillRect(ex+8,by-5.2,ew-16,.7);
+  }
+  // 两端滑块
+  for(const cx of rx){
+    const w=mob?14:24,h=mob?14:28;
+    softShadow(c,cx-w/2+1.6,by-h/2+2.4,w,h,2.5,.14);
+    c.fillStyle=BLK;rr(c,cx-w/2,by-h/2,w,h,2.5);c.fill();
+    if(!mob){c.fillStyle=alu(c,cx-3,by-3,cx+3,by+3);for(const dy of [-8.5,8.5]){c.beginPath();c.arc(cx,by+dy,3,0,TAU);c.fill();}
+      c.fillStyle='#262626';c.fillRect(cx-8,by-2,16,4);}
+  }
+  if(!mob){
+    c.save();c.fillStyle='rgba(235,237,239,.55)';c.font='500 2.4px '+getComputedStyle(document.body).fontFamily;c.textAlign='center';
+    c.fillText('2号',rx[1],by+1);c.restore();
+  }
+  // 线缆弯环：笔架 → 横梁左端；横梁左端 → 机架
+  const ax=ex+6,dist=Math.abs(px-ax),lh=clamp(48-dist*.12,12,42)*(mob?.6:1);
+  cable(c,[px+(mob?5:9),by-(mob?6:12)],[px+(mob?5:9),by-(mob?6:12)-lh],[ax,by-bh/2-lh*.9],[ax,by-bh/2+1],mob?1.5:2.2);
+  if(!mob)cable(c,[rx[0],by-14],[rx[0]-22,by-14],[rx[0]-22,-62],[rx[0]-6,-66],2);
+  // 笔架
+  const cw=mob?22:34,ch=mob?15:24;
+  softShadow(c,px-cw/2+2.2,by-ch/2+3.4,cw,ch,2.5,.15);
+  c.fillStyle=BLK;rr(c,px-cw/2,by-ch/2,cw,ch,2.5);c.fill();
+  c.fillStyle=alu(c,0,by-ch/2+2,0,by+ch/2-2,true);rr(c,px-cw/2+2.4,by-ch/2+2.4,cw-4.8,ch-4.8,1.4);c.fill();
+  if(!mob){
+    c.fillStyle=BLK;rr(c,px+3,by-9,12,12,1.2);c.fill();
+    c.fillStyle=alu(c,px+6,by-6,px+12,by);c.beginPath();c.arc(px+9,by-3,2.6,0,TAU);c.fill();
+    screwDot(c,px-12.5,by-8,1);screwDot(c,px-12.5,by+8,1);
+  }
+  // 笔夹支架
+  const ty=py-12;
+  c.fillStyle=alu(c,px-5,0,px+5,0,true);c.fillRect(px-5,by+ch/2-1,10,Math.max(0,ty-(by+ch/2-1)+2));
+  drawPen(c,px,py,z);
+}
+function cable(c,p0,p1,p2,p3,w){
+  for(const [col,lw] of [[BLK,w],['rgba(255,255,255,.22)',w*.28]]){
+    c.strokeStyle=col;c.lineWidth=lw;c.lineCap='round';c.beginPath();c.moveTo(p0[0],p0[1]);c.bezierCurveTo(p1[0],p1[1],p2[0],p2[1],p3[0],p3[1]);c.stroke();
+  }
+}
+function drawPen(c,px,py,z){
+  const dz=z*2.4,sx=px+z*2.3,sy=py+z*1.7,t=py-dz;
+  // 笔的投影：落笔时与笔尖相接，抬笔时明显分开
+  c.strokeStyle=`rgba(0,0,0,${.075-z*.02})`;c.lineCap='round';c.lineWidth=4.2;
+  c.beginPath();c.moveTo(sx+1.3,sy+1.5);c.lineTo(sx+5.6,sy+7.6);c.stroke();
+  c.fillStyle=`rgba(0,0,0,${.3-z*.12})`;c.beginPath();c.ellipse(sx+.5,sy+.4,1.5+z*.9,1+z*.6,.6,0,TAU);c.fill();
+  // 笔杆与笔尖
+  c.fillStyle='rgba(236,238,240,.96)';rr(c,px-3,t-19,6,15.6,1.2);c.fill();
+  c.strokeStyle='rgba(17,17,17,.55)';c.lineWidth=.3;c.stroke();
+  c.strokeStyle=`rgb(${INK})`;c.lineWidth=.8;c.beginPath();c.moveTo(px,t-18);c.lineTo(px,t-4.4);c.stroke();
+  c.fillStyle='#d9dcdf';c.beginPath();c.moveTo(px-3,t-3.6);c.lineTo(px+3,t-3.6);c.lineTo(px+.45,t-.5);c.lineTo(px-.45,t-.5);c.closePath();c.fill();
+  c.strokeStyle='rgba(17,17,17,.55)';c.stroke();
+  c.fillStyle='#4a4d52';c.beginPath();c.arc(px,t-.35,.38,0,TAU);c.fill();
+  // 夹环与红色笔夹
+  c.fillStyle=BLK;rr(c,px-6,t-13.5,12,5,1);c.fill();
+  c.fillStyle='#3a3a3a';c.fillRect(px-6,t-11.4,12,.6);
+  c.fillStyle=RED;rr(c,px+1.9,t-19.8,1.9,9.2,.9);c.fill();
+  c.fillStyle='rgba(255,255,255,.35)';c.fillRect(px+2.3,t-19,.45,7);
+}
+
+/* ============ 控制面板、反馈与主循环 ============ */
+const SPEEDS=[1,2,4,8,16,32,64];
+const $=id=>document.getElementById(id);
+const R0=makeRng(((Date.now()&0xffffff)^Math.floor(Math.random()*0xffffff))>>>0);
+const S={spd:2,paused:false,sound:false,rm:false,num:0,lastT:0,lastUi:0,px:0,py:0};
+const swap={ph:'',t:0,from:[0,0],z0:1};
+const rmq=matchMedia('(prefers-reduced-motion: reduce)');
+S.rm=rmq.matches||/[?&]rm=1/.test(location.search);
+
+function newComp(){
+  S.num=S.num?S.num%9999+1:R0.int(1,960);
+  comp=generate(R0.int(0,0xffff),S.num,window.innerWidth<700);
+  return buildPlan(comp);
+}
+function startSheet(plan,from){
+  viewLayer=-1;startJob(plan,from);updatePos();
+  buildList();layout();
+  if(S.rm)finishNow();
+}
+function ensureExtraLayer(){
+  let li=comp.layers.findIndex(l=>l.key==='extra');
+  if(li<0){comp.layers.push({key:'extra',name:'补画 · 飞鸟',groups:[],count:0,first:EX.plan.length,last:EX.plan.length});li=comp.layers.length-1;buildList();}
+  return li;
+}
+function onJobDone(){updateList();}
+function finishNow(){
+  if(swap.ph)return;
+  while(EX.birds.length){EX.i=EX.plan.length;takeBird();}
+  let d=0,t=0;for(const st of EX.plan){d+=st.draw.len;t+=st.travel.len;}
+  recomputeTotal();
+  Object.assign(EX,{i:EX.plan.length,phase:'idle',done:true,x:0,y:0,z:1,pt:0,jx:0,jy:0,drawn:d,travel:t+EX.home.len,doneT:EX.jobT});
+  if(S.rm)viewLayer=comp.layers.length-1;
+  redrawInk();onJobDone();
+}
+function addBird(x,y){
+  if(S.rm){
+    const li=ensureExtraLayer();
+    const st=makeStroke(wobble(birdShape(x,y,R0.range(1.8,2.8),R0.range(-.3,.3)),Math.random,.04),li,FEED.bird);
+    setTravel(st,[0,0]);EX.plan.push(st);comp.layers[li].count++;comp.layers[li].last=EX.plan.length;
+    EX.i=EX.plan.length;viewLayer=comp.layers.length-1;redrawInk();buildList();return;
+  }
+  EX.birds.push([x,y]);
+  if(EX.done){   // 画完后点击：唤醒机器补上这一笔
+    EX.done=false;let s=EX.introT;for(let i=0;i<EX.i;i++)s+=EX.plan[i].dur;EX.doneT=s;
+    beginStroke();const st=EX.plan[EX.i];if(st){setTravel(st,[EX.x,EX.y]);recomputeTotal();}
+  }
+}
+/* —— 换纸：停车 → 出纸 → 进纸 → 归位 —— */
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+function newPaper(){
+  if(swap.ph)return;
+  if(S.rm){sheets++;startSheet(newComp(),[0,0]);return;}
+  EX.birds.length=0;Object.assign(swap,{ph:'park',t:0,from:[EX.x,EX.y],z0:EX.z});
+  EX.phase='idle';EX.done=true;
+}
+function stepSwap(dt){
+  swap.t+=dt;
+  if(swap.ph==='park'){
+    const k=ease(clamp(swap.t/.6,0,1));
+    EX.x=lerp(swap.from[0],0,k);EX.y=lerp(swap.from[1],-14,k);EX.z=Math.min(1,swap.z0+swap.t*12);
+    if(swap.t>=.65){swap.ph='out';swap.t=0;}
+  }else if(swap.ph==='out'){
+    paperX=ease(clamp(swap.t/.95,0,1))*(comp.W+70);
+    if(swap.t>=.95){
+      sheets++;const keep=[EX.x,EX.y],plan=newComp();
+      EX.plan=plan;EX.i=0;EX.phase='idle';EX.done=false;EX.drawn=EX.travel=0;viewLayer=-1;buildList();layout();
+      EX.x=keep[0];EX.y=keep[1];paperX=-(comp.W+70);swap.ph='in';swap.t=0;swap.plan=plan;
+    }
+  }else if(swap.ph==='in'){
+    const k=clamp(swap.t/1.05,0,1);paperX=-(comp.W+70)*Math.pow(1-k,3);
+    if(k>=1&&swap.t>=1.25){paperX=0;swap.ph='';startJob(swap.plan,[EX.x,EX.y]);updatePos();redrawInk();sfx('clunk');}
+  }
+}
+/* —— 调速旋钮 —— */
+const knob=$('knob'),kw=$('knobWrap');
+function buildKnob(){
+  SPEEDS.forEach((v,i)=>{
+    const a=(-135+i*45)*Math.PI/180,e=document.createElement('span');
+    e.className='sc';e.textContent=v+'×';e.style.left=(52+Math.sin(a)*40)+'px';e.style.top=(36-Math.cos(a)*33)+'px';
+    e.addEventListener('click',()=>setSpeed(i));kw.appendChild(e);
+  });
+  let drag=null;
+  knob.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,i:S.spd,moved:false};knob.setPointerCapture(e.pointerId);e.preventDefault();knob.focus();});
+  knob.addEventListener('pointermove',e=>{if(!drag)return;const d=(e.clientX-drag.x-(e.clientY-drag.y))/24;if(Math.abs(d)>.4)drag.moved=true;if(drag.moved)setSpeed(drag.i+Math.round(d));});
+  knob.addEventListener('pointerup',e=>{if(drag&&!drag.moved)setSpeed(e.shiftKey?S.spd-1:(S.spd+1)%SPEEDS.length);drag=null;});
+  knob.addEventListener('pointercancel',()=>drag=null);
+  knob.addEventListener('wheel',e=>{e.preventDefault();setSpeed(S.spd+(e.deltaY<0?1:-1));},{passive:false});
+  knob.addEventListener('keydown',e=>{
+    if(e.key==='ArrowUp'||e.key==='ArrowRight'){setSpeed(S.spd+1);e.preventDefault();}
+    if(e.key==='ArrowDown'||e.key==='ArrowLeft'){setSpeed(S.spd-1);e.preventDefault();}
+  });
+}
+function setSpeed(i){
+  S.spd=clamp(i,0,SPEEDS.length-1);
+  knob.style.transform=`rotate(${-135+S.spd*45}deg)`;
+  knob.setAttribute('aria-valuenow',SPEEDS[S.spd]);knob.setAttribute('aria-valuetext',SPEEDS[S.spd]+'×');
+  kw.querySelectorAll('.sc').forEach((e,k)=>e.classList.toggle('on',k===S.spd));
+}
+function togglePause(){
+  if(S.rm)return;
+  S.paused=!S.paused;$('pause').setAttribute('aria-pressed',S.paused);
+  $('pause').setAttribute('aria-label',S.paused?'继续':'暂停');
+  $('pauseLbl').firstChild.textContent=S.paused?'继续 ':'暂停 ';
+}
+function layerStep(d){
+  if(!S.rm)return;
+  viewLayer=clamp(viewLayer+d,0,comp.layers.length-1);redrawInk();updateList();updateLcd();
+}
+function flash(el){el.classList.add('down');setTimeout(()=>el.classList.remove('down'),120);}
+
+/* —— 声音：两轴步进电机 + 抬落笔轻响 —— */
+const AU={ctx:null,last:0,vx:0,vy:0};
+function audioInit(){
+  const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+  const ctx=new C(),m=ctx.createGain();m.gain.value=.55;m.connect(ctx.destination);
+  Object.assign(AU,{ctx,m});
+  for(const ax of ['x','y']){
+    const o=ctx.createOscillator(),f=ctx.createBiquadFilter(),g=ctx.createGain();
+    o.type=ax==='x'?'square':'sawtooth';o.frequency.value=90;f.type='lowpass';f.frequency.value=1400;f.Q.value=3;g.gain.value=0;
+    o.connect(f);f.connect(g);g.connect(m);o.start();AU['o'+ax]=o;AU['g'+ax]=g;
+  }
+  const nb=ctx.createBuffer(1,ctx.sampleRate*.06,ctx.sampleRate),d=nb.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3);
+  AU.noise=nb;
+}
+function audioUpdate(vx,vy){
+  if(!AU.ctx||!S.sound)return;const t=AU.ctx.currentTime;
+  for(const [ax,v,k] of [['x',vx,1],['y',vy,.83]]){
+    const a=Math.abs(v),f=(60+1150*(1-Math.exp(-a/260)))*k,g=a>1.5?.045*Math.min(1,a/35):0;
+    AU['o'+ax].frequency.setTargetAtTime(f,t,.025);AU['g'+ax].gain.setTargetAtTime(g,t,.035);
+  }
+}
+function sfx(kind){
+  if(!AU.ctx||!S.sound)return;
+  const now=performance.now();if(now-AU.last<38&&kind!=='clunk')return;AU.last=now;
+  const c=AU.ctx,t=c.currentTime,src=c.createBufferSource(),bp=c.createBiquadFilter(),g=c.createGain();
+  src.buffer=AU.noise;bp.type='bandpass';bp.frequency.value=kind==='down'?1800:kind==='up'?3200:420;bp.Q.value=kind==='clunk'?1.2:4;
+  const vol=kind==='clunk'?.5:.28;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+(kind==='clunk'?.12:.045));
+  src.connect(bp);bp.connect(g);g.connect(AU.m);src.start(t);
+}
+function setSound(on){
+  S.sound=on;$('lever').setAttribute('aria-pressed',on);
+  if(on){if(!AU.ctx)audioInit();if(AU.ctx&&AU.ctx.state!=='running')AU.ctx.resume();}
+  else if(AU.ctx){const t=AU.ctx.currentTime;AU.gx.gain.setTargetAtTime(0,t,.02);AU.gy.gain.setTargetAtTime(0,t,.02);setTimeout(()=>{if(!S.sound)AU.ctx.suspend();},200);}
+}
+
+/* —— 绘图清单与液晶屏 —— */
+function buildList(){
+  $('listSub').textContent=`山水第 ${pad4(comp.num)} 号 · 种子 ${hex4(comp.seed)}`;
+  const ul=$('rows');ul.textContent='';
+  comp.layers.forEach(ly=>{
+    const li=document.createElement('li');
+    li.innerHTML='<span class="bx"></span><span class="nm"></span><span class="ct"></span>';
+    li.querySelector('.nm').textContent=ly.name;li.querySelector('.ct').textContent=thousands(ly.count||0);
+    ul.appendChild(li);
+  });
+  updateList();
+}
+function strokesDone(){return EX.done?EX.plan.length:EX.i;}
+function updateList(){
+  const lis=$('rows').children,cnt=new Array(comp.layers.length).fill(0),n=strokesDone();
+  for(let i=0;i<n&&i<EX.plan.length;i++)cnt[EX.plan[i].layer]++;
+  const curL=viewLayer>=0?viewLayer:(!EX.done&&EX.plan[EX.i]?EX.plan[EX.i].layer:-1);
+  comp.layers.forEach((ly,k)=>{
+    const li=lis[k];if(!li)return;
+    const done=viewLayer>=0?k<=viewLayer:(ly.count>0&&cnt[k]>=ly.count);
+    li.classList.toggle('done',done);li.classList.toggle('cur',k===curL&&!swap.ph);
+    li.classList.toggle('skip',!ly.count);
+    li.querySelector('.ct').textContent=thousands(ly.count||0);
+  });
+  const dr=EX.drawn+(EX.phase==='dw'?EX.curDrawn||0:0),tr=EX.travel+(EX.phase==='mv'?EX.curTravel||0:0);
+  $('stDraw').textContent=(dr/1000).toFixed(2)+' 米';$('stTravel').textContent=(tr/1000).toFixed(2)+' 米';
+  $('stStrokes').textContent=thousands(viewLayer>=0?EX.plan.filter(s=>s.layer<=viewLayer).length:n)+' / '+thousands(EX.plan.length);
+  $('stSheets').textContent=sheets+' 张';
+}
+const mmss=s=>{s=Math.max(0,Math.ceil(s));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');};
+function updateLcd(){
+  let st;
+  if(swap.ph)st='换纸';else if(S.paused)st='暂停';else if(EX.done)st='完成';
+  else if(['intro','jolt','wait','home'].includes(EX.phase))st='归位';else st=EX.z<.5?'落笔':'抬笔';
+  const el=elapsedT(),pct=swap.ph?0:Math.min(100,Math.floor(el/Math.max(1e-6,EX.jobT)*100));
+  const rem=swap.ph?0:(EX.jobT-el)/SPEEDS[S.spd];
+  const f=v=>v.toFixed(1).padStart(5,' ');
+  $('lcd1').textContent=viewLayer>=0?`成稿  X ${f(EX.x)}  Y ${f(EX.y)}  逐层查看`:`${st}  X ${f(EX.x)}  Y ${f(EX.y)}  ${String(pct).padStart(3,' ')}%  剩余 ${mmss(rem)}`;
+  let l2;
+  if(viewLayer>=0){const ly=comp.layers[viewLayer];l2=`图层 ${String(viewLayer+1).padStart(2,'0')}/${String(comp.layers.length).padStart(2,'0')}  ${ly.name}  ${thousands(ly.count)} 笔`;}
+  else{
+    const ly=EX.plan[EX.i]&&!EX.done?comp.layers[EX.plan[EX.i].layer]:null;
+    l2=`${String(SPEEDS[S.spd]).padStart(2,' ')}×  ${swap.ph?'送入新纸':ly?ly.name:'待机 · 点击纸面可补画'}  ${thousands(strokesDone())}/${thousands(EX.plan.length)} 笔`;
+    if(EX.birds.length)l2+=`  待绘 ${EX.birds.length}`;
+  }
+  $('lcd2').textContent=l2;
+}
+
+/* —— 事件 —— */
+$('pause').addEventListener('click',togglePause);
+$('btnFinish').addEventListener('click',finishNow);
+$('btnNew').addEventListener('click',newPaper);
+$('btnPrev').addEventListener('click',()=>layerStep(-1));
+$('btnNext').addEventListener('click',()=>layerStep(1));
+$('lever').addEventListener('click',()=>setSound(!S.sound));
+cv.addEventListener('pointerdown',e=>{
+  if(swap.ph||!comp)return;
+  const r=cv.getBoundingClientRect(),x=(e.clientX-r.left-V.ox)/V.s+V.x0-paperX,y=(e.clientY-r.top-V.oy)/V.s+V.y0,M=comp.M;
+  if(x<M+3||x>comp.W-M-3||y<M+3||y>comp.H-M-3)return;
+  addBird(x,y);updateLcd();
+});
+addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  const k=e.key;
+  if(k===' '||e.code==='Space'){e.preventDefault();if(!e.repeat){togglePause();flash($('pause'));}}
+  else if(k==='f'||k==='F'){finishNow();flash($('btnFinish'));}
+  else if(k==='n'||k==='N'){newPaper();flash($('btnNew'));}
+  else if(k==='+'||k==='='){setSpeed(S.spd+1);}
+  else if(k==='-'||k==='_'||k==='−'){setSpeed(S.spd-1);}
+  else if(S.rm&&k==='ArrowLeft'&&e.target!==knob){layerStep(-1);flash($('btnPrev'));}
+  else if(S.rm&&k==='ArrowRight'&&e.target!==knob){layerStep(1);flash($('btnNext'));}
+});
+function applyRm(on){
+  S.rm=on;document.body.classList.toggle('rm',on);
+  if(on){if(S.paused)togglePause();if(swap.ph){swap.ph='';paperX=0;startJob(swap.plan||EX.plan,[0,0]);}finishNow();viewLayer=comp.layers.length-1;redrawInk();updateList();}
+  else{viewLayer=-1;redrawInk();updateList();}
+}
+rmq.addEventListener&&rmq.addEventListener('change',e=>applyRm(e.matches));
+/* 刚开画时若屏幕方向与纸张不符（如手机旋转），换成合适的竖幅/横幅纸 */
+function fitOrientation(){
+  const want=window.innerWidth<700;
+  if(!comp||swap.ph||comp.portrait===want)return false;
+  if(!S.rm&&EX.i>12&&!EX.done)return false;
+  if(S.rm||EX.i<=12){S.num=S.num>1?S.num-1:9999;startSheet(newComp(),S.rm?[0,0]:[EX.x,EX.y]);return true;}
+  return false;
+}
+new ResizeObserver(()=>{if(comp){if(!fitOrientation())layout();drawStage();}}).observe($('stageWrap'));
+
+/* —— 主循环 —— */
+function frame(ts){
+  const dt=Math.min(.1,(ts-(S.lastT||ts))/1000);S.lastT=ts;
+  if(!S.paused&&!S.rm){if(swap.ph)stepSwap(dt);else advance(dt*SPEEDS[S.spd]);}
+  if(dt>0){
+    const vx=(EX.x-S.px)/dt,vy=(EX.y-S.py)/dt;
+    AU.vx=lerp(AU.vx,vx,.35);AU.vy=lerp(AU.vy,vy,.35);
+    audioUpdate(AU.vx,AU.vy);
+  }
+  S.px=EX.x;S.py=EX.y;
+  drawStage();
+  if(ts-S.lastUi>90){updateLcd();updateList();S.lastUi=ts;}
+  requestAnimationFrame(frame);
+}
+(function init(){
+  document.body.classList.toggle('rm',S.rm);
+  buildKnob();setSpeed(2);
+  const plan=newComp();
+  startSheet(plan,S.rm?[0,0]:[comp.W*R0.range(.35,.7),comp.H*R0.range(.3,.6)]);
+  S.px=EX.x;S.py=EX.y;
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+GOAL:
+create a beautiful, busy, living koi pond using Three.js in a single HTML file.
+
+MOTION:
+Include a waterfall, rocks, plants, and multiple koi fish with different colors and patterns. Make the scene feel alive through continuous fish movement, flowing water, and animated environmental details. Add a “Feed the koi” button. When clicked, food should appear on the water, and the fish should visibly swim toward it and eat it—not simply continue their normal swimming animation. Allow the camera to orbit and zoom so I can explore the pond. Make the scene visually polished, with convincing water, lighting, and depth. Deliver the complete working HTML file.

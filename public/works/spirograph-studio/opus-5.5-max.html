@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>万花尺工作室</title>
+<style>
+/* VOICE   安静、精确的桌面仪器，而不是玩具盒
+   IDEA    奥比斯制图公司第 7 号绘图盘：钉在刻度表圈下的齿轮万花尺，放在制图纸上
+   PICTURE 绘图盘本身：齿圈、滚动的小齿轮、笔臂，以及它们一笔一划画出的墨线花纹
+   COLOUR  暖色制图纸 #f6f1e7、墨蓝 #1d2433、棕灰 #7a7262、分隔线 #d8ccb4，外加五种印刷油墨
+   TYPE    标题与控件用 Avenir Next / Futura，读数与刻字用 Courier New
+   LAYOUT  桌面：标题横贯顶部，左绘图盘右参数卡；窄屏：标题、吸顶绘图盘、参数卡 */
+:root{color-scheme:light;--paper:#f6f1e7;--text:#1d2433;--muted:#7a7262;--rule:#d8ccb4;--card:#fffcf4;--red:#e2462b;--ink:#e2462b;--grid:rgba(216,204,180,.42);--thumb:24px;--sans:"Avenir Next",Avenir,Futura,"Century Gothic","PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif;--mono:"Courier New",Courier,"Liberation Mono","Nimbus Mono PS",monospace;--spring:cubic-bezier(.3,1.7,.5,1)}
+@supports (transition-timing-function:linear(0,1)){:root{--spring:linear(0,.043,.156,.316,.499,.685,.859,1.009,1.126,1.209,1.258,1.275,1.266,1.237,1.194,1.144,1.092,1.044,1.002,.968,.945,.93,.925,.926,.934,.945,.959,.973,.986,.998,1.008,1.015,1.019,1.021,1.02,1.019,1)}}
+*,*::before,*::after{box-sizing:border-box}
+html{background:var(--paper)}
+body{margin:0;min-height:100vh;overflow-x:clip;color:var(--text);font:16px/1.6 var(--sans);background-color:var(--paper);background-image:linear-gradient(90deg,var(--grid) 1px,transparent 1px),linear-gradient(180deg,var(--grid) 1px,transparent 1px);background-size:24px 24px;-webkit-font-smoothing:antialiased}
+.sheet{max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,34px) max(16px,4vw) 28px}
+.mast{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px 32px}
+h1{margin:0;font-size:clamp(36px,5vw,54px);font-weight:700;line-height:1.05;letter-spacing:.04em}
+h1 span{color:var(--red)}
+.maker{display:flex;align-items:center;gap:12px;margin-bottom:2px}
+.maker svg{width:44px;height:44px;flex:none}
+.maker b{display:block;font-size:16px;line-height:1.3;letter-spacing:.04em}
+.maker small{display:block;font-size:13px;line-height:1.4;letter-spacing:.06em;color:var(--muted)}
+.rule{height:6px;margin:16px 0 clamp(24px,3.4vw,42px);border:0;background:var(--text)}
+.bench{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px);gap:clamp(28px,4vw,60px);align-items:start}
+.stage{position:sticky;top:16px;display:flex;flex-direction:column;align-items:center;min-width:0}
+.inst{position:relative;margin:0;width:min(100%,700px,max(380px,calc(100vh - 250px)));aspect-ratio:1/1;container-type:inline-size}
+.dial{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.dial .mi{fill:none;stroke:var(--rule);stroke-width:2.2}
+.dial .mj{fill:none;stroke:var(--muted);stroke-width:2.6}
+.dial text{font-family:var(--mono);font-size:20px;letter-spacing:3px;fill:var(--muted)}
+.paper{position:absolute;inset:9%;border-radius:50%;overflow:hidden;isolation:isolate;background:radial-gradient(circle at 37% 30%,#fffefb 0,rgba(255,254,251,0) 52%),radial-gradient(circle,#fcf8ef 0,#f8f2e5 56%,#f0e6d2 87%,#e5d8be 100%);box-shadow:0 0 0 1px rgba(122,114,98,.3),0 0 8px 8px rgba(255,252,244,.85),0 0 0 22px rgba(216,204,180,.3),0 22px 40px -12px rgba(29,36,51,.32),0 6px 14px -6px rgba(29,36,51,.18),inset 0 -6px 22px rgba(122,114,98,.12);box-shadow:0 0 0 1px rgba(122,114,98,.3),0 0 1.2cqi 1.2cqi rgba(255,252,244,.85),0 0 0 3.4cqi rgba(216,204,180,.3),0 3.2cqi 6cqi -1.6cqi rgba(29,36,51,.32),0 .9cqi 2cqi -.8cqi rgba(29,36,51,.18),inset 0 -.8cqi 3cqi rgba(122,114,98,.12)}
+.paper canvas,.paper .grain{position:absolute;inset:0;display:block;width:100%;height:100%}
+.paper .grain{pointer-events:none;opacity:.4;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .37 0 0 0 0 .29 0 0 0 .6 -.18'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)'/%3E%3C/svg%3E")}
+.readout{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 18px;max-width:640px;margin:clamp(12px,2vw,20px) 0 0;padding:0;list-style:none;font:13px/1.6 var(--mono);color:var(--muted)}
+.readout li{white-space:nowrap}
+.readout b{color:var(--text)}
+.readout .pen{display:inline-block;width:10px;height:10px;margin-right:6px;border-radius:50%;background:var(--ink);box-shadow:0 0 0 1.5px var(--text);vertical-align:-1px}
+.card{min-width:0;padding:20px 22px 22px;background:var(--card);border:1.5px solid var(--text);border-radius:4px;box-shadow:6px 6px 0 var(--text)}
+.card h2{margin:0 0 6px;font-size:20px;line-height:1.2;letter-spacing:.06em}
+.lede{margin:0 0 14px;font-size:15px;line-height:1.7}
+.ctl{padding:11px 0 0;border-top:1.5px dashed var(--rule)}
+.ctl-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.ctl-h label{font-size:15px;font-weight:600;letter-spacing:.03em}
+.ctl-h label i{margin-left:6px;font:italic 14px var(--mono);color:var(--muted)}
+.ctl-h output{font:700 20px/1 var(--mono);white-space:nowrap}
+.ctl-h output small{margin-left:3px;font-size:13px;font-weight:400;color:var(--muted)}
+.ruler{position:relative;height:56px;--f:.5}
+.ruler input{position:absolute;top:0;left:0;z-index:1;width:100%;height:44px;margin:0;background:none;cursor:pointer;-webkit-appearance:none;appearance:none}
+.ruler input:focus{outline:none}
+.ruler input::-webkit-slider-runnable-track{height:44px;border:0;background:linear-gradient(90deg,var(--ink) 0 calc(var(--thumb)/2 + (100% - var(--thumb))*var(--f)),transparent 0) 0 50%/100% 4px no-repeat,linear-gradient(var(--text),var(--text)) 0 50%/100% 1.5px no-repeat}
+.ruler input::-moz-range-track{height:44px;border:0;background:linear-gradient(90deg,var(--ink) 0 calc(var(--thumb)/2 + (100% - var(--thumb))*var(--f)),transparent 0) 0 50%/100% 4px no-repeat,linear-gradient(var(--text),var(--text)) 0 50%/100% 1.5px no-repeat}
+.ruler input::-webkit-slider-thumb{box-sizing:border-box;width:var(--thumb);height:var(--thumb);margin-top:10px;border:2px solid var(--text);border-radius:50%;background:radial-gradient(circle,var(--ink) 0 2.8px,var(--card) 3.3px 5px,var(--text) 5.5px 6.8px,var(--card) 7.3px);box-shadow:2px 2px 0 var(--text);transition:transform .7s var(--spring);-webkit-appearance:none;appearance:none}
+.ruler input::-moz-range-thumb{box-sizing:border-box;width:var(--thumb);height:var(--thumb);border:2px solid var(--text);border-radius:50%;background:radial-gradient(circle,var(--ink) 0 2.8px,var(--card) 3.3px 5px,var(--text) 5.5px 6.8px,var(--card) 7.3px);box-shadow:2px 2px 0 var(--text);transition:transform .7s var(--spring)}
+.ruler input::-webkit-slider-thumb:hover{transform:scale(1.22)}
+.ruler input::-moz-range-thumb:hover{transform:scale(1.22)}
+.ruler input:active::-webkit-slider-thumb{transform:scale(1.1)}
+.ruler input:active::-moz-range-thumb{transform:scale(1.1)}
+.ruler input:focus-visible::-webkit-slider-thumb{box-shadow:2px 2px 0 var(--text),0 0 0 4px var(--card),0 0 0 6px var(--red)}
+.ruler input:focus-visible::-moz-range-thumb{box-shadow:2px 2px 0 var(--text),0 0 0 4px var(--card),0 0 0 6px var(--red)}
+.ticks{position:absolute;top:23px;left:calc(var(--thumb)/2);right:calc(var(--thumb)/2);height:32px;pointer-events:none}
+.ticks i{position:absolute;top:0;width:1px;height:4px;margin-left:-.5px;background:var(--muted);opacity:.6}
+.ticks i.m{height:7px;opacity:.85}
+.ticks i.j{height:10px;background:var(--text);opacity:1}
+.ticks b{position:absolute;top:14px;transform:translateX(-50%);font:400 13px/1 var(--mono);color:var(--muted);white-space:nowrap}
+.lim{position:absolute;top:15px;right:calc(var(--thumb)/2);left:calc(var(--thumb)/2 + (100% - var(--thumb))*var(--lim,1));height:14px;border-left:1.5px solid var(--red);background:repeating-linear-gradient(135deg,rgba(226,70,43,.45) 0 1.5px,transparent 1.5px 5px);pointer-events:none}
+.inks{padding-top:11px;border-top:1.5px dashed var(--rule)}
+.inks-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-size:15px;font-weight:600}
+.inks-h span:last-child{font:400 13px var(--mono);color:var(--muted)}
+.swatches{display:flex;flex-wrap:wrap;gap:4px 10px;margin:6px 0 0 -6px}
+.sw{position:relative;display:grid;place-items:center;width:44px;height:44px;cursor:pointer}
+.sw input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.sw span{width:32px;height:32px;border:1.5px solid var(--text);border-radius:50%;background:radial-gradient(circle at 34% 30%,rgba(255,255,255,.5),rgba(255,255,255,0) 46%),var(--c);transition:transform .7s var(--spring),box-shadow .2s;pointer-events:none}
+.sw:hover span{transform:scale(1.16) rotate(-14deg)}
+.sw input:checked+span{box-shadow:0 0 0 3px var(--card),0 0 0 4.5px var(--text)}
+.sw input:focus-visible+span{outline:2px dashed var(--text);outline-offset:6px}
+.actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin-top:14px}
+.pill{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 14px;border:1.5px solid var(--text);border-radius:999px;background:var(--card);color:var(--text);font:600 15px/1 var(--sans);letter-spacing:.04em;white-space:nowrap;cursor:pointer;box-shadow:2px 2px 0 var(--text);transition:transform .15s,box-shadow .15s,opacity .15s;-webkit-tap-highlight-color:transparent}
+.pill svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pill:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--text)}
+.pill:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--text)}
+.pill:focus-visible{outline:2px dashed var(--text);outline-offset:3px}
+.pill.go{background:var(--text);color:var(--card)}
+.pill:disabled{opacity:.4;cursor:default;transform:none;box-shadow:2px 2px 0 var(--text)}
+.hint{margin:12px 0 0;font-size:13.5px;line-height:1.6;color:var(--muted)}
+.prog{margin-top:14px;padding-top:11px;border-top:1.5px dashed var(--rule)}
+.prog-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-size:15px;font-weight:600}
+.prog-h output{font:700 18px var(--mono);white-space:nowrap}
+.bar{position:relative;height:14px;margin:9px 0 7px;overflow:hidden;border:1.5px solid var(--text);border-radius:999px;background:#f1e9d8}
+.bar .fill{position:absolute;inset:0;background:var(--ink);transform:scaleX(var(--p,0));transform-origin:0 50%}
+.bar .laps{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(100%/var(--n,1) - 1.5px),rgba(29,36,51,.55) 0 calc(100%/var(--n,1)))}
+.bar.dense .laps{display:none}
+.prog-f{display:flex;justify-content:space-between;gap:12px;font:13px/1.45 var(--mono);color:var(--muted)}
+.prog-f span:last-child{white-space:nowrap}
+.colo{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 24px;margin-top:clamp(28px,4vw,48px);padding-top:12px;border-top:1.5px solid var(--rule);font:13px/1.6 var(--mono);color:var(--muted)}
+.sentinel{height:1px;margin-top:-1px}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+@media (max-width:819.98px){
+.bench{grid-template-columns:minmax(0,1fr)}
+.stage{position:relative;top:auto}
+.inst{width:min(100%,560px)}
+.card{justify-self:center;width:100%;max-width:620px}
+}
+@media (max-width:819.98px) and (min-height:600px){
+.stage{position:sticky;top:0;z-index:3;margin:0 calc(-1 * max(16px,4vw));padding:10px max(16px,4vw) 12px;transition:box-shadow .2s}
+.stage.stuck{background-color:var(--paper);box-shadow:0 12px 18px -16px rgba(29,36,51,.55)}
+.inst{width:min(100%,560px,50svh)}
+}
+@media (max-width:420px){
+.ctl-h label i{display:none}
+.pill{padding:0 10px;font-size:14px}
+}
+@media (prefers-reduced-motion:reduce){
+*,*::before,*::after{transition:none!important;animation:none!important}
+.ruler input::-webkit-slider-thumb{transition:none!important}
+.ruler input::-moz-range-thumb{transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="mast">
+    <h1>万花尺<span>工作室</span></h1>
+    <div class="maker">
+      <svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="#fffcf4" stroke="#1d2433" stroke-width="2"/><path id="logoCurve" fill="none" stroke="#e2462b" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      <div><b>奥比斯制图公司</b><small>第 7 号绘图盘</small></div>
+    </div>
+  </header>
+  <hr class="rule">
+  <div class="sentinel" id="sentinel" aria-hidden="true"></div>
+  <main class="bench">
+    <section class="stage" id="stage" aria-label="第 7 号绘图盘">
+      <figure class="inst">
+        <svg class="dial" viewBox="-500 -500 1000 1000" aria-hidden="true">
+          <defs>
+            <path id="arcT" d="M-476 0A476 476 0 0 1 476 0"/>
+            <path id="arcB" d="M-492 0A492 492 0 0 0 492 0"/>
+          </defs>
+          <path class="mi" id="tickMi"/>
+          <path class="mj" id="tickMj"/>
+          <text><textPath href="#arcT" xlink:href="#arcT" startOffset="50%" text-anchor="middle">奥比斯制图公司 · 精密绘图仪器</textPath></text>
+          <text><textPath href="#arcB" xlink:href="#arcB" startOffset="50%" text-anchor="middle">第 7 号绘图盘</textPath></text>
+        </svg>
+        <div class="paper" id="paper" role="img" aria-label="绘图纸：齿轮带动笔尖画出的内旋轮线花纹">
+          <canvas class="ink" id="ink"></canvas>
+          <div class="grain"></div>
+          <canvas class="rig" id="rig"></canvas>
+        </div>
+      </figure>
+      <ul class="readout" id="readout" aria-label="当前曲线参数"></ul>
+    </section>
+
+    <aside class="card" aria-labelledby="cardTitle">
+      <h2 id="cardTitle">参数卡</h2>
+      <p class="lede">小齿轮贴着外齿圈内壁滚动，笔尖插在它的笔孔里。两只齿轮的齿数定下花瓣数和闭合要滚的圈数，笔孔越靠外，花瓣越尖。</p>
+
+      <div class="ctl">
+        <div class="ctl-h"><label for="inR">外齿圈齿数<i>R</i></label><output id="outR" for="inR">96<small>齿</small></output></div>
+        <div class="ruler"><div class="ticks"></div><input id="inR" type="range" min="40" max="144" step="1" value="96"></div>
+      </div>
+      <div class="ctl">
+        <div class="ctl-h"><label for="inr">内齿轮齿数<i>r <span id="rMax">≤ 92</span></i></label><output id="outr" for="inr">36<small>齿</small></output></div>
+        <div class="ruler"><div class="ticks"></div><div class="lim" id="lim"></div><input id="inr" type="range" min="12" max="100" step="1" value="36"></div>
+      </div>
+      <div class="ctl">
+        <div class="ctl-h"><label for="inP">笔孔位置<i>d / r</i></label><output id="outP" for="inP">0.62</output></div>
+        <div class="ruler"><div class="ticks"></div><input id="inP" type="range" min="10" max="100" step="1" value="62"></div>
+      </div>
+      <div class="ctl">
+        <div class="ctl-h"><label for="inS">绘制速度</label><output id="outS" for="inS">5<small>档</small></output></div>
+        <div class="ruler"><div class="ticks"></div><input id="inS" type="range" min="1" max="10" step="1" value="5"></div>
+      </div>
+
+      <div class="inks" role="radiogroup" aria-labelledby="inkLbl">
+        <div class="inks-h"><span id="inkLbl">墨色</span><span id="inkName">朱红</span></div>
+        <div class="swatches">
+          <label class="sw" title="朱红" style="--c:#e2462b"><input id="ink0" type="radio" name="ink" value="0" aria-label="朱红" checked><span></span></label>
+          <label class="sw" title="普鲁士蓝" style="--c:#1f3f78"><input id="ink1" type="radio" name="ink" value="1" aria-label="普鲁士蓝"><span></span></label>
+          <label class="sw" title="翠绿" style="--c:#1c7d64"><input id="ink2" type="radio" name="ink" value="2" aria-label="翠绿"><span></span></label>
+          <label class="sw" title="藏红花黄" style="--c:#e8a21b"><input id="ink3" type="radio" name="ink" value="3" aria-label="藏红花黄"><span></span></label>
+          <label class="sw" title="梅紫" style="--c:#7a2e6b"><input id="ink4" type="radio" name="ink" value="4" aria-label="梅紫"><span></span></label>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="pill go" id="btnPause" type="button"><svg viewBox="0 0 16 16" aria-hidden="true" id="pauseIcon"><path d="M5.5 3.5v9M10.5 3.5v9"/></svg><span id="pauseLbl">暂停</span></button>
+        <button class="pill" id="btnLayer" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8l6 3.2-6 3.2-6-3.2z"/><path d="M2 8.4l6 3.2 6-3.2"/><path d="M2 11.6l6 3.2 6-3.2"/></svg>新建图层</button>
+        <button class="pill" id="btnRand" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="3"/><circle cx="5.6" cy="5.6" r=".6" fill="currentColor"/><circle cx="8" cy="8" r=".6" fill="currentColor"/><circle cx="10.4" cy="10.4" r=".6" fill="currentColor"/></svg>随机一组</button>
+        <button class="pill" id="btnPaper" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.8h6l3 3v9.4h-9z"/><path d="M9.5 1.8v3h3"/></svg>换张新纸</button>
+      </div>
+      <p class="hint">拖动前三个滑杆会从头重画当前这一层。「新建图层」把它留在纸上，换下一种墨色、错开起点接着叠画。</p>
+
+      <div class="prog">
+        <div class="prog-h"><span>闭合进度</span><output id="lapOut">第 1 / 3 圈</output></div>
+        <div class="bar" id="bar" role="progressbar" aria-label="花纹闭合进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="fill"></span><span class="laps"></span></div>
+        <div class="prog-f"><span id="statusOut">绘制中</span><span id="pctOut">0%</span></div>
+      </div>
+    </aside>
+  </main>
+  <footer class="colo">
+    <span>奥比斯制图公司，第 7 号绘图盘</span>
+    <span>x = (R − r) cos t + d cos((R − r)t / r)，y = (R − r) sin t − d sin((R − r)t / r)，步长 0.015 弧度</span>
+  </footer>
+</div>
+<p class="sr" id="live" aria-live="polite"></p>
+
+<script>
+(() => {
+  'use strict';
+  const TAU = Math.PI * 2;
+  const STEP = 0.015;   // 每段笔画推进的弧度
+  const GAP = 4;        // 内齿轮至少比外齿圈少 4 齿
+  const INK_A = 0.9;    // 每层墨的不透明度
+  const MONO = '"Courier New", Courier, monospace';
+  const INKS = [
+    { name: '朱红', hex: '#e2462b' },
+    { name: '普鲁士蓝', hex: '#1f3f78' },
+    { name: '翠绿', hex: '#1c7d64' },
+    { name: '藏红花黄', hex: '#e8a21b' },
+    { name: '梅紫', hex: '#7a2e6b' },
+  ];
+  const RULERS = {
+    inR: { minor: 2, mid: 10, labels: [40, 60, 80, 100, 120, 144] },
+    inr: { minor: 2, mid: 10, labels: [12, 40, 60, 80, 100] },
+    inP: { minor: 2.5, mid: 5, labels: [10, 25, 50, 75, 100], fmt: (v) => (v === 100 ? '1.0' : '.' + v) },
+    inS: { minor: 0.25, mid: 0.5, labels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const root = document.documentElement;
+  const paper = $('paper');
+  const inkCv = $('ink');
+  const rigCv = $('rig');
+  const inkX = inkCv.getContext('2d');
+  const rigX = rigCv.getContext('2d');
+  const makeCanvas = () => { const c = document.createElement('canvas'); return [c, c.getContext('2d')]; };
+  const [doneCv, doneX] = makeCanvas();   // 已留在纸上的图层
+  const [curCv, curX] = makeCanvas();     // 当前图层：单色不透明蒙版
+  const [tmpCv, tmpX] = makeCanvas();     // 按记录重绘时的草稿
+  const el = {
+    R: $('inR'), r: $('inr'), p: $('inP'), s: $('inS'),
+    oR: $('outR'), or: $('outr'), oP: $('outP'), oS: $('outS'),
+    lim: $('lim'), rMax: $('rMax'), inkName: $('inkName'),
+    radios: INKS.map((_, i) => $('ink' + i)),
+    pause: $('btnPause'), pauseLbl: $('pauseLbl'), pauseIcon: $('pauseIcon'),
+    layer: $('btnLayer'), rand: $('btnRand'), fresh: $('btnPaper'),
+    bar: $('bar'), lap: $('lapOut'), status: $('statusOut'), pct: $('pctOut'),
+    readout: $('readout'), live: $('live'), stage: $('stage'), sentinel: $('sentinel'),
+  };
+
+  const gcd = (a, b) => { while (b) { const t = a % b; a = b; b = t; } return a; };
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const randInt = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+  const vdc = (n) => { let v = 0, d = 1; while (n) { d *= 2; v += (n & 1) / d; n >>= 1; } return v; };
+  const phaseFor = (n, g) => (n ? Math.round(vdc(n) * g) % g : 0);   // 第 n 层错开的齿数
+  const sps = (s) => 28 * 1.6 ** (s - 1);                            // 每秒推进的步数
+  const ease = (v, to, k) => { const n = v + (to - v) * Math.min(1, k); return Math.abs(to - n) < 0.004 ? to : n; };
+  const sq = (c) => Math.tanh(2.4 * c) / Math.tanh(2.4);              // 圆角梯形齿形
+
+  const mqReduce = matchMedia('(prefers-reduced-motion: reduce)');
+  let reduced = mqReduce.matches;
+
+  const state = { R: 96, r: 36, p: 0.62, speed: 5, ink: 0, running: true };
+  const layers = [];
+  const cur = { R: 96, r: 36, p: 0.62, ink: 0, phase: 0, steps: 0, closed: false };
+  const geo = { css: 0, px: 1, k: 1, c: 0, A: 0, band: 0, lw: 1.5, dpr: 1 };
+  const ghost = { a: 0, until: 0, drag: false, path: null };
+  const rig = { a: 1 };
+  const P0 = { x: 0, y: 0 };
+  const P1 = { x: 0, y: 0 };
+  const box = { x0: 0, y0: 0, x1: 0, y1: 0 };
+  let G = null;
+  let pulse = null;
+  let raf = 0;
+  let last = 0;
+  let acc = 0;
+  let progKey = '';
+
+  /* ---------- 几何 ---------- */
+  function measure() {
+    const w = paper.getBoundingClientRect().width || 300;
+    const raw = window.devicePixelRatio || 1;
+    let dpr = clamp(raw, 1, 3);
+    if (w * dpr > 2400) dpr = 2400 / w;
+    const px = Math.max(2, Math.round(w * dpr));
+    Object.assign(geo, { css: w, px, k: px / w, c: w / 2, A: w * 0.43, band: w * 0.046, lw: clamp(w * 0.0029, 1, 2.1), dpr: raw });
+    for (const cv of [inkCv, rigCv, doneCv, curCv, tmpCv]) { cv.width = px; cv.height = px; }
+  }
+
+  function geomOf(L) {
+    const g = gcd(L.R, L.r);
+    const s = geo.A / L.R;                 // 每个齿单位对应的像素
+    const rot = TAU * L.phase / L.R;       // 起点错开整齿，齿仍然啮合
+    const tEnd = TAU * L.r / g;            // 滚满 r / gcd 圈后闭合
+    return {
+      g, laps: L.r / g, petals: L.R / g,
+      a: s * L.r, e: s * (L.R - L.r), d: s * L.p * L.r, kk: (L.R - L.r) / L.r,
+      rot, cr: Math.cos(rot), sr: Math.sin(rot), tEnd, N: Math.ceil(tEnd / STEP - 1e-9),
+    };
+  }
+
+  function penAt(m, t, o) {
+    const kt = m.kk * t;
+    const x = m.e * Math.cos(t) + m.d * Math.cos(kt);
+    const y = m.e * Math.sin(t) - m.d * Math.sin(kt);
+    o.x = geo.c + x * m.cr - y * m.sr;
+    o.y = geo.c + x * m.sr + y * m.cr;
+    return o;
+  }
+  const tAt = (m, i) => (i >= m.N ? m.tEnd : i * STEP);
+
+  /* ---------- 墨层 ---------- */
+  function wipe(ctx) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.clearRect(0, 0, geo.px, geo.px);
+  }
+
+  function inkPath(ctx, m, hex, i0, i1, bb) {
+    ctx.setTransform(geo.k, 0, 0, geo.k, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = hex;
+    ctx.lineWidth = geo.lw;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    penAt(m, tAt(m, i0), P0);
+    ctx.moveTo(P0.x, P0.y);
+    let x0 = P0.x, x1 = P0.x, y0 = P0.y, y1 = P0.y;
+    for (let i = i0 + 1; i <= i1; i++) {
+      penAt(m, tAt(m, i), P0);
+      ctx.lineTo(P0.x, P0.y);
+      if (P0.x < x0) x0 = P0.x; else if (P0.x > x1) x1 = P0.x;
+      if (P0.y < y0) y0 = P0.y; else if (P0.y > y1) y1 = P0.y;
+    }
+    ctx.stroke();
+    if (bb) { bb.x0 = x0; bb.x1 = x1; bb.y0 = y0; bb.y1 = y1; }
+  }
+
+  // 底层画布 = 已留下的图层 + 以正片叠底印上的当前图层；只刷新新笔画所在的区域
+  function compose(bb) {
+    let x = 0, y = 0, w = geo.px, h = geo.px;
+    if (bb) {
+      const pad = geo.lw + 2, k = geo.k;
+      x = Math.max(0, Math.floor((bb.x0 - pad) * k));
+      y = Math.max(0, Math.floor((bb.y0 - pad) * k));
+      w = Math.min(geo.px, Math.ceil((bb.x1 + pad) * k)) - x;
+      h = Math.min(geo.px, Math.ceil((bb.y1 + pad) * k)) - y;
+      if (w <= 0 || h <= 0) return;
+    }
+    inkX.setTransform(1, 0, 0, 1, 0, 0);
+    inkX.globalCompositeOperation = 'source-over';
+    inkX.globalAlpha = 1;
+    inkX.clearRect(x, y, w, h);
+    inkX.drawImage(doneCv, x, y, w, h, x, y, w, h);
+    inkX.globalCompositeOperation = 'multiply';
+    inkX.globalAlpha = INK_A;
+    inkX.drawImage(curCv, x, y, w, h, x, y, w, h);
+    inkX.globalCompositeOperation = 'source-over';
+    inkX.globalAlpha = 1;
+  }
+
+  function stamp(src) {
+    doneX.setTransform(1, 0, 0, 1, 0, 0);
+    doneX.globalCompositeOperation = 'multiply';
+    doneX.globalAlpha = INK_A;
+    doneX.drawImage(src, 0, 0);
+    doneX.globalCompositeOperation = 'source-over';
+    doneX.globalAlpha = 1;
+  }
+
+  function commit() {
+    if (!cur.steps) return false;
+    stamp(curCv);
+    layers.push({ R: cur.R, r: cur.r, p: cur.p, ink: cur.ink, phase: cur.phase, steps: cur.steps });
+    wipe(curX);
+    return true;
+  }
+
+  // 按图层记录整张重画（尺寸或像素比变化时）
+  function renderAll() {
+    wipe(doneX);
+    wipe(curX);
+    for (const L of layers) {
+      const m = geomOf(L);
+      wipe(tmpX);
+      inkPath(tmpX, m, INKS[L.ink].hex, 0, Math.min(L.steps, m.N));
+      stamp(tmpCv);
+    }
+    G = geomOf(cur);
+    if (cur.steps) inkPath(curX, G, INKS[cur.ink].hex, 0, Math.min(cur.steps, G.N));
+    compose();
+  }
+
+  function advance(n) {
+    const i0 = cur.steps, i1 = Math.min(G.N, i0 + n);
+    if (i1 <= i0) return;
+    inkPath(curX, G, INKS[cur.ink].hex, i0, i1, box);
+    cur.steps = i1;
+    compose(box);
+    if (i1 >= G.N) finish();
+  }
+
+  function finish() {
+    cur.closed = true;
+    acc = 0;
+    if (!reduced) { penAt(G, G.tEnd, P1); pulse = { t0: performance.now(), x: P1.x, y: P1.y }; }
+    say(`花纹闭合：${G.petals} 瓣，滚了 ${G.laps} 圈。`);
+    syncButtons();
+  }
+
+  function restart() {
+    Object.assign(cur, { R: state.R, r: state.r, p: state.p, ink: state.ink, steps: 0, closed: false });
+    cur.phase = phaseFor(layers.length, gcd(cur.R, cur.r));
+    G = geomOf(cur);
+    acc = 0;
+    pulse = null;
+    ghost.path = null;
+    wipe(curX);
+    compose();
+    state.running = true;
+    progKey = '';
+    syncButtons();
+    syncReadout();
+    syncProgress();
+    kick();
+  }
+
+  function newLayer() {
+    commit();
+    state.ink = (state.ink + 1) % INKS.length;
+    syncInk();
+    restart();
+    say(`第 ${layers.length + 1} 层，换成${INKS[state.ink].name}。`);
+  }
+
+  function randomize() {
+    let R = 96, r = 36;
+    for (let n = 0; n < 600; n++) {
+      const R1 = randInt(48, 144);
+      const r1 = randInt(14, Math.min(100, R1 - 8));
+      const g = gcd(R1, r1);
+      if (r1 / g >= 2 && r1 / g <= 9 && R1 / g >= 4 && R1 / g <= 40) { R = R1; r = r1; break; }
+    }
+    let ink = state.ink;
+    while (ink === state.ink) ink = randInt(0, INKS.length - 1);
+    Object.assign(state, { R, r, p: randInt(30, 95) / 100, ink });
+    syncSliders();
+    syncInk();
+    restart();
+  }
+
+  function newPaper() {
+    if (!reduced && (layers.length || cur.steps)) {
+      const snap = document.createElement('canvas');
+      snap.width = geo.px; snap.height = geo.px;
+      snap.getContext('2d').drawImage(inkCv, 0, 0);
+      paper.insertBefore(snap, inkCv.nextSibling);
+      const fx = snap.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translate(-4%, 7%) rotate(-5deg) scale(.97)' }], { duration: 560, easing: 'cubic-bezier(.45,0,.2,1)' });
+      fx.onfinish = fx.oncancel = () => snap.remove();
+    }
+    layers.length = 0;
+    wipe(doneX);
+    restart();
+    say('换了一张新纸。');
+  }
+
+  function setInk(i) {
+    if (i === state.ink) return;
+    state.ink = cur.ink = i;
+    curX.setTransform(1, 0, 0, 1, 0, 0);
+    curX.globalCompositeOperation = 'source-in';
+    curX.fillStyle = INKS[i].hex;
+    curX.fillRect(0, 0, geo.px, geo.px);
+    curX.globalCompositeOperation = 'source-over';
+    compose();
+    syncInk();
+    syncReadout();
+    kick();
+  }
+
+  function togglePause() {
+    if (cur.closed) return;
+    state.running = !state.running;
+    syncButtons();
+    kick();
+  }
+
+  /* ---------- 上层：齿圈、齿轮、笔臂 ---------- */
+  const toothDepth = (R) => clamp(0.42 * TAU * geo.A / R, 2.2, 8);
+
+  function arcText(ctx, str, radius, center, flip) {
+    const chars = [...str];
+    const widths = chars.map((ch) => ctx.measureText(ch).width);
+    const track = 1.2;
+    let s = -(widths.reduce((a, b) => a + b, 0) + track * (chars.length - 1)) / 2;
+    chars.forEach((ch, i) => {
+      const mid = s + widths[i] / 2;
+      const ang = center + (flip ? -mid : mid) / radius;
+      ctx.save();
+      ctx.translate(geo.c + radius * Math.cos(ang), geo.c + radius * Math.sin(ang));
+      ctx.rotate(ang + (flip ? -Math.PI / 2 : Math.PI / 2));
+      ctx.fillText(ch, 0, 0);
+      ctx.restore();
+      s += widths[i] + track;
+    });
+  }
+
+  function drawRing(ctx) {
+    const { c, A, band } = geo, R = cur.R, h = toothDepth(R), outer = A + band;
+    ctx.beginPath();
+    ctx.arc(c, c, outer, 0, TAU);
+    const n = R * 8;
+    for (let j = 0; j <= n; j++) {
+      const th = j / n * TAU, rr = A + h / 2 * sq(Math.cos(th * R));
+      const x = c + rr * Math.cos(th), y = c + rr * Math.sin(th);
+      if (j) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(29,36,51,.05)';
+    ctx.fill('evenodd');
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(29,36,51,.34)';
+    ctx.stroke();
+    const mid = A + h / 2 + (band - h / 2) / 2;
+    const pin = clamp(band * 0.16, 1.8, 4);
+    for (let q = 0; q < 4; q++) {
+      const ang = Math.PI / 4 + q * Math.PI / 2, x = c + mid * Math.cos(ang), y = c + mid * Math.sin(ang);
+      ctx.beginPath(); ctx.arc(x, y, pin, 0, TAU);
+      ctx.fillStyle = 'rgba(255,252,244,.8)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(29,36,51,.38)'; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - pin * 0.6, y + pin * 0.6); ctx.lineTo(x + pin * 0.6, y - pin * 0.6); ctx.stroke();
+    }
+    ctx.font = `${clamp(band * 0.4, 7, 11)}px ${MONO}`;
+    ctx.fillStyle = 'rgba(29,36,51,.46)';
+    arcText(ctx, `外齿圈 ${R} 齿`, mid, -Math.PI / 2, false);
+    arcText(ctx, '奥比斯 · 第 7 号', mid, Math.PI / 2, true);
+  }
+
+  function drawGear(ctx, t) {
+    const c = geo.c, a = G.a, h = toothDepth(cur.R), r = cur.r;
+    const th = G.rot + t, phi = G.rot - G.kk * t;     // 公转角与反向的自转角
+    const gx = c + G.e * Math.cos(th), gy = c + G.e * Math.sin(th);
+    ctx.beginPath();
+    const n = r * 8;
+    for (let j = 0; j <= n; j++) {
+      const s = j / n * TAU, rr = a + h / 2 * sq(Math.cos(s * r)), ang = s + phi;
+      const x = gx + rr * Math.cos(ang), y = gy + rr * Math.sin(ang);
+      if (j) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(31,63,120,.075)';
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(31,63,120,.5)';
+    ctx.stroke();
+
+    const rim = Math.max(a * 0.32, a - h / 2 - Math.max(2.5, a * 0.09));
+    const hub = clamp(a * 0.14, 2.5, 9);
+    ctx.beginPath(); ctx.arc(gx, gy, rim, 0, TAU);
+    ctx.strokeStyle = 'rgba(31,63,120,.24)'; ctx.stroke();
+
+    const ns = a > 80 ? 6 : a > 36 ? 5 : 3;
+    ctx.beginPath();
+    for (let i = 0; i < ns; i++) {
+      const ang = phi + (i + 0.5) * TAU / ns;
+      ctx.moveTo(gx + hub * Math.cos(ang), gy + hub * Math.sin(ang));
+      ctx.lineTo(gx + rim * Math.cos(ang), gy + rim * Math.sin(ang));
+    }
+    ctx.lineCap = 'round';
+    ctx.lineWidth = clamp(a * 0.04, 1, 3);
+    ctx.strokeStyle = 'rgba(29,36,51,.28)';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(gx + hub * Math.cos(phi), gy + hub * Math.sin(phi));
+    ctx.lineTo(gx + rim * Math.cos(phi), gy + rim * Math.sin(phi));
+    ctx.lineWidth = clamp(a * 0.06, 2, 5);
+    ctx.strokeStyle = 'rgba(29,36,51,.08)';
+    ctx.stroke();
+
+    if (a > 30) {
+      const ang = phi + Math.PI, rr = (hub + rim) / 2;
+      ctx.save();
+      ctx.translate(gx + rr * Math.cos(ang), gy + rr * Math.sin(ang));
+      ctx.rotate(ang + Math.PI / 2);
+      ctx.font = `${clamp(a * 0.15, 9, 13)}px ${MONO}`;
+      ctx.fillStyle = 'rgba(31,63,120,.5)';
+      ctx.fillText(String(r), 0, 0);
+      ctx.restore();
+    }
+
+    ctx.beginPath(); ctx.arc(gx, gy, hub, 0, TAU);
+    ctx.fillStyle = 'rgba(255,252,244,.85)'; ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(29,36,51,.5)'; ctx.stroke();
+
+    const pen = penAt(G, t, P1);
+    ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(pen.x, pen.y);
+    ctx.lineCap = 'round'; ctx.lineWidth = 2.4; ctx.strokeStyle = 'rgba(29,36,51,.62)'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(gx, gy, 1.8, 0, TAU); ctx.fillStyle = '#1d2433'; ctx.fill();
+    ctx.beginPath(); ctx.arc(pen.x, pen.y, 5.6, 0, TAU);
+    ctx.fillStyle = '#fffcf4'; ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#1d2433'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(pen.x, pen.y, 3, 0, TAU);
+    ctx.fillStyle = INKS[cur.ink].hex; ctx.fill();
+  }
+
+  function ghostPath() {
+    if (ghost.path) return ghost.path;
+    const p = new Path2D();
+    for (let i = 0; i <= G.N; i++) {
+      penAt(G, tAt(G, i), P0);
+      if (i) p.lineTo(P0.x, P0.y); else p.moveTo(P0.x, P0.y);
+    }
+    return (ghost.path = p);
+  }
+
+  function drawRig(now) {
+    const ctx = rigX;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.clearRect(0, 0, geo.px, geo.px);
+    ctx.setTransform(geo.k, 0, 0, geo.k, 0, 0);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (ghost.a > 0.01) {   // 拖动参数时的铅笔预览
+      ctx.globalAlpha = ghost.a;
+      ctx.lineWidth = 0.9;
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'rgba(122,114,98,.6)';
+      ctx.stroke(ghostPath());
+    }
+    ctx.globalAlpha = rig.a;
+    drawRing(ctx);
+    drawGear(ctx, tAt(G, cur.steps));
+    if (pulse) {
+      const e = (now - pulse.t0) / 900;
+      if (e >= 1 || e < 0) pulse = null;
+      else {
+        ctx.globalAlpha = (1 - e) * 0.8;
+        ctx.beginPath(); ctx.arc(pulse.x, pulse.y, 6 + 30 * (1 - (1 - e) ** 3), 0, TAU);
+        ctx.lineWidth = 1.6; ctx.strokeStyle = INKS[cur.ink].hex; ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ---------- 界面同步 ---------- */
+  function setRange(input, v) {
+    if (+input.value !== v) input.value = v;
+    input.parentNode.style.setProperty('--f', ((v - input.min) / (input.max - input.min)).toFixed(4));
+  }
+
+  function syncSliders() {
+    setRange(el.R, state.R);
+    setRange(el.r, state.r);
+    setRange(el.p, Math.round(state.p * 100));
+    setRange(el.s, state.speed);
+    el.oR.innerHTML = `${state.R}<small>齿</small>`;
+    el.or.innerHTML = `${state.r}<small>齿</small>`;
+    el.oP.textContent = state.p.toFixed(2);
+    el.oS.innerHTML = `${state.speed}<small>档</small>`;
+    el.R.setAttribute('aria-valuetext', `${state.R} 齿`);
+    el.r.setAttribute('aria-valuetext', `${state.r} 齿`);
+    el.p.setAttribute('aria-valuetext', state.p.toFixed(2));
+    el.s.setAttribute('aria-valuetext', `${state.speed} 档`);
+    const rMax = Math.min(100, state.R - GAP);
+    el.lim.style.setProperty('--lim', ((rMax - 12) / 88).toFixed(4));
+    el.lim.hidden = rMax >= 100;
+    el.rMax.textContent = `≤ ${rMax}`;
+  }
+
+  function syncInk() {
+    root.style.setProperty('--ink', INKS[state.ink].hex);
+    el.radios[state.ink].checked = true;
+    el.inkName.textContent = INKS[state.ink].name;
+  }
+
+  function syncButtons() {
+    const paused = !state.running || cur.closed;
+    el.pause.disabled = cur.closed;
+    el.pauseLbl.textContent = paused ? '继续' : '暂停';
+    el.pauseIcon.innerHTML = paused ? '<path d="M5 3.2l7.6 4.8L5 12.8z" fill="currentColor"/>' : '<path d="M5.5 3.5v9M10.5 3.5v9"/>';
+  }
+
+  function syncReadout() {
+    const rows = [
+      ['<span class="pen"></span>' + INKS[cur.ink].name, ''], ['R', cur.R], ['r', cur.r], ['d/r', cur.p.toFixed(2)],
+      ['最大公约数', G.g], ['花瓣', G.petals], ['闭合', `${G.laps} 圈`], ['图层', layers.length + 1],
+    ];
+    if (cur.phase) rows.push(['起点', `+${cur.phase} 齿`]);
+    el.readout.innerHTML = rows.map(([k, v]) => `<li>${k}${v === '' ? '' : ` <b>${v}</b>`}</li>`).join('');
+  }
+
+  function syncProgress() {
+    const t = tAt(G, cur.steps);
+    const f = cur.closed ? 1 : t / G.tEnd;
+    const lap = cur.closed ? G.laps : Math.min(G.laps, Math.floor(t / TAU + 1e-9) + 1);
+    const status = cur.closed ? '已闭合，首尾相接' : `${state.running ? '绘制中' : '已暂停'}，还差 ${((G.tEnd - t) / TAU).toFixed(2)} 圈`;
+    const key = cur.steps + status + G.laps;
+    if (key === progKey) return;
+    progKey = key;
+    const pct = Math.floor(f * 100);
+    el.bar.style.setProperty('--p', f.toFixed(4));
+    el.bar.style.setProperty('--n', G.laps);
+    el.bar.classList.toggle('dense', G.laps > 40);
+    el.bar.setAttribute('aria-valuenow', pct);
+    el.lap.textContent = `第 ${lap} / ${G.laps} 圈`;
+    el.pct.textContent = `${pct}%`;
+    el.status.textContent = status;
+  }
+
+  function say(msg) { el.live.textContent = msg; }
+
+  /* ---------- 动画循环 ---------- */
+  function kick() { if (!raf) raf = requestAnimationFrame(frame); }
+
+  function frame(now) {
+    raf = 0;
+    const dt = last ? Math.min(0.25, Math.max(0, (now - last) / 1000)) : 1 / 60;
+    last = now;
+    let busy = false;
+    if (state.running && !cur.closed) {
+      if (reduced) advance(G.N);
+      else {
+        acc += sps(state.speed) * dt;
+        const n = Math.floor(acc);
+        if (n > 0) { acc -= n; advance(n); }
+      }
+      busy = !cur.closed;
+    }
+    const gT = ghost.drag || now < ghost.until ? 1 : 0;
+    ghost.a = reduced ? gT : ease(ghost.a, gT, dt * 10);
+    if (gT || ghost.a) busy = true;
+    const rT = cur.closed ? 0.42 : 1;
+    rig.a = reduced ? rT : ease(rig.a, rT, dt * 3.2);
+    if (rig.a !== rT || pulse) busy = true;
+    drawRig(now);
+    syncProgress();
+    if (busy) raf = requestAnimationFrame(frame); else last = 0;
+  }
+
+  /* ---------- 事件 ---------- */
+  function onParam(key) {
+    if (key === 'R') {
+      state.R = +el.R.value;
+      state.r = Math.min(state.r, state.R - GAP);
+    } else if (key === 'r') {
+      state.r = Math.min(+el.r.value, state.R - GAP);
+    } else {
+      state.p = +el.p.value / 100;
+    }
+    syncSliders();
+    ghost.until = performance.now() + 900;
+    if (state.R !== cur.R || state.r !== cur.r || state.p !== cur.p) restart(); else kick();
+  }
+
+  function release() {
+    if (!ghost.drag) return;
+    ghost.drag = false;
+    ghost.until = performance.now() + 700;
+    kick();
+  }
+
+  el.R.addEventListener('input', () => onParam('R'));
+  el.r.addEventListener('input', () => onParam('r'));
+  el.p.addEventListener('input', () => onParam('p'));
+  el.s.addEventListener('input', () => { state.speed = +el.s.value; syncSliders(); });
+  for (const input of [el.R, el.r, el.p]) input.addEventListener('pointerdown', () => { ghost.drag = true; kick(); });
+  window.addEventListener('pointerup', release);
+  window.addEventListener('pointercancel', release);
+  el.radios.forEach((radio, i) => radio.addEventListener('change', () => { if (radio.checked) setInk(i); }));
+  el.pause.addEventListener('click', togglePause);
+  el.layer.addEventListener('click', newLayer);
+  el.rand.addEventListener('click', randomize);
+  el.fresh.addEventListener('click', newPaper);
+
+  const onReduce = (e) => { reduced = e.matches; kick(); };
+  if (mqReduce.addEventListener) mqReduce.addEventListener('change', onReduce); else mqReduce.addListener(onReduce);
+
+  function relayout() {
+    const w = paper.getBoundingClientRect().width;
+    if (Math.abs(w - geo.css) < 0.5 && (window.devicePixelRatio || 1) === geo.dpr) return;
+    measure();
+    renderAll();
+    ghost.path = null;
+    drawRig(performance.now());
+    kick();
+  }
+  let resizeTimer = 0;
+  const paperObserver = new ResizeObserver(() => { clearTimeout(resizeTimer); resizeTimer = setTimeout(relayout, 120); });
+  function watchDpr() {
+    const mq = matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+    const onChange = () => { if (mq.removeEventListener) mq.removeEventListener('change', onChange); relayout(); watchDpr(); };
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+  }
+  const stickObserver = new IntersectionObserver(([entry]) => {
+    el.stage.classList.toggle('stuck', !entry.isIntersecting && entry.boundingClientRect.top < 0);
+  });
+
+  /* ---------- 静态装饰：表圈刻度与厂标 ---------- */
+  function buildStatic() {
+    let mi = '', mj = '';
+    for (let i = 0; i < 120; i++) {
+      const a = i / 120 * TAU, cs = Math.cos(a), sn = Math.sin(a);
+      const r1 = i % 10 === 0 ? 470 : i % 5 === 0 ? 464 : 459;
+      const seg = `M${(452 * cs).toFixed(1)} ${(452 * sn).toFixed(1)}L${(r1 * cs).toFixed(1)} ${(r1 * sn).toFixed(1)}`;
+      if (i % 10 === 0) mj += seg; else mi += seg;
+    }
+    $('tickMi').setAttribute('d', mi);
+    $('tickMj').setAttribute('d', mj);
+    let d = '';
+    for (let i = 0; i <= 360; i++) {   // 厂标：R=5、r=3 的五瓣小花
+      const t = i / 360 * TAU * 3, x = 22 + 6.8 * Math.cos(t) + 8.9 * Math.cos(2 * t / 3), y = 22 + 6.8 * Math.sin(t) - 8.9 * Math.sin(2 * t / 3);
+      d += `${i ? 'L' : 'M'}${x.toFixed(2)} ${y.toFixed(2)}`;
+    }
+    $('logoCurve').setAttribute('d', d + 'Z');
+    for (const [id, cfg] of Object.entries(RULERS)) {
+      const input = $(id), min = +input.min, max = +input.max;
+      const steps = Math.round((max - min) / cfg.minor);
+      let html = '';
+      for (let i = 0; i <= steps; i++) {
+        const v = +(min + i * cfg.minor).toFixed(4), left = ((v - min) / (max - min) * 100).toFixed(3);
+        const lab = cfg.labels.includes(v), mid = Math.abs(v / cfg.mid - Math.round(v / cfg.mid)) < 1e-6;
+        html += `<i class="${lab ? 'j' : mid ? 'm' : ''}" style="left:${left}%"></i>`;
+        if (lab) html += `<b style="left:${left}%">${cfg.fmt ? cfg.fmt(v) : v}</b>`;
+      }
+      input.parentNode.querySelector('.ticks').innerHTML = html;
+    }
+  }
+
+  /* ---------- 启动（支持热更新时保留图层） ---------- */
+  function boot(data) {
+    const src = data && typeof data === 'object' ? data : {};
+    const int = (v, lo, hi, d) => (Number.isFinite(+v) && v !== null && v !== '' ? clamp(Math.round(+v), lo, hi) : d);
+    state.R = int(src.R, 40, 144, 96);
+    state.r = int(src.r, 12, Math.min(100, state.R - GAP), Math.min(36, state.R - GAP));
+    state.p = int(src.p * 100, 10, 100, 62) / 100;
+    state.speed = int(src.speed, 1, 10, 5);
+    state.ink = int(src.ink, 0, INKS.length - 1, 0);
+    if (Array.isArray(src.layers)) {
+      for (const L of src.layers.slice(0, 200)) {
+        if (!L || typeof L !== 'object') continue;
+        const R = int(L.R, 40, 144, 96), r = int(L.r, 12, Math.min(100, R - GAP), 36);
+        layers.push({ R, r, p: int(L.p * 100, 10, 100, 62) / 100, ink: int(L.ink, 0, INKS.length - 1, 0), phase: int(L.phase, 0, R - 1, 0), steps: int(L.steps, 1, 1e6, 1) });
+      }
+    }
+    buildStatic();
+    syncSliders();
+    syncInk();
+    measure();
+    Object.assign(cur, { R: state.R, r: state.r, p: state.p, ink: state.ink, steps: 0, closed: false });
+    cur.phase = phaseFor(layers.length, gcd(cur.R, cur.r));
+    G = geomOf(cur);
+    cur.steps = int(src.steps, 0, G.N, 0);
+    cur.closed = cur.steps >= G.N;
+    state.running = src.running !== false;
+    renderAll();
+    syncButtons();
+    syncReadout();
+    syncProgress();
+    drawRig(performance.now());
+    paperObserver.observe(paper);
+    stickObserver.observe(el.sentinel);
+    watchDpr();
+    kick();
+  }
+
+  const hot = window.claude && window.claude.hot;
+  if (hot && hot.snapshot) {
+    hot.snapshot(() => ({
+      R: state.R, r: state.r, p: state.p, speed: state.speed, ink: state.ink, running: state.running,
+      steps: cur.steps, layers: layers.map((L) => ({ ...L })),
+    }));
+  }
+  if (hot && hot.ready) hot.ready(boot); else boot((hot && hot.data) || {});
+})();
+</script>
+</body>
+</html>
