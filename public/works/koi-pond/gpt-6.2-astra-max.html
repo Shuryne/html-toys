@@ -4064,6 +4064,8 @@ function makeNoise() {
   t.wrapS=t.wrapT=T.RepeatWrapping;t.magFilter=T.LinearFilter;t.minFilter=T.LinearMipmapLinearFilter;
   t.generateMipmaps=true;t.needsUpdate=true;return t;
 }
+const nextPaint=()=>new Promise(resolve=>requestAnimationFrame(resolve));
+await nextPaint();
 const grain = makeNoise();
 const gvars = 'varying vec3 vGarden; varying vec3 vGardenN;';
 function gardenShader(shader, wind=false) {
@@ -4180,6 +4182,7 @@ function icoTemplate(detail) {
   raw.dispose();return {points,index};
 }
 const stoneBase=[icoTemplate(1),icoTemplate(3),icoTemplate(5)];
+await nextPaint();
 const stones=new Batch(),grit=new Batch();
 function rock(x,y,z,sx,sy,sz,angle=between(0,TAU),options={}) {
   const {flatness=between(2.3,4.1),tint=between(.69,1.09),detail=Math.max(sx,sy,sz)>1.6?2:1,slab=false}=options;
@@ -4286,6 +4289,7 @@ lanternStone(turnStone([[.001,0],[.18,.005],[.19,.07],[.12,.11],[.105,.16],[.16,
 
 
 // Thin leaves keep their own midribs, shadows and different bending stiffness.
+await nextPaint();
 const greens=new Batch(),ferns=new Batch(),broadLeaves=new Batch(),branches=new Batch(),maples=new Batch();
 const lilyPads=new Batch(),blossoms=new Batch(),stalks=new Batch();
 const leafy=foliageMat();
@@ -4606,6 +4610,7 @@ for(const [x,z,n,sc] of lilyGroups){
 }
 blossom(-4.73,.35,.32,false);blossom(-3.45,3.38,.34,true);blossom(4.92,1.25,.345,false);blossom(-2.92,-3.95,.26,true);
 // A few Japanese irises rise from the damp margins, above fans of sword-shaped leaves.
+await nextPaint();
 const irises=new Batch();
 function irisClump(x,y,z,scale,number){
   const ink=col(0x76549a),light=col(0xbba1cd),vein=col(0x9073b7),signal=col(0xf0bd65),stem=col(0x667e4d);
@@ -4670,8 +4675,8 @@ const varieties=[
   {name:'绯写',base:'#e89933',black:'#342f26',type:'utsuri'}
 ];
 function rgb(hex){const n=parseInt(hex.slice(1),16);return [n>>16,(n>>8)&255,n&255];}
-function fishSkin(v,index){
-  const W=512,H=256,c=sheet(W,H),g=c.getContext('2d'),im=g.createImageData(W,H);
+function fishSkin(v,index,makeCanvas){
+  const W=512,H=256,c=makeCanvas(W,H),g=c.getContext('2d'),im=g.createImageData(W,H);
   const seed=6.41+index*12.37, rand=randomSource(9257+index*651);
   const base=rgb(v.base),red=rgb(v.red||v.base),black=rgb(v.black||'#252728');
   const redSpots=[],blackSpots=[];
@@ -4731,7 +4736,54 @@ function fishSkin(v,index){
     g.strokeStyle='rgba(100,77,60,.37)';g.lineWidth=1.25;g.beginPath();g.moveTo(91,128+s*35);g.bezierCurveTo(113,128+s*45,108,128+s*71,75,128+s*83);g.stroke();
     g.strokeStyle='rgba(253,244,202,.73)';g.lineWidth=1.25;g.beginPath();g.moveTo(91,128+s*36);g.quadraticCurveTo(113,128+s*60,85,128+s*77);g.stroke();
   }
-  return fromCanvas(c);
+  return c;
+}
+async function makeFishSkins(){
+  if(typeof Worker==='function'&&typeof OffscreenCanvas==='function'){
+    const source=`
+      const TAU=2*Math.PI, clamp=${clamp}, mix=${mix}, smooth=${smooth}, fract=${fract};
+      const makeCanvas=(w,h)=>new OffscreenCanvas(w,h);
+      ${randomSource}
+      ${noise2}
+      ${rgb}
+      ${fishSkin}
+      let noiseTable;
+      onmessage=({data})=>{
+        noiseTable=data.noiseTable;
+        const skins=data.varieties.map((v,i)=>{
+          const canvas=fishSkin(v,i,makeCanvas);
+          return canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+        });
+        postMessage(skins,skins.map(skin=>skin.data.buffer));
+      };
+    `;
+    const url=URL.createObjectURL(new Blob([source],{type:'text/javascript'}));
+    let worker;
+    try{
+      worker=new Worker(url);
+      const pixels=await new Promise((resolve,reject)=>{
+        worker.onmessage=event=>resolve(event.data);
+        worker.onerror=reject;
+        worker.onmessageerror=reject;
+        worker.postMessage({varieties,noiseTable});
+      });
+      return pixels.map(image=>{
+        const canvas=sheet(image.width,image.height);
+        canvas.getContext('2d').putImageData(image,0,0);
+        return fromCanvas(canvas);
+      });
+    }catch{
+      // Some browsers can create an OffscreenCanvas only on the main thread.
+    }finally{
+      worker?.terminate();URL.revokeObjectURL(url);
+    }
+  }
+  const skins=[];
+  for(let i=0;i<varieties.length;i++){
+    await nextPaint();
+    skins.push(fromCanvas(fishSkin(varieties[i],i,sheet)));
+  }
+  return skins;
 }
 function finTexture(){
   const c=sheet(192,128),g=c.getContext('2d');
@@ -4872,9 +4924,10 @@ function cruiseGoal(){
   }
   return {x:0,z:0};
 }
+const skins=await makeFishSkins();
 for(let i=0;i<varieties.length;i++){
   const v=varieties[i],pose={value:new T.Vector3(between(0,TAU),1,0)},group=new T.Group();
-  const body=new T.Mesh(coreFish,swimmingMaterial({map:fishSkin(v,i),roughness:.43,side:T.DoubleSide},pose));
+  const body=new T.Mesh(coreFish,swimmingMaterial({map:skins[i],roughness:.43,side:T.DoubleSide},pose));
   const fin=new T.Mesh(fishFins(v),swimmingMaterial({map:finMap,vertexColors:true,side:T.DoubleSide,transparent:true,opacity:.77,depthWrite:true,roughness:.53},pose));
   const face=new T.Mesh(features,swimmingMaterial({vertexColors:true,roughness:.37},pose));
   body.receiveShadow=fin.receiveShadow=face.receiveShadow=true;
@@ -5418,6 +5471,7 @@ function updateCamera(dt){
 resize();window.addEventListener('resize',resize);
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 let lastFrame=0,lastMirror=-100,frameID=0,qualityTime=0,qualityFrames=0;
+let sceneReady=false,firstFrame=true;
 let mirrorAz=-999,mirrorPolar=-999,mirrorR=-999;
 function step(dt){
   simTime+=dt;timeU.value=simTime;updatePellets();
@@ -5445,20 +5499,33 @@ function frame(now){
     renderMirror();mirrorDirty=false;lastMirror=simTime;mirrorAz=azimuth;mirrorPolar=polar;mirrorR=radius;
   }
   renderer.setRenderTarget(null);renderer.render(screen,screenCam);
+  if(firstFrame){firstFrame=false;document.getElementById('loading').hidden=true;}
   frameID=requestAnimationFrame(frame);
 }
-renderer.shadowMap.needsUpdate=true;
-frame(performance.now());
-document.getElementById('loading').hidden=true;
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){cancelAnimationFrame(frameID);frameID=0;lastFrame=0;}
-  else if(!frameID){lastFrame=0;frameID=requestAnimationFrame(frame);}
+  else if(sceneReady&&!frameID){lastFrame=0;frameID=requestAnimationFrame(frame);}
 });
 canvas.addEventListener('webglcontextlost',e=>{
-  e.preventDefault();cancelAnimationFrame(frameID);frameID=0;
+  e.preventDefault();cancelAnimationFrame(frameID);frameID=0;sceneReady=false;
   const loading=document.getElementById('loading');loading.hidden=false;loading.querySelector('span').textContent='正在恢复池塘画面…';
 });
 canvas.addEventListener('webglcontextrestored',()=>location.reload());
+
+await nextPaint();
+updateCamera(0);
+renderer.setRenderTarget(rt);
+await renderer.compileAsync(scene,camera);
+await nextPaint();
+renderer.setRenderTarget(reflected);
+await renderer.compileAsync(scene,mirrorCam);
+await nextPaint();
+renderer.setRenderTarget(null);
+await renderer.compileAsync(screen,screenCam);
+if(renderer.getContext().isContextLost())return;
+sceneReady=true;
+renderer.shadowMap.needsUpdate=true;
+frameID=requestAnimationFrame(frame);
 
 })().catch(error => {
   console.error(error);

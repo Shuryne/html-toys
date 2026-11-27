@@ -2169,6 +2169,7 @@ canvas.addEventListener('pointerup', (e) => {
 });
 
 const _dbs = new THREE.Vector2();
+let reflectionDirty = true;
 function onResize() {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
@@ -2176,6 +2177,7 @@ function onResize() {
   renderer.getDrawingBufferSize(_dbs);
   sceneRT.setSize(_dbs.x, _dbs.y);
   reflRT.setSize(Math.max(2, Math.floor(_dbs.x * 0.5)), Math.max(2, Math.floor(_dbs.y * 0.5)));
+  reflectionDirty = true;
   waterUniforms.uRes.value.copy(_dbs);
   const ps = _dbs.y / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
   spray.pts.material.uniforms.uScale.value = ps;
@@ -2246,14 +2248,24 @@ function simulate(dt) {
   sfx.tick(dt, camera.position.distanceTo(WF_O));
 }
 
-function renderPasses() {
+const reflectedPosition = new THREE.Vector3(), reflectedRotation = new THREE.Quaternion();
+let lastReflection = -Infinity, lastShadow = -Infinity, lastStats = '';
+function renderPasses(t) {
   // 1) mirrored view for reflections (above-water scenery only)
   water.visible = false;
-  updateReflectionCamera();
-  renderer.clippingPlanes = REFL_CLIP;
-  renderer.setRenderTarget(reflRT);
-  renderer.render(scene, reflCam);
-  renderer.clippingPlanes = [];
+  const moved = camera.position.distanceToSquared(reflectedPosition) > 0.015 ||
+    Math.abs(camera.quaternion.dot(reflectedRotation)) < 0.99997;
+  if (reflectionDirty || moved || t - lastReflection >= 1 / 12) {
+    updateReflectionCamera();
+    renderer.clippingPlanes = REFL_CLIP;
+    renderer.setRenderTarget(reflRT);
+    renderer.render(scene, reflCam);
+    renderer.clippingPlanes = [];
+    reflectedPosition.copy(camera.position);
+    reflectedRotation.copy(camera.quaternion);
+    lastReflection = t;
+    reflectionDirty = false;
+  }
   // 2) everything seen through the surface, with depth for absorption & refraction
   camera.layers.set(L_UNDER);
   renderer.setRenderTarget(sceneRT);
@@ -2265,7 +2277,10 @@ function renderPasses() {
   waterUniforms.tDepth.value = sceneRT.depthTexture;
   waterUniforms.tRefl.value = reflRT.texture;
   waterUniforms.uCamPos.value.copy(camera.position);
-  renderer.shadowMap.needsUpdate = true;
+  if (t - lastShadow >= 1 / 12) {
+    renderer.shadowMap.needsUpdate = true;
+    lastShadow = t;
+  }
   renderer.setRenderTarget(null);
   renderer.render(scene, camera);
 }
@@ -2273,12 +2288,13 @@ function renderPasses() {
 function frame() {
   const dt = Math.min(clock.getDelta(), 1 / 20);
   simulate(dt);
-  renderPasses();
+  renderPasses(uTime.value);
   if ((statsT -= dt) < 0) {
     statsT = 0.3;
     const afloat = pellets.filter((p) => p.state === 'float' || p.state === 'fall').length;
     const hungry = koi.filter((k) => k.state === 'feed').length;
-    statsEl.innerHTML = `<b>${koi.length}</b> 条锦鲤${hungry ? ` · <b>${hungry}</b> 条正在进食` : ''}<br>水面饲料 <b>${afloat}</b> 粒 · 已吃掉 <b>${pelletsEaten}</b> 粒`;
+    const stats = `<b>${koi.length}</b> 条锦鲤${hungry ? ` · <b>${hungry}</b> 条正在进食` : ''}<br>水面饲料 <b>${afloat}</b> 粒 · 已吃掉 <b>${pelletsEaten}</b> 粒`;
+    if (stats !== lastStats) statsEl.innerHTML = lastStats = stats;
   }
   if (firstFrame) {
     firstFrame = false;
