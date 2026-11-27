@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "home",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["scripts/dev.sh"],
+      "port": 8787
+    }
+  ]
+}
