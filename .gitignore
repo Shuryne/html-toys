@@ -15,5 +15,5 @@ Thumbs.db
 /.env.*
 !/.env.example
 
-# Personal Claude Code settings
-/.claude/settings.local.json
+# Local Claude Code files
+/.claude/
