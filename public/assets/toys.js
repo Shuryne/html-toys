@@ -10,12 +10,8 @@
 window.MODELS = [
   { id: 'opus-5.5-max', name: 'Claude Opus 5.5 Max', short: 'Opus 5.5', vendor: 'Anthropic', color: '#c8553d' },
   { id: 'gpt-6.2-astra-max', name: 'GPT 6.2 Astra Max', short: 'Astra 6.2', vendor: '', color: '#2f6fb3' },
+  { id: 'gemini-4-carbon-high', name: 'Gemini 4 Carbon High', short: 'Carbon 4', vendor: 'Google', color: '#3d8b5a' },
 ];
-
-// Layout test only: ?demo=gemini adds a model with no runs, to see three columns.
-if (new URLSearchParams(location.search).get('demo') === 'gemini') {
-  window.MODELS.push({ id: 'gemini-demo', name: 'Gemini（待定）', short: 'Gemini', vendor: 'Google', color: '#3d8b5a', demo: true });
-}
 
 window.PROMPTS = [
   {
@@ -36,6 +32,14 @@ window.PROMPTS = [
         blurb: {
           zh: '一列蒸汽小火车在风车岛、邮政总站和灯塔湾三座积木浮岛之间往返，热气球在云间飘过。',
           en: 'A little steam train runs between three brick islands, the windmill, the post office and the lighthouse, while a balloon drifts through the clouds.',
+        },
+      },
+      'gemini-4-carbon-high': {
+        title: { zh: '穿云号', en: 'Cloudpiercer Railway' },
+        medium: { zh: 'Three.js（WebGL）', en: 'Three.js (WebGL)' },
+        blurb: {
+          zh: '跟着蒸汽小火车穿过四座积木浮岛，也可以坐进驾驶舱看云海。',
+          en: 'Follow a steam train between four floating brick islands, or watch the clouds from the driver’s cab.',
         },
       },
     },
@@ -60,6 +64,14 @@ window.PROMPTS = [
           en: 'In twenty-five seconds a storm-lit lighthouse is painted from underdrawing to finish, its beam sweeping across the heaving sea.',
         },
       },
+      'gemini-4-carbon-high': {
+        title: { zh: '暮色狂澜 · 孤塔破雾', en: 'Twilight Storm · A Beacon in the Mist' },
+        medium: { zh: 'WebGL2 着色器', en: 'WebGL2 shaders' },
+        blurb: {
+          zh: '拖动时间轴，看灯塔从炭笔起稿到厚涂成画。打开微距可以细看油彩的笔触。',
+          en: 'Scrub from charcoal sketch to finished oil painting, then use the loupe to see the brushwork up close.',
+        },
+      },
     },
   },
   {
@@ -80,6 +92,14 @@ window.PROMPTS = [
         blurb: {
           zh: '绘图仪用蓝色圆珠笔在白纸上画出一幅山水，右侧清单逐层记录笔数与里程。',
           en: 'A pen plotter draws a mountain landscape in blue ballpoint while a ledger on the right tallies strokes and distance, layer by layer.',
+        },
+      },
+      'gemini-4-carbon-high': {
+        title: { zh: '2号绘图仪', en: 'Plotter No. 2' },
+        medium: { zh: 'Canvas 2D 与合成音效', en: 'Canvas 2D, synthesized sound' },
+        blurb: {
+          zh: '蓝色圆珠笔逐层画出山水。点纸面加飞鸟，换一张纸就有新构图。',
+          en: 'A blue ballpoint draws a landscape in layers. Tap the paper to add a bird, or load a fresh sheet for a new composition.',
         },
       },
     },
@@ -104,6 +124,14 @@ window.PROMPTS = [
           en: 'A neumorphic turntable with a five-track queue. There is no sound, yet the spectrum moves with the beat.',
         },
       },
+      'gemini-4-carbon-high': {
+        title: { zh: '索芙维尔播放器', en: 'Softwell Player' },
+        medium: { zh: 'CSS、SVG 与 Canvas 2D', en: 'CSS, SVG, Canvas 2D' },
+        blurb: {
+          zh: '五首曲目配一台新拟态唱机。播放时唱片转动，模拟频谱随节拍起伏。',
+          en: 'A neumorphic turntable with five tracks. The record spins and the simulated spectrum moves to the beat.',
+        },
+      },
     },
   },
   {
@@ -124,6 +152,14 @@ window.PROMPTS = [
         blurb: {
           zh: '一座随潮汐与天光呼吸的海港。黎明、午后和夜晚是三幅预先画好的图层，船、飞艇和行人在其间来往。',
           en: 'A harbour that breathes with the tide. Dawn, afternoon and night are three pre-painted layers, with boats, an airship and people moving across them.',
+        },
+      },
+      'gemini-4-carbon-high': {
+        title: { zh: '翠曦港城', en: 'Heliosia' },
+        medium: { zh: 'Canvas 2D 像素画', en: 'Canvas 2D pixel art' },
+        blurb: {
+          zh: '看悬空轻轨和光帆船穿过像素港城，也可以切换昼夜和天气。',
+          en: 'Watch elevated trains and sails cross a pixel-art harbour, and change the time of day or weather.',
         },
       },
     },
@@ -148,6 +184,14 @@ window.PROMPTS = [
           en: 'Orbis Drawing Plate No. 7: a graduated ring, a parameter card you can type into, and rosettes layered in several inks.',
         },
       },
+      'gemini-4-carbon-high': {
+        title: { zh: '万花尺工作室', en: 'Spirograph Studio' },
+        medium: { zh: 'Canvas 2D', en: 'Canvas 2D' },
+        blurb: {
+          zh: '调节第 7 号绘图盘的齿数和笔孔，用不同颜色的墨水叠画花纹。',
+          en: 'Adjust the gear teeth and pen hole on Drawing Plate No. 7, then layer rosettes in different inks.',
+        },
+      },
     },
   },
   {
@@ -168,6 +212,14 @@ window.PROMPTS = [
         blurb: {
           zh: '苔石、枫叶和瀑布围着一池清水，锦鲤在睡莲间游动。点「投喂锦鲤」，看它们聚拢过来。',
           en: 'Mossy rocks, maples and a waterfall frame a clear pond where koi drift among lilies. Press Feed and they gather round.',
+        },
+      },
+      'gemini-4-carbon-high': {
+        title: { zh: '翠微锦池', en: 'Jade Garden Pond' },
+        medium: { zh: 'Three.js', en: 'Three.js' },
+        blurb: {
+          zh: '十六尾锦鲤在叠石瀑布旁巡游。切换视角俯瞰池塘，或投喂看它们聚拢。',
+          en: 'Sixteen koi cruise past a rock waterfall. Switch to an overhead view or feed them and watch them gather.',
         },
       },
     },

@@ -1,0 +1,2740 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
+  <link rel="icon" href="data:,">
+  <title>暮色狂澜 · 孤塔破雾 — 纯代码写实油画生成全过程</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --target-size: 24px;
+      --wall-bg: #0f0d0b;
+      --wall-vignette: #070605;
+      --frame-outer: #1c1713;
+      --hud-bg: rgba(18, 15, 13, 0.84);
+      --hud-border: rgba(218, 186, 138, 0.24);
+      --amber-gold: #e6b467;
+      --amber-bright: #ffd996;
+      --text-main: #f4efe8;
+      --text-dim: #bfb5a8;
+      --track-bg: #4f463d;
+    }
+
+    @media (pointer: coarse) {
+      :root {
+        --target-size: 44px;
+      }
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-block-size: 100dvh;
+      background: radial-gradient(ellipse at 50% 42%, #1d1814 0%, var(--wall-bg) 58%, var(--wall-vignette) 100%);
+      color: var(--text-main);
+      font-family: "Songti SC", "STSong", "Noto Serif SC", "PingFang SC", Georgia, serif;
+      overflow-wrap: break-word;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection {
+      background: rgba(230, 180, 103, 0.32);
+      color: #fffaf0;
+    }
+
+    :where(button, input:not([type="checkbox"], [type="radio"]), [role="button"]) {
+      min-block-size: var(--target-size);
+      min-inline-size: var(--target-size);
+    }
+
+    .atelier-shell {
+      min-block-size: 100dvh;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      align-items: center;
+      justify-items: center;
+      padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+      padding-bottom: max(0.65rem, env(safe-area-inset-bottom, 0px));
+      padding-left: max(0.85rem, env(safe-area-inset-left, 0px));
+      padding-right: max(0.85rem, env(safe-area-inset-right, 0px));
+      gap: 0.65rem;
+      container: atelier / inline-size;
+    }
+
+    .easel-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      inline-size: 100%;
+      max-inline-size: min(96dvw, calc((100dvh - 5.6rem) * 1.6));
+      aspect-ratio: 16 / 10;
+      border-radius: 4px;
+      padding: clamp(6px, 0.8vw, 13px);
+      background: linear-gradient(145deg, #2b221a 0%, #15110e 48%, #251d16 100%);
+      box-shadow:
+        0 28px 75px rgba(0, 0, 0, 0.84),
+        0 6px 20px rgba(0, 0, 0, 0.68),
+        inset 0 1px 0 rgba(255, 226, 178, 0.18),
+        inset 0 0 0 2px var(--frame-outer),
+        inset 0 0 0 4px rgba(138, 106, 63, 0.34);
+    }
+
+    .canvas-rabbet {
+      position: relative;
+      inline-size: 100%;
+      block-size: 100%;
+      box-shadow:
+        inset 0 2px 9px rgba(0, 0, 0, 0.85),
+        0 0 0 1px rgba(218, 179, 118, 0.25);
+      background: #7c674c;
+    }
+
+    #oil-canvas {
+      display: block;
+      inline-size: 100%;
+      block-size: 100%;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .plaque-header {
+      position: fixed;
+      top: max(0.85rem, env(safe-area-inset-top, 0px));
+      left: max(1rem, env(safe-area-inset-left, 0px));
+      z-index: 12;
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      padding: 0.42rem 0.85rem;
+      border-radius: 999px;
+      background: rgba(16, 13, 11, 0.74);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(218, 186, 138, 0.2);
+      transition: opacity 0.35s ease;
+    }
+
+    .plaque-header h1 {
+      margin: 0;
+      font-size: clamp(0.88rem, 0.78rem + 0.35vw, 1.08rem);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--amber-bright);
+      text-wrap: balance;
+    }
+
+    .plaque-sub {
+      font-size: clamp(0.74rem, 0.68rem + 0.2vw, 0.84rem);
+      color: var(--text-dim);
+      font-family: system-ui, -apple-system, "PingFang SC", sans-serif;
+    }
+
+    .hud-bar {
+      inline-size: 100%;
+      max-inline-size: min(96dvw, 1180px);
+      background: var(--hud-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--hud-border);
+      border-radius: 14px;
+      padding: 0.5rem 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
+      font-family: system-ui, -apple-system, "PingFang SC", sans-serif;
+      transition: opacity 0.3s ease;
+    }
+
+    .hud-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-atelier {
+      appearance: none;
+      background: rgba(255, 238, 210, 0.07);
+      color: var(--text-main);
+      border: 1px solid rgba(226, 190, 136, 0.28);
+      border-radius: 8px;
+      padding: 0.32rem 0.72rem;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+      user-select: none;
+    }
+
+    .btn-atelier:hover {
+      background: rgba(230, 180, 103, 0.18);
+      border-color: rgba(230, 180, 103, 0.56);
+      color: #fffdf8;
+    }
+
+    .btn-atelier[aria-pressed="true"] {
+      background: rgba(230, 180, 103, 0.24);
+      border-color: var(--amber-gold);
+      color: var(--amber-bright);
+    }
+
+    .btn-atelier:focus-visible {
+      outline: 2px solid var(--amber-bright);
+      outline-offset: 2px;
+    }
+
+    .timeline-group {
+      flex: 1 1 240px;
+      min-inline-size: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
+    .slider-label {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    input[type="range"].timeline-slider {
+      --slider-track-size: 0.38rem;
+      --slider-thumb-size: 1.05rem;
+      --slider-track-radius: 999px;
+      --slider-thumb-radius: 50%;
+      --slider-track-color: var(--track-bg);
+      --slider-fill-color: var(--amber-gold);
+      --slider-thumb-color: var(--amber-bright);
+      --slider-direction: to right;
+
+      &:dir(rtl) {
+        --slider-direction: to left;
+      }
+
+      --attr-min: attr(min type(<number>), 0);
+      --attr-max: attr(max type(<number>), 25);
+      --control-value: attr(value type(<number>), 0);
+      --slider-progress: calc(
+        progress(var(--control-value), var(--attr-min), var(--attr-max)) * 100%
+      );
+
+      appearance: none;
+      flex: 1 1 auto;
+      inline-size: 100%;
+      block-size: var(--target-size);
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    @supports not (opacity: progress(1, 0, 100)) {
+      input[type="range"].timeline-slider {
+        --slider-progress: calc(
+          (var(--control-value) - var(--attr-min)) /
+          (var(--attr-max) - var(--attr-min)) * 100%
+        );
+      }
+    }
+
+    input[type="range"].timeline-slider::-webkit-slider-runnable-track {
+      block-size: var(--slider-track-size);
+      border: 0;
+      border-radius: var(--slider-track-radius);
+      background: linear-gradient(
+        var(--slider-direction),
+        var(--slider-fill-color) var(--slider-progress),
+        var(--slider-track-color) var(--slider-progress)
+      );
+    }
+
+    input[type="range"].timeline-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      inline-size: var(--slider-thumb-size);
+      block-size: var(--slider-thumb-size);
+      margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
+      border: 2px solid #1b1510;
+      border-radius: var(--slider-thumb-radius);
+      background: var(--slider-thumb-color);
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+    }
+
+    input[type="range"].timeline-slider::-moz-range-track {
+      block-size: var(--slider-track-size);
+      border: 0;
+      border-radius: var(--slider-track-radius);
+      background: var(--slider-track-color);
+    }
+
+    input[type="range"].timeline-slider::-moz-range-progress {
+      block-size: var(--slider-track-size);
+      border-radius: var(--slider-track-radius);
+      background: var(--slider-fill-color);
+    }
+
+    input[type="range"].timeline-slider::-moz-range-thumb {
+      inline-size: var(--slider-thumb-size);
+      block-size: var(--slider-thumb-size);
+      border: 2px solid #1b1510;
+      border-radius: var(--slider-thumb-radius);
+      background: var(--slider-thumb-color);
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+    }
+
+    input[type="range"].timeline-slider:focus-visible {
+      outline: 2px solid var(--amber-bright);
+      outline-offset: 4px;
+      border-radius: 4px;
+    }
+
+    .status-readout {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stage-pill {
+      padding: 0.22rem 0.62rem;
+      border-radius: 999px;
+      background: rgba(230, 180, 103, 0.14);
+      border: 1px solid rgba(230, 180, 103, 0.32);
+      color: var(--amber-bright);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .metric-text {
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .loupe-hint {
+      position: absolute;
+      bottom: 0.75rem;
+      right: 0.85rem;
+      padding: 0.28rem 0.65rem;
+      border-radius: 999px;
+      background: rgba(14, 12, 10, 0.78);
+      border: 1px solid rgba(230, 180, 103, 0.32);
+      color: var(--amber-bright);
+      font-size: 0.75rem;
+      font-family: system-ui, -apple-system, sans-serif;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .loupe-hint.visible {
+      opacity: 1;
+    }
+
+    .ui-hidden .plaque-header,
+    .ui-hidden .hud-bar {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @container atelier (inline-size < 46rem) {
+      .plaque-sub {
+        display: none;
+      }
+      .hud-bar {
+        padding: 0.45rem 0.65rem;
+        gap: 0.5rem;
+      }
+    }
+
+    .fallback-notice {
+      padding: 2rem;
+      text-align: center;
+      color: var(--amber-bright);
+      max-inline-size: 36rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="plaque-header">
+    <h1>暮色狂澜 · 孤塔破雾</h1>
+    <span class="plaque-sub">纯代码写实海景油画 · 亚麻底布至厚涂点睛 25 秒全过程</span>
+  </header>
+
+  <main class="atelier-shell">
+    <div class="easel-stage" id="easel-stage">
+      <div class="canvas-rabbet">
+        <canvas id="oil-canvas" width="2240" height="1400" aria-label="暴风雨黄昏中的大海、石砌灯塔、碎浪、帆船与海鸥写实油画作画过程"></canvas>
+        <div class="loupe-hint" id="loupe-hint">3.2× 微距检视油彩肌理 · 移动指针查看厚涂与亚麻布纹</div>
+      </div>
+    </div>
+
+    <section class="hud-bar" aria-label="作画进度控制栏">
+      <div class="hud-controls">
+        <button type="button" class="btn-atelier" id="btn-play-pause">暂停</button>
+        <button type="button" class="btn-atelier" id="btn-replay">重绘</button>
+        <button type="button" class="btn-atelier" id="btn-loupe" aria-pressed="false" title="微距放大检视油彩厚涂与罩染肌理">微距肌理</button>
+      </div>
+
+      <div class="timeline-group">
+        <label class="slider-label" for="timeline-slider">画程</label>
+        <input
+          type="range"
+          id="timeline-slider"
+          class="timeline-slider"
+          min="0"
+          max="25"
+          step="0.01"
+          value="0"
+          aria-valuetext="0.0 秒，准备起稿"
+        />
+      </div>
+
+      <div class="status-readout">
+        <span class="stage-pill" id="stage-badge">I · 亚麻底布与炭笔起稿</span>
+        <span class="metric-text" id="time-readout">00.00 / 25.00s</span>
+        <span class="metric-text" id="stroke-readout">0 笔</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  (() => {
+    'use strict';
+
+    // =========================================================================
+    // CONSTANTS & DETERMINISTIC PRNG
+    // =========================================================================
+    const CANVAS_W = 2240;
+    const CANVAS_H = 1400;
+    const SCENE_W = 1120;
+    const SCENE_H = 700;
+    const TOTAL_DURATION = 25.0; // Exact 25.00 seconds completion
+    const RIBBON_SEGMENTS = 12;
+    const VERTS_PER_STROKE = (RIBBON_SEGMENTS + 1) * 2;
+    const FLOATS_PER_STROKE = 24;
+
+    const STAGES = [
+      { start: 0.0,  end: 2.7,  label: 'I · 亚麻底布与炭笔起稿' },
+      { start: 2.7,  end: 6.5,  label: 'II · 松节油薄涂铺大色块' },
+      { start: 6.5,  end: 11.6, label: 'III · 风暴云层与怒海塑形' },
+      { start: 11.6, end: 16.5, label: 'IV · 岩岬、石塔与孤帆刻画' },
+      { start: 16.5, end: 20.6, label: 'V · 暗部透明罩染与灯塔光束' },
+      { start: 20.6, end: 25.0, label: 'VI · 碎浪厚涂高光与海鸥点睛' }
+    ];
+
+    function createPRNG(seed) {
+      let s = seed >>> 0;
+      return function rand() {
+        s = (s + 0x6D2B79F5) >>> 0;
+        let t = Math.imul(s ^ (s >>> 15), 1 | s);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+    const mix = (a, b, t) => a + (b - a) * t;
+    const smoothstep = (e0, e1, x) => {
+      const t = clamp((x - e0) / (e1 - e0), 0, 1);
+      return t * t * (3 - 2 * t);
+    };
+
+    // =========================================================================
+    // WEBGL2 INITIALIZATION
+    // =========================================================================
+    const canvas = document.getElementById('oil-canvas');
+    const gl = canvas.getContext('webgl2', {
+      alpha: false,
+      antialias: false,
+      depth: false,
+      stencil: false,
+      preserveDrawingBuffer: true,
+      powerPreference: 'high-performance'
+    });
+
+    if (!gl) {
+      canvas.replaceWith(Object.assign(document.createElement('div'), {
+        className: 'fallback-notice',
+        textContent: '当前浏览器环境未启用 WebGL2，无法驱动实时油画厚涂与罩染引擎。'
+      }));
+      return;
+    }
+
+    function compileShader(type, source) {
+      const sh = gl.createShader(type);
+      gl.shaderSource(sh, source);
+      gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+        const info = gl.getShaderInfoLog(sh);
+        gl.deleteShader(sh);
+        throw new Error('Shader compile error:\n' + info);
+      }
+      return sh;
+    }
+
+    function createProgram(vsSrc, fsSrc) {
+      const prog = gl.createProgram();
+      const vs = compileShader(gl.VERTEX_SHADER, vsSrc);
+      const fs = compileShader(gl.FRAGMENT_SHADER, fsSrc);
+      gl.attachShader(prog, vs);
+      gl.attachShader(prog, fs);
+      gl.linkProgram(prog);
+      gl.deleteShader(vs);
+      gl.deleteShader(fs);
+      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+        throw new Error('Program link error:\n' + gl.getProgramInfoLog(prog));
+      }
+      return prog;
+    }
+
+    function createTexRGBA8(w, h, linear = true) {
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      const filter = linear ? gl.LINEAR : gl.NEAREST;
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      return tex;
+    }
+
+    function createDualFBO(w, h) {
+      const tex0 = createTexRGBA8(w, h, true);
+      const tex1 = createTexRGBA8(w, h, true);
+      const fbo = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex0, 0);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, tex1, 0);
+      gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+
+      const fbo0 = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo0);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex0, 0);
+
+      const fbo1 = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo1);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex1, 0);
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      return { fbo, fbo0, fbo1, tex0, tex1, w, h };
+    }
+
+    // =========================================================================
+    // SHADER 1: FULLSCREEN QUAD & BELGIAN LINEN IMPRIMATURA GROUND
+    // =========================================================================
+    const FS_QUAD_VS = `#version 300 es
+    precision highp float;
+    out vec2 vUV;
+    void main() {
+      vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+      vUV = p;
+      gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+    }`;
+
+    const LINEN_GLSL = `
+    float hash12(vec2 p) {
+      vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+      p3 += dot(p3, p3.yzx + 33.33);
+      return fract((p3.x + p3.y) * p3.z);
+    }
+
+    float noise2D(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      float a = hash12(i);
+      float b = hash12(i + vec2(1.0, 0.0));
+      float c = hash12(i + vec2(0.0, 1.0));
+      float d = hash12(i + vec2(1.0, 1.0));
+      return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+    }
+
+    float fbm(vec2 p) {
+      float v = 0.0;
+      float amp = 0.5;
+      mat2 rot = mat2(0.80, 0.60, -0.60, 0.80);
+      for (int i = 0; i < 5; i++) {
+        v += amp * noise2D(p);
+        p = rot * p * 2.03 + vec2(17.1, 31.7);
+        amp *= 0.5;
+      }
+      return v;
+    }
+
+    float linenWeave(vec2 uv) {
+      vec2 threads = uv * vec2(880.0, 550.0);
+      float warpJitter = (noise2D(vec2(threads.x * 0.30, threads.y * 0.05)) - 0.5) * 0.65;
+      float weftJitter = (noise2D(vec2(threads.x * 0.05, threads.y * 0.30)) - 0.5) * 0.65;
+      float tx = threads.x + warpJitter;
+      float ty = threads.y + weftJitter;
+
+      float cellX = floor(tx);
+      float cellY = floor(ty);
+      float fx = fract(tx) - 0.5;
+      float fy = fract(ty) - 0.5;
+
+      float parity = mod(cellX + cellY, 2.0);
+      float warpThick = 0.84 + 0.30 * noise2D(vec2(cellX * 0.63, 3.1));
+      float weftThick = 0.84 + 0.30 * noise2D(vec2(7.3, cellY * 0.63));
+
+      float warpCrown = clamp(1.0 - (fx * fx) / (0.24 * warpThick), 0.0, 1.0);
+      float weftCrown = clamp(1.0 - (fy * fy) / (0.24 * weftThick), 0.0, 1.0);
+
+      float overWarp = warpCrown * (0.78 + 0.22 * cos(fy * 3.14159));
+      float overWeft = weftCrown * (0.78 + 0.22 * cos(fx * 3.14159));
+
+      float weave = mix(max(overWeft, overWarp * 0.62), max(overWarp, overWeft * 0.62), parity);
+      float gessoSoft = noise2D(threads * 0.22) * 0.14;
+      float slub = smoothstep(0.79, 0.97, noise2D(threads * vec2(0.08, 0.40))) * 0.18
+                 + smoothstep(0.79, 0.97, noise2D(threads * vec2(0.40, 0.08))) * 0.18;
+      return clamp(weave * 0.74 + gessoSoft + slub + 0.10, 0.0, 1.0);
+    }
+
+    vec2 packHeight16(float h) {
+      float hc = clamp(h, 0.0, 0.99998);
+      float scaled = hc * 255.0;
+      float hi = floor(scaled) / 255.0;
+      float lo = fract(scaled);
+      return vec2(hi, lo);
+    }
+
+    float unpackHeight16(vec2 rg) {
+      return rg.x + rg.y / 255.0;
+    }
+    `;
+
+    const GROUND_INIT_FS = `#version 300 es
+    precision highp float;
+    in vec2 vUV;
+    layout(location = 0) out vec4 outPigment;
+    layout(location = 1) out vec4 outMaterial;
+    ${LINEN_GLSL}
+
+    void main() {
+      float weave = linenWeave(vUV);
+      float ragSwipe = fbm(vec2(vUV.x * 4.2 + vUV.y * 1.6, vUV.y * 6.8 - vUV.x * 1.1));
+      float broadTone = fbm(vUV * 2.5 + vec2(4.2, 1.9));
+      float edgeDark = smoothstep(0.26, 0.92, length((vUV - 0.5) * vec2(1.15, 1.25)));
+
+      vec3 gessoCream = vec3(0.74, 0.65, 0.52);
+      vec3 rawUmberWash = vec3(0.46, 0.35, 0.24);
+      vec3 warmOchre = vec3(0.63, 0.49, 0.33);
+
+      float stain = clamp(0.36 + 0.36 * ragSwipe + 0.18 * broadTone + 0.18 * edgeDark - 0.18 * weave, 0.0, 1.0);
+      vec3 groundCol = mix(gessoCream, mix(warmOchre, rawUmberWash, edgeDark * 0.55 + ragSwipe * 0.35), stain);
+      groundCol *= (0.92 + 0.12 * weave);
+
+      outPigment = vec4(groundCol, 0.0);
+      vec2 h16 = packHeight16(0.05 + weave * 0.02);
+      outMaterial = vec4(h16, 0.14, 0.0);
+    }`;
+
+    // =========================================================================
+    // SHADER 2: MASTER STUDY SCENE & HYDRODYNAMIC/CLOUD FLOW FIELD GENERATOR
+    // =========================================================================
+    const SCENE_STUDY_FS = `#version 300 es
+    precision highp float;
+    in vec2 vUV;
+    layout(location = 0) out vec4 outSceneCol;
+    layout(location = 1) out vec4 outSceneMeta;
+    ${LINEN_GLSL}
+
+    float ridgedFbm(vec2 p) {
+      float sum = 0.0;
+      float amp = 0.52;
+      mat2 rot = mat2(0.80, 0.60, -0.60, 0.80);
+      for (int i = 0; i < 5; i++) {
+        float n = 1.0 - abs(noise2D(p) * 2.0 - 1.0);
+        sum += amp * n * n;
+        p = rot * p * 2.12 + vec2(11.4, 23.8);
+        amp *= 0.5;
+      }
+      return sum;
+    }
+
+    float cliffProfile(float u) {
+      float prom = smoothstep(0.548, 0.672, u) * 0.442;
+      float crownFlat = exp(-pow((u - 0.705) / 0.046, 4.0));
+      float ruggedRight = (ridgedFbm(vec2(u * 13.5, 2.7)) - 0.46) * 0.074 * (1.0 - 0.82 * crownFlat) * smoothstep(0.55, 0.63, u);
+      float stepCliff = smoothstep(0.755, 0.885, u) * -0.066 + smoothstep(0.90, 1.0, u) * 0.036;
+      float baseH = 0.024 + prom + ruggedRight + stepCliff;
+
+      // Seaward dark jagged reef crag taking the full fury of the main roller
+      float foreReef = exp(-pow((u - 0.532) / 0.046, 2.0)) * (0.215 + 0.045 * ridgedFbm(vec2(u * 28.0, 5.1)));
+      // Foreground partially submerged reef boulder at u=0.41..0.47
+      float lowStack = exp(-pow((u - 0.438) / 0.028, 2.0)) * 0.108;
+      return max(baseH, max(foreReef, lowStack));
+    }
+
+    void main() {
+      vec2 uv = vUV;
+      float horizon = 0.365;
+      vec2 lanternPos = vec2(0.705, 0.778);
+
+      // -----------------------------------------------------------------------
+      // 1. SKY: Billowing Storm Thunderheads & Molten Golden-Coral Dusk Rift
+      // -----------------------------------------------------------------------
+      vec2 skyWarp = vec2(
+        fbm(uv * vec2(2.6, 3.8) + vec2(1.3, 0.7)),
+        fbm(uv * vec2(2.9, 4.2) + vec2(6.4, 2.9))
+      );
+      vec2 cloudCoord = vec2(uv.x * 2.8 - uv.y * 0.95, uv.y * 4.2) + skyWarp * 0.92;
+      float cloudMass = fbm(cloudCoord);
+      float cloudBillow = ridgedFbm(cloudCoord * 1.9 + vec2(3.7, 6.2));
+      float stormDensity = clamp(cloudMass * 0.68 + cloudBillow * 0.38, 0.0, 1.0);
+
+      vec2 riftDelta = (uv - vec2(0.222, 0.412)) * vec2(1.55, 3.85);
+      float riftCore = exp(-dot(riftDelta, riftDelta) * 1.42);
+      float horizonGlow = exp(-max(uv.y - horizon, 0.0) * 6.5) * exp(-pow((uv.x - 0.25) / 0.35, 2.0));
+
+      vec3 deepPrussianSky = vec3(0.052, 0.098, 0.168);
+      vec3 bruisedViolet   = vec3(0.148, 0.116, 0.188);
+      vec3 darkNimbus      = vec3(0.068, 0.080, 0.118);
+      vec3 burntCrimsonRim = vec3(0.70, 0.25, 0.15);
+      vec3 duskCoralAmber  = vec3(0.95, 0.48, 0.21);
+      vec3 moltenNaples    = vec3(1.00, 0.78, 0.52);
+
+      vec3 skyCol = mix(deepPrussianSky, bruisedViolet, smoothstep(0.90, 0.42, uv.y));
+      float cloudGap = smoothstep(0.70, 0.26, stormDensity);
+      float duskBreak = clamp(riftCore * (0.56 + 0.62 * cloudGap) + horizonGlow * 0.54, 0.0, 1.0);
+      skyCol = mix(skyCol, mix(burntCrimsonRim, duskCoralAmber, duskBreak), clamp(duskBreak * 1.15, 0.0, 1.0));
+      skyCol = mix(skyCol, moltenNaples, pow(duskBreak, 2.3) * 0.86);
+
+      float heavyUpper = smoothstep(0.41, 0.76, uv.y) * smoothstep(0.36, 0.74, stormDensity);
+      skyCol = mix(skyCol, darkNimbus, heavyUpper * 0.85);
+
+      float cloudUnderEdge = smoothstep(0.44, 0.60, stormDensity) * (1.0 - smoothstep(0.60, 0.79, stormDensity))
+                           * exp(-pow((uv.y - 0.50) / 0.16, 2.0)) * exp(-pow((uv.x - 0.30) / 0.34, 2.0));
+      skyCol = mix(skyCol, vec3(0.96, 0.60, 0.32), cloudUnderEdge * 0.55);
+
+      float eps = 0.005;
+      float cDx = fbm(cloudCoord + vec2(eps, 0.0)) - fbm(cloudCoord - vec2(eps, 0.0));
+      float cDy = fbm(cloudCoord + vec2(0.0, eps)) - fbm(cloudCoord - vec2(0.0, eps));
+      vec2 skyFlow = normalize(vec2(-cDy * 1.4 + 0.78, cDx * 1.1 - 0.14));
+
+      vec3 col = skyCol;
+      vec2 flow = skyFlow;
+      float zone = 0.10;
+      float foamAmt = 0.0;
+      float detailWeight = 0.35 + 0.40 * cloudUnderEdge;
+
+      // -----------------------------------------------------------------------
+      // 2. OCEAN: Distant Swells, Hero Translucent Emerald Wave & Foreground Surf
+      // -----------------------------------------------------------------------
+      float waveEnv = exp(-pow((uv.x - 0.38) / 0.22, 2.0));
+      float mainWaveCrest = 0.185 + 0.128 * waveEnv * sin((uv.x - 0.06) * 3.8)
+                          + 0.014 * sin(uv.x * 22.0 + fbm(uv * 9.0) * 2.2);
+      float seaTop = max(horizon + 0.005 * sin(uv.x * 36.0), mainWaveCrest * smoothstep(0.62, 0.45, uv.x));
+
+      if (uv.y < seaTop) {
+        float seaDepth = clamp(uv.y / horizon, 0.0, 1.0);
+        float perspScale = mix(6.0, 44.0, pow(seaDepth, 1.85));
+        vec2 waveUV = vec2(uv.x * 4.4 - uv.y * 2.2, uv.y * perspScale);
+        float swell = fbm(waveUV + vec2(fbm(waveUV * 0.5) * 1.4, 0.0));
+        float chop = ridgedFbm(waveUV * 2.4 + vec2(3.1, 7.4));
+
+        vec3 abyssPrussian  = vec3(0.020, 0.062, 0.095);
+        vec3 deepIndigoTeal = vec3(0.046, 0.142, 0.185);
+        vec3 emeraldHeart   = vec3(0.090, 0.475, 0.430);
+        vec3 brightViridian = vec3(0.260, 0.700, 0.595);
+
+        vec3 waterCol = mix(abyssPrussian, deepIndigoTeal, clamp(swell * 0.85 + seaDepth * 0.32, 0.0, 1.0));
+
+        // Distant horizon haze & warm molten copper-gold wave reflections
+        float distMask = smoothstep(0.58, 0.99, seaDepth);
+        float duskSeaPath = exp(-pow((uv.x - 0.232) / (0.13 + 0.09 * (1.0 - seaDepth)), 2.0)) * smoothstep(0.44, 0.99, seaDepth);
+        float swellRidge = smoothstep(0.50, 0.80, swell) * (0.55 + 0.45 * chop);
+        waterCol = mix(waterCol, vec3(0.15, 0.21, 0.26), distMask * 0.48);
+        waterCol += mix(burntCrimsonRim, moltenNaples, swellRidge) * duskSeaPath * (0.28 + 0.64 * swellRidge);
+
+        // HERO WAVE CONCAVE EMERALD HEART
+        float distBelowCrest = mainWaveCrest - uv.y;
+        float inHeroSpan = smoothstep(0.10, 0.22, uv.x) * smoothstep(0.53, 0.44, uv.x);
+        float greenHeartMask = 0.0;
+        if (distBelowCrest > -0.012 && distBelowCrest < 0.145) {
+          greenHeartMask = exp(-pow((distBelowCrest - 0.038) / 0.036, 2.0)) * inHeroSpan;
+          float veins = 0.68 + 0.32 * chop;
+          waterCol = mix(waterCol, mix(emeraldHeart, brightViridian, greenHeartMask * veins), greenHeartMask * 0.94);
+        }
+
+        // Deep foreground abyssal trough
+        float troughMask = smoothstep(0.155, 0.035, uv.y) * smoothstep(0.50, 0.28, uv.x);
+        waterCol = mix(waterCol, vec3(0.016, 0.045, 0.072), troughMask * 0.74);
+
+        // FOREGROUND ROLLING SWELL & CONNECTED CELLULAR LACY SPUME WEBBING:
+        float crestLip = exp(-pow((distBelowCrest - 0.004) / 0.016, 2.0)) * inHeroSpan * (0.58 + 0.62 * chop);
+        // Connected branching foam web pulled diagonally across dark foreground water into the rising wave
+        vec2 laceCoord = vec2(uv.x * 13.5 - uv.y * 9.0 + swell * 2.1, uv.y * 21.0 + sin(uv.x * 9.5) * 1.6);
+        float laceWeb = smoothstep(0.66, 0.91, ridgedFbm(laceCoord));
+        float laceFine = smoothstep(0.62, 0.89, ridgedFbm(laceCoord * 1.9 + vec2(4.2, 1.7)));
+        float fgSwirl = smoothstep(0.20, 0.015, uv.y) * smoothstep(0.03, 0.18, uv.x) * smoothstep(0.64, 0.44, uv.x) * (1.0 - greenHeartMask);
+        float reefBoil = exp(-pow((uv.x - 0.49) / 0.11, 2.0)) * exp(-pow((uv.y - 0.13) / 0.085, 2.0));
+
+        // Subtle emerald-cerulean submerged glow around foreground foam veins
+        waterCol = mix(waterCol, vec3(0.08, 0.30, 0.33), (fgSwirl * 0.45 + reefBoil * 0.65) * swell);
+
+        foamAmt = clamp(crestLip * 0.96 + (laceWeb * 0.72 + laceFine * 0.35) * (fgSwirl * 0.70 + reefBoil * 0.95), 0.0, 1.0);
+        foamAmt *= (1.0 - 0.84 * smoothstep(0.018, 0.055, distBelowCrest) * inHeroSpan);
+
+        vec3 shadowFoam = vec3(0.40, 0.54, 0.62);
+        vec3 warmCreamFoam = vec3(0.97, 0.93, 0.85);
+        float foamLit = clamp(0.28 + 0.72 * crestLip + 0.42 * smoothstep(0.64, 0.92, chop), 0.0, 1.0);
+        waterCol = mix(waterCol, mix(shadowFoam, warmCreamFoam, foamLit), foamAmt * 0.86);
+
+        float slopeCrest = 0.128 * 3.8 * cos((uv.x - 0.06) * 3.8) * waveEnv;
+        vec2 waveFlow = normalize(vec2(1.0, slopeCrest * mix(0.26, 0.95, inHeroSpan) + 0.12 * sin(uv.x * 16.0 - uv.y * 12.0)));
+        col = waterCol;
+        flow = mix(waveFlow, normalize(vec2(0.99, 0.03)), distMask * 0.80);
+        zone = foamAmt > 0.42 ? 0.55 : (greenHeartMask > 0.35 ? 0.35 : (troughMask > 0.4 ? 0.30 : 0.25));
+        detailWeight = 0.45 + 0.50 * foamAmt + 0.35 * duskSeaPath;
+      }
+
+      // -----------------------------------------------------------------------
+      // 3. DISTANT SAILBOAT BATTLING THE SWELLS (u=0.252, v=0.357)
+      // -----------------------------------------------------------------------
+      {
+        vec2 boatOrigin = vec2(0.252, 0.357);
+        vec2 bp = (uv - boatOrigin) / 1.30;
+        float ca = cos(0.35), sa = sin(0.35);
+        vec2 rbp = vec2(bp.x * ca - bp.y * sa, bp.x * sa + bp.y * ca);
+
+        if (rbp.y > -0.0055 && rbp.y < 0.0085 && rbp.x > -0.025 && rbp.x < 0.026) {
+          float hullBottom = -0.0048 * (1.0 - pow(rbp.x / 0.026, 2.0));
+          float sheerLine = 0.0046 + 0.0028 * pow(rbp.x / 0.025, 2.0);
+          if (rbp.y >= hullBottom && rbp.y <= sheerLine) {
+            col = mix(vec3(0.06, 0.045, 0.042), vec3(0.28, 0.17, 0.10), smoothstep(-0.002, 0.005, rbp.y));
+            zone = 0.90;
+            detailWeight = 1.0;
+            flow = normalize(vec2(ca, -sa));
+          }
+        }
+        if (rbp.y >= 0.005 && rbp.y <= 0.059) {
+          float hFrac = (rbp.y - 0.005) / 0.054;
+          float luffX = 0.001;
+          float leechX = -0.024 * (1.0 - 0.50 * hFrac) - 0.0042 * sin(hFrac * 3.14159);
+          if (rbp.x >= leechX && rbp.x <= luffX) {
+            float belly = smoothstep(leechX, luffX, rbp.x);
+            col = mix(vec3(0.42, 0.34, 0.29), vec3(0.96, 0.78, 0.50), 0.34 + 0.66 * (1.0 - belly));
+            zone = 0.90;
+            detailWeight = 1.0;
+            flow = normalize(vec2(-sa, ca));
+          }
+          float jibTop = 0.049;
+          if (rbp.y <= jibTop) {
+            float jFrac = (rbp.y - 0.005) / (jibTop - 0.005);
+            float jibLuff = 0.004 + 0.026 * (1.0 - jFrac) + 0.0032 * sin(jFrac * 3.14159);
+            float jibLeech = 0.004 + 0.003 * (1.0 - jFrac);
+            if (rbp.x >= jibLeech && rbp.x <= jibLuff) {
+              float jBelly = smoothstep(jibLeech, jibLuff, rbp.x);
+              col = mix(vec3(0.45, 0.37, 0.32), vec3(0.98, 0.84, 0.56), jBelly);
+              zone = 0.90;
+              detailWeight = 1.0;
+              flow = normalize(vec2(0.35, 0.93));
+            }
+          }
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // 4. JAGGED ROCKY PROMONTORY & WET GRANITE REEFS (Dramatic 3D Lighting!)
+      // -----------------------------------------------------------------------
+      float rockTop = cliffProfile(uv.x);
+      if (uv.y < rockTop && uv.x > 0.40) {
+        vec2 strataA = vec2(uv.x * 15.0 + uv.y * 9.0, uv.y * 19.0 - uv.x * 7.0);
+        vec2 strataB = vec2(uv.x * 28.0 - uv.y * 15.0, uv.y * 23.0 + uv.x * 11.0);
+        float planeA = ridgedFbm(strataA);
+        float planeB = fbm(strataB);
+
+        float distFromCrown = rockTop - uv.y;
+        float crownShelf = exp(-distFromCrown * 10.5);
+        float macroRidge = sin((uv.x - 0.55) * 26.0 + uv.y * 10.5 + planeB * 2.5);
+        float seawardLit = smoothstep(-0.28, 0.68, macroRidge) * (0.42 + 0.58 * planeA);
+
+        vec3 fissureShadow   = vec3(0.032, 0.032, 0.040);
+        vec3 darkGranite     = vec3(0.145, 0.118, 0.100);
+        vec3 wetSlateSky     = vec3(0.28, 0.37, 0.45);
+        vec3 warmLanternRock = vec3(0.74, 0.52, 0.29);
+
+        vec3 rockCol = mix(fissureShadow, darkGranite, clamp(seawardLit * 1.22, 0.0, 1.0));
+        // Distinct wet specular sky/surf sheen on upward & seaward rock facets
+        rockCol = mix(rockCol, wetSlateSky, smoothstep(0.50, 0.85, planeA * seawardLit) * (0.52 + 0.38 * crownShelf));
+        // Warm golden lantern & dusk bounce on cliff crags below tower & facing sea
+        float nearTowerCrown = exp(-pow((uv.x - 0.69) / 0.115, 2.0)) * exp(-pow((uv.y - 0.41) / 0.10, 2.0));
+        float duskRimRock = smoothstep(0.76, 0.46, uv.x) * crownShelf;
+        rockCol += warmLanternRock * (nearTowerCrown * 0.78 + duskRimRock * 0.46) * (0.42 + 0.58 * seawardLit);
+
+        col = rockCol;
+        flow = normalize(vec2(0.72, -0.69 + 0.42 * (planeB - 0.5)));
+        zone = 0.65;
+        foamAmt = 0.0;
+        detailWeight = 0.65 + 0.35 * seawardLit;
+      }
+
+      // -----------------------------------------------------------------------
+      // 5. SOLITARY STONE LIGHTHOUSE ON PROMONTORY CROWN (u=0.705)
+      // -----------------------------------------------------------------------
+      {
+        float tx = uv.x - 0.705;
+        if (uv.y >= 0.435 && uv.y <= 0.738) {
+          float sFrac = clamp((uv.y - 0.435) / (0.738 - 0.435), 0.0, 1.0);
+          float halfW = 0.0195 + 0.0180 * pow(1.0 - sFrac, 2.15);
+          halfW += smoothstep(0.91, 1.0, sFrac) * 0.0068;
+          if (abs(tx) <= halfW) {
+            float nx = tx / halfW;
+            float nz = sqrt(max(0.0, 1.0 - nx * nx));
+
+            float courseY = (uv.y - 0.435) * 74.0 + 0.16 * nz;
+            float courseRow = floor(courseY);
+            float mortarH = smoothstep(0.08, 0.0, abs(fract(courseY) - 0.5) - 0.43);
+            float blockX = atan(nx, nz) * 5.2 + mod(courseRow, 2.0) * 0.5;
+            float blockId = hash12(vec2(floor(blockX), courseRow));
+            float mortarV = smoothstep(0.07, 0.0, abs(fract(blockX) - 0.5) - 0.45);
+            float mortar = clamp(mortarH + mortarV, 0.0, 1.0);
+
+            vec3 stoneLit    = mix(vec3(0.65, 0.55, 0.44), vec3(0.78, 0.65, 0.49), blockId);
+            vec3 stoneShadow = mix(vec3(0.11, 0.13, 0.17), vec3(0.18, 0.18, 0.22), blockId);
+            float cylLight = smoothstep(0.35, -0.78, nx) * 0.88 + smoothstep(0.76, 0.98, nx) * 0.18;
+            float corniceSpill = smoothstep(0.74, 0.99, sFrac) * (0.45 + 0.55 * nz);
+
+            vec3 towerCol = mix(stoneShadow, stoneLit, clamp(cylLight, 0.0, 1.0));
+            towerCol += vec3(0.92, 0.65, 0.29) * corniceSpill * 0.56;
+            towerCol *= mix(0.74, 1.0, smoothstep(0.0, 0.24, sFrac));
+            towerCol = mix(towerCol, vec3(0.09, 0.085, 0.095), mortar * 0.34);
+
+            if ((abs(uv.y - 0.535) < 0.0085 && abs(tx + 0.004) < 0.0026) ||
+                (abs(uv.y - 0.615) < 0.0080 && abs(tx - 0.002) < 0.0024) ||
+                (abs(uv.y - 0.688) < 0.0075 && abs(tx + 0.003) < 0.0022)) {
+              towerCol = vec3(0.36, 0.23, 0.11);
+            }
+
+            col = towerCol;
+            flow = vec2(1.0, 0.0);
+            zone = 0.75;
+            foamAmt = 0.0;
+            detailWeight = 0.98;
+          }
+        }
+
+        if (uv.y >= 0.738 && uv.y <= 0.754 && abs(tx) <= 0.028) {
+          if (uv.y < 0.744) {
+            col = mix(vec3(0.18, 0.15, 0.14), vec3(0.80, 0.58, 0.31), smoothstep(0.025, -0.022, tx));
+          } else {
+            float post = step(0.62, sin(tx * 950.0)) + step(0.751, uv.y);
+            if (post > 0.5) {
+              col = mix(vec3(0.12, 0.10, 0.10), vec3(0.88, 0.65, 0.33), 0.48);
+            }
+          }
+          zone = 0.78;
+          foamAmt = 0.0;
+          detailWeight = 1.0;
+        }
+
+        if (uv.y >= 0.754 && uv.y <= 0.798 && abs(tx) <= 0.0188) {
+          float lx = tx / 0.0188;
+          float ly = (uv.y - 0.776) / 0.022;
+          float coreDist = length(vec2(lx * 0.85, ly));
+          vec3 glowCol = mix(vec3(1.0, 0.99, 0.92), vec3(0.98, 0.72, 0.28), smoothstep(0.18, 0.95, coreDist));
+          float mullion = smoothstep(0.12, 0.02, abs(fract((tx + uv.y * 0.35) * 95.0) - 0.5));
+          col = mix(glowCol, vec3(0.24, 0.16, 0.10), mullion * 0.52 * smoothstep(0.25, 0.75, coreDist));
+          zone = 0.85;
+          foamAmt = 0.0;
+          detailWeight = 1.0;
+        }
+
+        if (uv.y >= 0.798 && uv.y <= 0.834) {
+          float dy = (uv.y - 0.798) / 0.036;
+          float domeW = 0.0205 * sqrt(max(0.0, 1.0 - dy * dy * 0.92));
+          if (abs(tx) <= domeW) {
+            float dnx = tx / max(domeW, 0.001);
+            col = mix(vec3(0.08, 0.15, 0.15), vec3(0.48, 0.44, 0.31), smoothstep(0.35, -0.85, dnx));
+            col += vec3(0.86, 0.58, 0.24) * (1.0 - dy) * 0.45;
+            zone = 0.78;
+            foamAmt = 0.0;
+            detailWeight = 1.0;
+          }
+        }
+        if (length(vec2(tx, uv.y - 0.838)) <= 0.0044 || (uv.y >= 0.838 && uv.y <= 0.865 && abs(tx) <= 0.0012)) {
+          col = vec3(0.30, 0.26, 0.23);
+          zone = 0.78;
+          foamAmt = 0.0;
+          detailWeight = 1.0;
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // 6. EXPLOSIVE TWO-TIERED REEF SPRAY FOUNTAIN (u=0.44..0.63, soaring to v=0.49!)
+      // Luminous sunlit/beam-lit white-gold impasto billows + cool inner shadows + feathery mist!
+      // -----------------------------------------------------------------------
+      {
+        vec2 impactA = vec2(0.520, 0.215);
+        vec2 dpA = uv - impactA;
+        vec2 spA = vec2((dpA.x - max(dpA.y, 0.0) * 0.26) * 8.2, dpA.y * 3.4);
+
+        vec2 impactB = vec2(0.468, 0.232);
+        vec2 dpB = uv - impactB;
+        vec2 spB = vec2((dpB.x + max(dpB.y, 0.0) * 0.15) * 11.0, dpB.y * 4.4);
+
+        float rBillow = fbm(uv * vec2(18.0, 15.0) + vec2(3.1, -5.2));
+        float rTongues = ridgedFbm(uv * vec2(31.0, 22.0) + vec2(rBillow * 1.8));
+
+        float coneA = exp(-spA.x * spA.x * 0.84) * smoothstep(-0.02, 0.07, dpA.y) * exp(-max(dpA.y, 0.0) * 4.5);
+        float coneB = exp(-spB.x * spB.x * 0.88) * smoothstep(-0.02, 0.06, dpB.y) * exp(-max(dpB.y, 0.0) * 5.2) * 0.88;
+        float cone = max(coneA, coneB);
+
+        float towerShield = 1.0 - smoothstep(0.635, 0.675, uv.x) * smoothstep(0.34, 0.43, uv.y);
+        float rawSpray = cone * (0.42 + 0.96 * rBillow) * (0.55 + 0.74 * rTongues) * towerShield;
+        // Soft atmospheric mist envelope + crisp high-contrast inner foam core
+        float mistVeil = clamp((rawSpray - 0.12) * 1.35, 0.0, 1.0);
+        float coreBurst = clamp((rawSpray - 0.24) * 2.10, 0.0, 1.0);
+
+        if (mistVeil > 0.02) {
+          // Strong chiaroscuro across the spray fountain: brilliant warm cream-gold on upper/seaward billows, cool teal-slate in shadow pockets!
+          float lightSide = smoothstep(0.58, 0.44, uv.x) * 0.45 + smoothstep(0.20, 0.42, uv.y) * 0.55;
+          float billowCrest = smoothstep(0.28, 0.72, rBillow * 0.55 + rTongues * 0.45 + lightSide * 0.35);
+          vec3 deepSprayShadow = vec3(0.26, 0.39, 0.48);
+          vec3 brightCreamSpray = vec3(1.00, 0.96, 0.86);
+          vec3 sprayCol = mix(deepSprayShadow, brightCreamSpray, pow(billowCrest, 0.85));
+          col = mix(col, sprayCol, mistVeil * 0.88);
+
+          if (coreBurst > 0.12) {
+            foamAmt = max(foamAmt, coreBurst);
+            vec2 radialArc = normalize(vec2(dpA.x * 1.7 + 0.22 * sin(uv.y * 26.0), max(dpA.y, 0.05) - dpA.x * 0.52));
+            flow = radialArc;
+            zone = 0.58;
+          }
+          detailWeight = max(detailWeight, mistVeil);
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // 7. VOLUMETRIC LIGHTHOUSE BEAM & DRIVING RAIN VEIL
+      // -----------------------------------------------------------------------
+      {
+        vec2 dL = uv - lanternPos;
+        float distL = length(dL);
+        float ang = atan(dL.y, dL.x);
+
+        float diffMain = atan(sin(ang + 2.90), cos(ang + 2.90));
+        float diffBack = atan(sin(ang - 0.24), cos(ang - 0.24));
+
+        float coneMain = exp(-pow(diffMain / (0.092 + 0.062 * distL), 2.0)) * smoothstep(0.01, 0.05, distL);
+        float haloMain = exp(-pow(diffMain / 0.25, 2.0)) * exp(-distL * 2.2) * 0.36;
+        float coneBack = exp(-pow(diffBack / (0.102 + 0.058 * distL), 2.0)) * smoothstep(0.01, 0.05, distL) * 0.62;
+
+        float rainCoord = uv.x * 58.0 + uv.y * 19.5;
+        float rainSheet = fbm(vec2(rainCoord * 0.35, uv.y * 3.5));
+        float rainFine = smoothstep(0.55, 0.92, noise2D(vec2(rainCoord * 2.4, uv.y * 8.0)));
+
+        float beamMist = (coneMain + haloMain + coneBack) * exp(-distL * 0.92) * (0.68 + 0.48 * rainSheet + 0.24 * rainFine);
+        float lanternAura = exp(-distL * 11.5) * 0.72 + exp(-distL * 4.2) * 0.22;
+
+        vec3 beamGold = vec3(0.98, 0.79, 0.42);
+        vec3 beamCore = vec3(1.0, 0.93, 0.74);
+        // Soft hue-preserving shoulder prevents R-clipping into greenish-yellow in intense dusk glow!
+        vec3 beamAdd = mix(beamGold, beamCore, clamp(coneMain * 0.8 + lanternAura, 0.0, 1.0)) * (beamMist * 0.44 + lanternAura * 0.52);
+        col = col + beamAdd * (vec3(1.0) - 0.42 * col);
+
+        col = mix(col, col * 0.95 + vec3(0.032, 0.042, 0.052), rainSheet * 0.20 * smoothstep(0.22, 0.85, uv.y));
+      }
+
+      col = clamp(col, 0.0, 1.0);
+      outSceneCol = vec4(col, clamp(foamAmt, 0.0, 1.0));
+      outSceneMeta = vec4(flow * 0.5 + 0.5, zone, clamp(detailWeight, 0.0, 1.0));
+    }`;
+
+    // =========================================================================
+    // SHADER 3: INSTANCED CURVED BRUSHSTROKE ACCRETION SHADER (MRT + READBACK)
+    // =========================================================================
+    const BRUSH_VS = `#version 300 es
+    precision highp float;
+
+    layout(location = 0) in vec4 aSpine01;
+    layout(location = 1) in vec4 aSpine2W;
+    layout(location = 2) in vec4 aColAType;
+    layout(location = 3) in vec4 aColBOpac;
+    layout(location = 4) in vec4 aMatProps;
+    layout(location = 5) in vec4 aTiming;
+
+    uniform vec2 uCanvasSize;
+    uniform float uCurrentTime;
+
+    out vec2 vRibbonUV;
+    out vec2 vCanvasUV;
+    out vec3 vColA;
+    out vec3 vColB;
+    flat out int vBrushType;
+    out float vOpacity;
+    out float vImpasto;
+    out float vGloss;
+    out float vWetPickup;
+    out float vSeed;
+    out float vBristleFreq;
+    out float vToothSens;
+    out float vFreshness;
+
+    void main() {
+      int seg = gl_VertexID >> 1;
+      float side = (gl_VertexID & 1) == 0 ? -1.0 : 1.0;
+      float uRaw = float(seg) / ${RIBBON_SEGMENTS}.0;
+
+      float dur = max(aTiming.y - aTiming.x, 0.001);
+      float progress = clamp((uCurrentTime - aTiming.x) / dur, 0.0, 1.0);
+      if (progress <= 0.001) {
+        gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
+        return;
+      }
+
+      float u = uRaw * progress;
+      vec2 p0 = aSpine01.xy * uCanvasSize;
+      vec2 p1 = aSpine01.zw * uCanvasSize;
+      vec2 p2 = aSpine2W.xy * uCanvasSize;
+
+      float om = 1.0 - u;
+      vec2 center = om * om * p0 + 2.0 * om * u * p1 + u * u * p2;
+      vec2 deriv = 2.0 * om * (p1 - p0) + 2.0 * u * (p2 - p1);
+      float dLen = length(deriv);
+      vec2 tang = dLen > 0.001 ? deriv / dLen : vec2(1.0, 0.0);
+      vec2 perp = vec2(-tang.y, tang.x);
+
+      int bType = int(aColAType.w + 0.5);
+      float tipRound = smoothstep(0.0, 0.14, u);
+      float tailSplay = bType == 4 ? 1.0 : (1.0 + 0.10 * smoothstep(0.68, 1.0, u));
+      float taper = bType == 7
+        ? sin(clamp(u, 0.02, 0.98) * 3.14159)
+        : mix(0.76, 1.0, tipRound) * tailSplay;
+
+      float halfW = max(mix(aSpine2W.z, aSpine2W.w, u) * 0.5 * taper, 0.65);
+      vec2 pixPos = center + perp * (side * halfW);
+      vec2 uv = pixPos / uCanvasSize;
+
+      vRibbonUV = vec2(u, side);
+      vCanvasUV = uv;
+      vColA = aColAType.rgb;
+      vColB = aColBOpac.rgb;
+      vBrushType = bType;
+      vOpacity = aColBOpac.w;
+      vImpasto = aMatProps.x;
+      vGloss = aMatProps.y;
+      vWetPickup = aMatProps.z;
+      vSeed = aMatProps.w;
+      vBristleFreq = aTiming.z;
+      vToothSens = aTiming.w;
+      vFreshness = clamp(1.0 - (uCurrentTime - aTiming.y) * 1.8, 0.0, 1.0);
+
+      gl_Position = vec4(uv * 2.0 - 1.0, 0.0, 1.0);
+    }`;
+
+    const BRUSH_FS = `#version 300 es
+    precision highp float;
+
+    in vec2 vRibbonUV;
+    in vec2 vCanvasUV;
+    in vec3 vColA;
+    in vec3 vColB;
+    flat in int vBrushType;
+    in float vOpacity;
+    in float vImpasto;
+    in float vGloss;
+    in float vWetPickup;
+    in float vSeed;
+    in float vBristleFreq;
+    in float vToothSens;
+    in float vFreshness;
+
+    uniform sampler2D uPrevPigment;
+    uniform sampler2D uPrevMaterial;
+
+    layout(location = 0) out vec4 outPigment;
+    layout(location = 1) out vec4 outMaterial;
+
+    ${LINEN_GLSL}
+
+    // Pure warm-preserving oil pigment mixing (prevents lemon-green cast in warm cadmium/coral sunsets!)
+    vec3 mixOilPigment(vec3 c1, vec3 c2, float t) {
+      vec3 g1 = pow(max(c1, vec3(0.001)), vec3(0.80));
+      vec3 g2 = pow(max(c2, vec3(0.001)), vec3(0.80));
+      vec3 lin = mix(g1, g2, t);
+      return clamp(pow(lin, vec3(1.25)), 0.0, 1.0);
+    }
+
+    void main() {
+      vec2 cuv = clamp(vCanvasUV, 0.0, 1.0);
+      vec4 prevPig = texture(uPrevPigment, cuv);
+      vec4 prevMat = texture(uPrevMaterial, cuv);
+      float prevH = unpackHeight16(prevMat.rg);
+      float prevGloss = prevMat.b;
+      float prevBurial = prevMat.a;
+
+      float u = vRibbonUV.x;
+      float v = vRibbonUV.y;
+      float absV = abs(v);
+
+      float weave = linenWeave(cuv);
+      float surfaceTooth = mix(weave, fract(prevH * 15.0) * 0.5 + 0.5, prevBurial * 0.72);
+
+      float splay = v * (1.0 - 0.10 * u) + 0.06 * (noise2D(vec2(u * 5.0, vSeed * 37.0)) - 0.5);
+      float bCoord = splay * vBristleFreq + vSeed * 53.0;
+      float bristle1 = sin(bCoord * 6.28318);
+      float bristle2 = sin(bCoord * 13.7 + 1.9);
+      float bristle3 = noise2D(vec2(u * 14.0 + vSeed * 19.0, bCoord * 1.7));
+      float filament = clamp(0.54 + 0.24 * bristle1 + 0.14 * bristle2 + 0.22 * (bristle3 - 0.5), 0.0, 1.0);
+
+      float alpha = 0.0;
+      float ridgeProfile = 0.0;
+
+      if (vBrushType == 0) {
+        float grain = noise2D(cuv * vec2(620.0, 390.0) + vSeed * 17.0);
+        float core = smoothstep(1.0, 0.25, absV) * sin(clamp(u, 0.02, 0.98) * 3.14159);
+        float toothCatch = smoothstep(0.34, 0.78, weave * 0.78 + grain * 0.35);
+        alpha = core * toothCatch * vOpacity;
+      }
+      else if (vBrushType == 1) {
+        float feather = smoothstep(1.0, 0.50, absV + 0.18 * (bristle3 - 0.5));
+        float endFade = smoothstep(0.0, 0.10, u) * smoothstep(1.0, 0.72, u + 0.12 * (filament - 0.5));
+        alpha = feather * endFade * (0.74 + 0.26 * filament) * vOpacity;
+        ridgeProfile = 0.03 * filament;
+      }
+      else if (vBrushType == 2 || vBrushType == 3) {
+        float edgeSharp = (vBrushType == 3) ? 0.85 : 0.68;
+        float bristleSplit = (u > 0.70) ? smoothstep(0.30, 0.55, filament) : 1.0;
+        float crossMask = smoothstep(1.02, edgeSharp, absV + 0.12 * (1.0 - filament));
+        float startEdge = (vBrushType == 3) ? smoothstep(0.0, 0.04, u) : smoothstep(0.0, 0.11, u + 0.05 * (filament - 0.5));
+        float endEdge = smoothstep(1.02, 0.75, u + 0.18 * (1.0 - filament));
+
+        float load = mix(1.0, 0.58, u * u);
+        float toothGate = smoothstep(vToothSens * 0.48, vToothSens * 0.48 + 0.34, surfaceTooth + load * 0.52);
+
+        alpha = crossMask * startEdge * endEdge * mix(1.0, bristleSplit, smoothstep(0.68, 0.95, u)) * toothGate * vOpacity;
+        float edgeBead = smoothstep(0.60, 0.88, absV) * (1.0 - smoothstep(0.90, 1.02, absV));
+        float dabPile = smoothstep(0.20, 0.02, u) * 0.32 + smoothstep(0.78, 0.95, u) * 0.24;
+        ridgeProfile = (0.38 + 0.62 * filament) * (1.0 - 0.16 * u) + edgeBead * 0.85 + dabPile;
+      }
+      else if (vBrushType == 4) {
+        float bladeNoise = fbm(cuv * vec2(85.0, 54.0) + vSeed * 29.0);
+        float fineSkip = noise2D(cuv * vec2(270.0, 170.0) + vSeed * 11.0);
+        float pressure = mix(1.10, 0.28, pow(u, 0.82));
+        float skipMask = smoothstep(0.56, 0.73, pressure * 0.62 + surfaceTooth * 0.40 + bladeNoise * 0.38 - absV * 0.25 + fineSkip * 0.14);
+        float sideCut = smoothstep(1.0, 0.82, absV + 0.18 * (bladeNoise - 0.5));
+        alpha = skipMask * sideCut * smoothstep(0.0, 0.04, u) * vOpacity;
+        float cliffEdge = smoothstep(0.05, 0.45, alpha);
+        ridgeProfile = cliffEdge * (0.86 + 0.22 * bladeNoise + 0.28 * smoothstep(0.68, 0.92, absV));
+      }
+      else if (vBrushType == 5) {
+        float soft = smoothstep(1.0, 0.20, absV) * sin(clamp(u, 0.01, 0.99) * 3.14159);
+        alpha = soft * (0.86 + 0.14 * filament) * vOpacity;
+      }
+      else if (vBrushType == 6) {
+        vec2 dotGrid = cuv * vec2(320.0, 200.0) + vec2(vSeed * 41.0, vSeed * 17.0);
+        vec2 cell = floor(dotGrid);
+        vec2 f = fract(dotGrid) - 0.5;
+        float rnd = hash12(cell + vSeed);
+        vec2 jitter = vec2(fract(rnd * 13.7) - 0.5, fract(rnd * 29.3) - 0.5) * 0.58;
+        float d = length(f - jitter);
+        float droplet = smoothstep(0.38, 0.10, d) * step(0.54, rnd);
+        float clump = smoothstep(0.48, 0.84, fbm(cuv * 48.0 + vSeed * 9.0));
+        float env = smoothstep(1.0, 0.15, absV) * sin(clamp(u, 0.04, 0.96) * 3.14159);
+        alpha = clamp((droplet * 0.88 + clump * 0.48 * filament) * env, 0.0, 1.0) * vOpacity;
+        ridgeProfile = alpha * (0.72 + 0.36 * droplet);
+      }
+      else {
+        float crisp = smoothstep(1.0, 0.30, absV);
+        float flowFade = sin(clamp(u, 0.02, 0.98) * 3.14159);
+        alpha = crisp * smoothstep(0.0, 0.18, flowFade) * vOpacity;
+        ridgeProfile = 0.48 * crisp;
+      }
+
+      if (alpha < 0.003) {
+        discard;
+      }
+
+      float marbleT = clamp(0.5 + 0.42 * v + 0.24 * sin(bCoord * 2.3 + u * 2.5), 0.0, 1.0);
+      vec3 loadedCol = mixOilPigment(vColA, vColB, marbleT);
+      loadedCol *= (0.968 + 0.064 * filament);
+
+      vec3 newCol;
+      float newH = prevH;
+      float newGloss = prevGloss;
+      float newBurial = prevBurial;
+
+      if (vBrushType == 5) {
+        vec3 filterTint = clamp(loadedCol * 1.42 + vec3(0.015), 0.02, 1.0);
+        vec3 transmitted = prevPig.rgb * mix(vec3(1.0), filterTint, alpha);
+        newCol = mix(transmitted, loadedCol * 0.55 + transmitted * 0.55, alpha * 0.20);
+        newCol *= (1.0 - 0.06 * alpha * (1.0 - surfaceTooth));
+        newGloss = mix(prevGloss, max(prevGloss, vGloss), alpha * 0.85);
+        newBurial = clamp(prevBurial + alpha * 0.10, 0.0, 1.0);
+      } else {
+        vec3 strokeCol = mixOilPigment(loadedCol, prevPig.rgb, vWetPickup * (0.45 + 0.55 * u));
+        newCol = mixOilPigment(prevPig.rgb, strokeCol, clamp(alpha, 0.0, 1.0));
+
+        float deposit = vImpasto * ridgeProfile * alpha * 0.28;
+        newH = clamp(prevH + deposit * (1.0 - 0.48 * prevH), 0.0, 0.995);
+
+        newGloss = mix(prevGloss, vGloss, clamp(alpha * 0.85, 0.0, 1.0));
+        float buryRate = (vBrushType == 0) ? 0.06 : ((vBrushType == 1) ? 0.24 : (0.62 + 0.55 * vImpasto));
+        newBurial = clamp(prevBurial + alpha * buryRate, 0.0, 1.0);
+      }
+
+      outPigment = vec4(clamp(newCol, 0.0, 1.0), max(prevPig.a * 0.92, vFreshness * alpha));
+      outMaterial = vec4(packHeight16(newH), newGloss, newBurial);
+    }`;
+
+    // =========================================================================
+    // SHADER 4: ATELIER GALLERY RAKING-LIGHT & IMPASTO RELIEF DISPLAY SHADER
+    // =========================================================================
+    const DISPLAY_FS = `#version 300 es
+    precision highp float;
+    in vec2 vUV;
+    out vec4 fragColor;
+
+    uniform sampler2D uPigmentTex;
+    uniform sampler2D uMaterialTex;
+    uniform vec2 uTexelSize;
+    uniform vec2 uLoupeCenter;
+    uniform float uLoupeActive;
+
+    ${LINEN_GLSL}
+
+    float totalElevation(vec2 uv) {
+      vec4 mat = texture(uMaterialTex, uv);
+      float paintH = unpackHeight16(mat.rg);
+      float burial = mat.a;
+      float linen = linenWeave(uv);
+      return linen * (1.0 - 0.86 * burial) * 0.18 + paintH * 1.72;
+    }
+
+    vec3 renderOilSurface(vec2 uv, float normalBoost) {
+      vec4 pig = texture(uPigmentTex, uv);
+      vec4 mat = texture(uMaterialTex, uv);
+      float gloss = mat.b;
+      float burial = mat.a;
+      float freshness = pig.a;
+
+      vec2 dx = vec2(uTexelSize.x, 0.0);
+      vec2 dy = vec2(0.0, uTexelSize.y);
+      float hL = totalElevation(uv - dx);
+      float hR = totalElevation(uv + dx);
+      float hD = totalElevation(uv - dy);
+      float hU = totalElevation(uv + dy);
+
+      float bumpStrength = 25.5 * normalBoost;
+      vec3 N = normalize(vec3((hL - hR) * bumpStrength, (hD - hU) * bumpStrength, 1.0));
+
+      vec3 L1 = normalize(vec3(-0.46, 0.58, 0.67));
+      vec3 L2 = normalize(vec3(0.38, -0.22, 0.90));
+      vec3 V  = vec3(0.0, 0.0, 1.0);
+      vec3 H1 = normalize(L1 + V);
+
+      float ndl1 = dot(N, L1);
+      float reliefShade = clamp(1.0 + (ndl1 - L1.z) * 0.92 + (dot(N, L2) - L2.z) * 0.22, 0.68, 1.40);
+
+      float shininess = mix(18.0, 72.0, gloss);
+      float spec = pow(max(dot(N, H1), 0.0), shininess) * (0.042 + 0.16 * gloss + 0.15 * freshness);
+      spec *= (0.28 + 0.72 * burial);
+
+      vec3 lit = pig.rgb * reliefShade + vec3(1.0, 0.97, 0.91) * spec;
+
+      float vig = 1.0 - 0.062 * dot((uv - 0.5) * 1.2, (uv - 0.5) * 1.2);
+      lit *= vig;
+
+      lit = lit / (1.0 + 0.12 * max(lit - vec3(0.86), vec3(0.0)));
+      return pow(clamp(lit, 0.0, 1.0), vec3(0.97));
+    }
+
+    void main() {
+      vec3 col = renderOilSurface(vUV, 1.0);
+
+      if (uLoupeActive > 0.5) {
+        vec2 aspectP = (vUV - uLoupeCenter) * vec2(1.6, 1.0);
+        float r = length(aspectP);
+        float loupeRadius = 0.21;
+        if (r < loupeRadius) {
+          vec2 zoomedUV = clamp(uLoupeCenter + (vUV - uLoupeCenter) / 3.2, 0.002, 0.998);
+          vec3 macroCol = renderOilSurface(zoomedUV, 1.38);
+          float rim = smoothstep(loupeRadius - 0.007, loupeRadius - 0.002, r);
+          vec3 brass = mix(vec3(0.22, 0.17, 0.11), vec3(0.85, 0.68, 0.40), 0.5 + 0.5 * sin(atan(aspectP.y, aspectP.x) * 2.0));
+          col = mix(macroCol, brass, rim);
+        } else if (r < loupeRadius + 0.014) {
+          float shadow = smoothstep(loupeRadius + 0.014, loupeRadius, r);
+          col *= (1.0 - 0.52 * shadow);
+        }
+      }
+
+      fragColor = vec4(col, 1.0);
+    }`;
+
+    // =========================================================================
+    // COMPILE PROGRAMS & ALLOCATE GPU FRAMEBUFFERS
+    // =========================================================================
+    const progGround = createProgram(FS_QUAD_VS, GROUND_INIT_FS);
+    const progScene  = createProgram(FS_QUAD_VS, SCENE_STUDY_FS);
+    const progBrush  = createProgram(BRUSH_VS, BRUSH_FS);
+    const progDisp   = createProgram(FS_QUAD_VS, DISPLAY_FS);
+
+    const emptyVAO = gl.createVertexArray();
+
+    const sceneFBO   = createDualFBO(SCENE_W, SCENE_H);
+    const canvasFBO  = createDualFBO(CANVAS_W, CANVAS_H);
+    const scratchFBO = createDualFBO(CANVAS_W, CANVAS_H);
+    const liveFBO    = createDualFBO(CANVAS_W, CANVAS_H);
+
+    function blitDualRect(src, dst, x0, y0, x1, y1) {
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, src.fbo0);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, dst.fbo0);
+      gl.blitFramebuffer(x0, y0, x1, y1, x0, y0, x1, y1, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, src.fbo1);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, dst.fbo1);
+      gl.blitFramebuffer(x0, y0, x1, y1, x0, y0, x1, y1, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    }
+
+    function initCanvasToPrimedLinen() {
+      gl.disable(gl.SCISSOR_TEST);
+      gl.disable(gl.BLEND);
+      gl.viewport(0, 0, CANVAS_W, CANVAS_H);
+      gl.useProgram(progGround);
+      gl.bindVertexArray(emptyVAO);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, canvasFBO.fbo);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      blitDualRect(canvasFBO, scratchFBO, 0, 0, CANVAS_W, CANVAS_H);
+      blitDualRect(canvasFBO, liveFBO, 0, 0, CANVAS_W, CANVAS_H);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+
+    gl.viewport(0, 0, SCENE_W, SCENE_H);
+    gl.useProgram(progScene);
+    gl.bindVertexArray(emptyVAO);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, sceneFBO.fbo);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+    const scenePixels = new Uint8Array(SCENE_W * SCENE_H * 4);
+    const sceneMeta   = new Uint8Array(SCENE_W * SCENE_H * 4);
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, sceneFBO.fbo0);
+    gl.readPixels(0, 0, SCENE_W, SCENE_H, gl.RGBA, gl.UNSIGNED_BYTE, scenePixels);
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, sceneFBO.fbo1);
+    gl.readPixels(0, 0, SCENE_W, SCENE_H, gl.RGBA, gl.UNSIGNED_BYTE, sceneMeta);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    function sampleScene(u, v) {
+      const ix = clamp(Math.floor(u * (SCENE_W - 1)), 0, SCENE_W - 1);
+      const iy = clamp(Math.floor(v * (SCENE_H - 1)), 0, SCENE_H - 1);
+      const idx = (iy * SCENE_W + ix) * 4;
+      return {
+        r: scenePixels[idx] / 255,
+        g: scenePixels[idx + 1] / 255,
+        b: scenePixels[idx + 2] / 255,
+        foam: scenePixels[idx + 3] / 255,
+        tx: (sceneMeta[idx] / 255) * 2 - 1,
+        ty: (sceneMeta[idx + 1] / 255) * 2 - 1,
+        zone: sceneMeta[idx + 2] / 255,
+        detail: sceneMeta[idx + 3] / 255
+      };
+    }
+
+    // =========================================================================
+    // SIX-STAGE PAINTERLY CHOREOGRAPHY ENGINE
+    // =========================================================================
+    const rawStrokes = [];
+    const rand = createPRNG(20261127);
+
+    function jitterColor(c, hueAmt, valAmt) {
+      const dv = (rand() - 0.5) * valAmt;
+      return [
+        clamp(c[0] + dv + (rand() - 0.5) * hueAmt, 0, 1),
+        clamp(c[1] + dv + (rand() - 0.5) * hueAmt * 0.85, 0, 1),
+        clamp(c[2] + dv + (rand() - 0.5) * hueAmt, 0, 1)
+      ];
+    }
+
+    function pushStroke(opts) {
+      const {
+        p0, p1, p2,
+        w0, w1,
+        colA, colB,
+        type,
+        opacity = 0.92,
+        impasto = 0.25,
+        gloss = 0.42,
+        wetPickup = 0.12,
+        bristleFreq = 9.0,
+        toothSens = 0.32,
+        tStart,
+        duration = 0.08
+      } = opts;
+
+      const tEnd = Math.min(tStart + duration, TOTAL_DURATION);
+      const maxR = Math.max(w0, w1) * 0.62 + 5;
+      const rx = maxR / CANVAS_W;
+      const ry = maxR / CANVAS_H;
+
+      const minU = clamp(Math.min(p0[0], p1[0], p2[0]) - rx, 0, 1);
+      const maxU = clamp(Math.max(p0[0], p1[0], p2[0]) + rx, 0, 1);
+      const minV = clamp(Math.min(p0[1], p1[1], p2[1]) - ry, 0, 1);
+      const maxV = clamp(Math.max(p0[1], p1[1], p2[1]) + ry, 0, 1);
+
+      rawStrokes.push({
+        p0, p1, p2,
+        w0, w1: w1 !== undefined ? w1 : w0 * 0.86,
+        colA,
+        colB: colB || jitterColor(colA, 0.06, 0.08),
+        type,
+        opacity,
+        impasto,
+        gloss,
+        wetPickup,
+        seed: rand(),
+        bristleFreq,
+        toothSens,
+        tStart,
+        tEnd,
+        bx0: Math.floor(minU * CANVAS_W),
+        by0: Math.floor(minV * CANVAS_H),
+        bx1: Math.ceil(maxU * CANVAS_W),
+        by1: Math.ceil(maxV * CANVAS_H)
+      });
+    }
+
+    function addLineStroke(x0, y0, x1, y1, bow, w0, w1, colA, colB, type, props, tStart, dur) {
+      const mx = (x0 + x1) * 0.5;
+      const my = (y0 + y1) * 0.5;
+      const dx = x1 - x0;
+      const dy = y1 - y0;
+      const len = Math.hypot(dx, dy) || 0.001;
+      const nx = -dy / len;
+      const ny = dx / len;
+      pushStroke({
+        p0: [x0, y0],
+        p1: [mx + nx * bow, my + ny * bow],
+        p2: [x1, y1],
+        w0, w1, colA, colB, type,
+        ...props,
+        tStart,
+        duration: dur
+      });
+    }
+
+    function traceFlowStroke(u, v, lenUV, wPx, type, colorTransform, props, tStart, dur, curveBias = 0.0) {
+      const s0 = sampleScene(u, v);
+      let dx = s0.tx;
+      let dy = s0.ty;
+      const dLen = Math.hypot(dx, dy) || 1;
+      dx /= dLen; dy /= dLen;
+
+      const halfL = lenUV * 0.5;
+      const p0 = [u - dx * halfL, v - dy * halfL * 1.40];
+      const sm = sampleScene(clamp(u + dx * halfL * 0.4, 0, 1), clamp(v + dy * halfL * 0.55, 0, 1));
+      let dx2 = sm.tx, dy2 = sm.ty;
+      const dLen2 = Math.hypot(dx2, dy2) || 1;
+      dx2 /= dLen2; dy2 /= dLen2;
+
+      const bow = curveBias + (rand() - 0.5) * lenUV * 0.28;
+      const p1 = [u - dy * bow, v + dx * bow * 1.40];
+      const p2 = [
+        u + (dx * 0.55 + dx2 * 0.45) * halfL,
+        v + (dy * 0.55 + dy2 * 0.45) * halfL * 1.40
+      ];
+
+      const [colA, colB] = colorTransform(s0, sm);
+      pushStroke({
+        p0, p1, p2,
+        w0: wPx,
+        w1: wPx * (0.70 + 0.34 * rand()),
+        colA, colB, type,
+        ...props,
+        tStart,
+        duration: dur
+      });
+    }
+
+    function approxCliffY(u) {
+      for (let y = 0.55; y >= 0.02; y -= 0.005) {
+        const s = sampleScene(u, y);
+        if (s.zone >= 0.62 && s.zone <= 0.70) return y;
+      }
+      return 0.05;
+    }
+
+    function heroWaveY(u) {
+      const env = Math.exp(-Math.pow((u - 0.38) / 0.22, 2));
+      return 0.185 + 0.128 * env * Math.sin((u - 0.06) * 3.8);
+    }
+
+    // =========================================================================
+    // STAGE I (0.05s – 2.70s): 亚麻底布与炭笔起稿 (Charcoal & Burnt Umber Sketch)
+    // =========================================================================
+    (() => {
+      const charcoal = [0.19, 0.13, 0.09];
+      const umberInk = [0.26, 0.17, 0.11];
+      const sketchProps = { opacity: 0.80, impasto: 0.0, gloss: 0.12, wetPickup: 0.04, bristleFreq: 5.0, toothSens: 0.62 };
+      let t = 0.07;
+
+      for (let i = 0; i < 5; i++) {
+        const u0 = i * 0.112 + 0.02;
+        addLineStroke(u0, 0.365 + (rand() - 0.5) * 0.003, u0 + 0.128, 0.365 + (rand() - 0.5) * 0.003,
+          0.0015, 7.5, 5.5, umberInk, charcoal, 0, sketchProps, t, 0.13);
+        t += 0.065;
+      }
+
+      let prevU = 0.42, prevV = approxCliffY(0.42);
+      for (let u = 0.46; u <= 0.99; u += 0.040) {
+        const v = approxCliffY(u);
+        addLineStroke(prevU, prevV, u, v, (rand() - 0.5) * 0.007, 8.5, 6.5, charcoal, umberInk, 0, sketchProps, t, 0.11);
+        if (v > 0.12) {
+          addLineStroke(u - 0.008, v - 0.015, u + 0.026, v - 0.088, 0.002, 6.8, 4.8, umberInk, charcoal, 0,
+            { ...sketchProps, opacity: 0.50 }, t + 0.03, 0.09);
+        }
+        prevU = u; prevV = v;
+        t += 0.05;
+      }
+
+      addLineStroke(0.705, 0.43, 0.705, 0.858, 0.0, 4.8, 4.0, umberInk, umberInk, 0, { ...sketchProps, opacity: 0.46 }, t, 0.14);
+      t += 0.08;
+      addLineStroke(0.668, 0.438, 0.686, 0.738, 0.006, 7.5, 6.0, charcoal, umberInk, 0, sketchProps, t, 0.12);
+      addLineStroke(0.742, 0.438, 0.724, 0.738, -0.006, 8.0, 6.5, charcoal, umberInk, 0, sketchProps, t + 0.05, 0.12);
+      t += 0.13;
+      addLineStroke(0.676, 0.742, 0.734, 0.742, -0.002, 7.0, 6.5, charcoal, umberInk, 0, sketchProps, t, 0.09);
+      addLineStroke(0.686, 0.754, 0.686, 0.798, 0.0, 6.0, 5.5, charcoal, umberInk, 0, sketchProps, t + 0.04, 0.08);
+      addLineStroke(0.724, 0.754, 0.724, 0.798, 0.0, 6.5, 5.5, charcoal, umberInk, 0, sketchProps, t + 0.07, 0.08);
+      addLineStroke(0.685, 0.799, 0.705, 0.836, 0.005, 6.5, 5.5, charcoal, umberInk, 0, sketchProps, t + 0.10, 0.08);
+      addLineStroke(0.705, 0.836, 0.725, 0.799, 0.005, 6.5, 5.5, charcoal, umberInk, 0, sketchProps, t + 0.13, 0.08);
+      t += 0.16;
+
+      addLineStroke(0.690, 0.775, 0.10, 0.66, 0.0, 5.2, 3.8, umberInk, umberInk, 0, { ...sketchProps, opacity: 0.34 }, t, 0.13);
+      addLineStroke(0.690, 0.772, 0.10, 0.51, 0.0, 5.2, 3.8, umberInk, umberInk, 0, { ...sketchProps, opacity: 0.34 }, t + 0.05, 0.13);
+      t += 0.12;
+
+      for (let i = 0; i < 6; i++) {
+        const u0 = 0.06 + i * 0.072;
+        const u1 = u0 + 0.082;
+        addLineStroke(u0, heroWaveY(u0), u1, heroWaveY(u1), 0.007, 8.8, 6.8, charcoal, umberInk, 0, sketchProps, t, 0.10);
+        t += 0.04;
+      }
+      for (let i = 0; i < 5; i++) {
+        addLineStroke(0.49 + i * 0.018, 0.22, 0.53 + i * 0.025, 0.40 + (i % 2) * 0.07, -0.022,
+          7.0, 4.5, umberInk, charcoal, 0, { ...sketchProps, opacity: 0.55 }, t, 0.09);
+        t += 0.03;
+      }
+      addLineStroke(0.222, 0.356, 0.285, 0.363, -0.003, 6.8, 5.5, charcoal, umberInk, 0, sketchProps, t, 0.09);
+      addLineStroke(0.254, 0.360, 0.230, 0.432, 0.0, 6.2, 4.5, charcoal, umberInk, 0, sketchProps, t + 0.03, 0.09);
+      addLineStroke(0.230, 0.432, 0.222, 0.358, -0.005, 5.8, 4.5, umberInk, charcoal, 0, sketchProps, t + 0.06, 0.09);
+      addLineStroke(0.234, 0.418, 0.283, 0.364, 0.004, 5.8, 4.5, umberInk, charcoal, 0, sketchProps, t + 0.09, 0.09);
+      t += 0.12;
+
+      for (let i = 0; i < 34; i++) {
+        const ts = mix(t, 2.62, i / 34);
+        const u = 0.05 + rand() * 0.90;
+        const v = 0.06 + rand() * 0.86;
+        const s = sampleScene(u, v);
+        const darkMass = 1.0 - (s.r * 0.3 + s.g * 0.5 + s.b * 0.2);
+        if (darkMass > 0.60 || v > 0.54) {
+          traceFlowStroke(u, v, 0.09 + rand() * 0.06, 7.5 + rand() * 4.0, 0,
+            () => [umberInk, charcoal],
+            { ...sketchProps, opacity: 0.34 + 0.28 * darkMass }, ts, 0.085);
+        }
+      }
+    })();
+
+    // =========================================================================
+    // STAGE II (2.70s – 6.50s): 松节油薄涂铺大色块 (Turpentine Ebauche Underpainting)
+    // =========================================================================
+    (() => {
+      const count = 540;
+      for (let i = 0; i < count; i++) {
+        const frac = i / count;
+        const ts = mix(2.70, 6.42, frac);
+        const u = clamp(0.02 + ((i * 0.618034) % 1) * 0.96 + (rand() - 0.5) * 0.05, 0.01, 0.99);
+        const v = clamp(0.98 - frac * 0.96 + (rand() - 0.5) * 0.08, 0.01, 0.99);
+
+        traceFlowStroke(u, v, 0.11 + rand() * 0.07, 78 + rand() * 68, 1,
+          (s0, sm) => {
+            const warmGround = [0.45, 0.33, 0.22];
+            const cA = [
+              mix(s0.r * 0.84, warmGround[0], 0.20),
+              mix(s0.g * 0.84, warmGround[1], 0.18),
+              mix(s0.b * 0.86, warmGround[2], 0.15)
+            ];
+            const cB = [
+              mix(sm.r * 0.80, warmGround[0], 0.25),
+              mix(sm.g * 0.80, warmGround[1], 0.22),
+              mix(sm.b * 0.84, warmGround[2], 0.17)
+            ];
+            return [jitterColor(cA, 0.04, 0.05), jitterColor(cB, 0.04, 0.05)];
+          },
+          {
+            opacity: 0.76 + rand() * 0.15,
+            impasto: 0.03,
+            gloss: 0.22,
+            wetPickup: 0.18,
+            bristleFreq: 7.5 + rand() * 4.0,
+            toothSens: 0.42
+          },
+          ts, 0.11
+        );
+      }
+    })();
+
+    // =========================================================================
+    // STAGE III (6.50s – 11.60s): 风暴云层、暮色霞裂与怒海涌浪塑形
+    // =========================================================================
+    (() => {
+      const skyCount = 1720;
+      for (let i = 0; i < skyCount; i++) {
+        const frac = i / skyCount;
+        const ts = mix(6.50, 9.10, frac);
+        let u = rand();
+        let v = 0.355 + rand() * 0.645;
+        if (frac > 0.58 && rand() < 0.65) {
+          u = clamp(0.03 + rand() * 0.50, 0.01, 0.98);
+          v = clamp(0.362 + rand() * 0.30, 0.36, 0.96);
+        }
+        const s = sampleScene(u, v);
+        if (s.zone > 0.60) continue;
+
+        const wPx = mix(56, 20, frac) * (0.8 + 0.4 * rand());
+        const lum = s.r * 0.35 + s.g * 0.45 + s.b * 0.20;
+        traceFlowStroke(u, v, mix(0.088, 0.042, frac), wPx, rand() < 0.30 ? 3 : 2,
+          (s0, sm) => [
+            jitterColor([s0.r * 0.98, s0.g * 0.97, s0.b * 0.98], 0.04, 0.05),
+            jitterColor([sm.r * 0.96, sm.g * 0.96, sm.b * 0.98], 0.05, 0.06)
+          ],
+          {
+            opacity: 0.88 + rand() * 0.10,
+            impasto: 0.12 + 0.28 * lum,
+            gloss: 0.38,
+            wetPickup: 0.20,
+            bristleFreq: 9.0 + rand() * 5.0,
+            toothSens: 0.28
+          },
+          ts, 0.08,
+          (rand() - 0.5) * 0.016
+        );
+      }
+
+      const seaCount = 1880;
+      for (let i = 0; i < seaCount; i++) {
+        const frac = i / seaCount;
+        const ts = mix(9.10, 11.56, frac);
+        const depthBias = Math.pow(1.0 - frac, 0.85);
+        let u = rand();
+        let v = clamp(depthBias * 0.368 + (rand() - 0.5) * 0.12, 0.006, 0.372);
+        if (frac > 0.50 && rand() < 0.52) {
+          u = 0.05 + rand() * 0.52;
+          v = 0.10 + rand() * 0.23;
+        }
+        const s = sampleScene(u, v);
+        if (s.zone > 0.60) continue;
+
+        const persp = mix(1.25, 0.34, clamp(v / 0.365, 0, 1));
+        const wPx = Math.max((26 + rand() * 24) * persp, 7.0);
+        const lenUV = (0.064 + rand() * 0.038) * mix(1.15, 0.52, clamp(v / 0.365, 0, 1));
+
+        traceFlowStroke(u, v, lenUV, wPx, 2,
+          (s0, sm) => {
+            const deFoam = s0.foam * 0.55;
+            const cA = [
+              mix(s0.r, 0.10, deFoam),
+              mix(s0.g, 0.35, deFoam),
+              mix(s0.b, 0.38, deFoam)
+            ];
+            const cB = [
+              mix(sm.r, 0.08, deFoam),
+              mix(sm.g, 0.30, deFoam),
+              mix(sm.b, 0.34, deFoam)
+            ];
+            return [jitterColor(cA, 0.045, 0.06), jitterColor(cB, 0.055, 0.07)];
+          },
+          {
+            opacity: 0.90,
+            impasto: 0.16 + 0.20 * (1.0 - v / 0.37),
+            gloss: 0.50,
+            wetPickup: 0.22,
+            bristleFreq: 10.0 + rand() * 5.0,
+            toothSens: 0.25
+          },
+          ts, 0.075,
+          0.008
+        );
+      }
+    })();
+
+    // =========================================================================
+    // STAGE IV (11.60s – 16.50s): 岩岬礁石、石砌灯塔与远方孤帆刻画
+    // =========================================================================
+    (() => {
+      // 1. Rugged 3D Coastal Cliffs & Wet Reefs (11.60s - 13.70s)
+      const rockCandidates = [];
+      for (let k = 0; k < 5600; k++) {
+        const u = 0.40 + rand() * 0.598;
+        const v = 0.008 + rand() * 0.48;
+        const s = sampleScene(u, v);
+        if (s.zone >= 0.62 && s.zone <= 0.70) {
+          const lum = s.r * 0.35 + s.g * 0.40 + s.b * 0.25;
+          rockCandidates.push({ u, v, lum });
+        }
+      }
+      rockCandidates.sort((a, b) => a.lum - b.lum);
+      const maxRock = 1650;
+      const rStep = Math.max(1, Math.floor(rockCandidates.length / maxRock));
+      let rIdx = 0;
+      for (let i = 0; i < rockCandidates.length && rIdx < maxRock; i += rStep, rIdx++) {
+        const { u, v, lum } = rockCandidates[i];
+        const frac = rIdx / maxRock;
+        const ts = mix(11.60, 13.55, frac);
+        const useKnife = frac > 0.48 && rand() < 0.64;
+        traceFlowStroke(u, v, 0.038 + rand() * 0.030, useKnife ? (24 + rand() * 18) : (20 + rand() * 16),
+          useKnife ? 4 : 3,
+          (s0, sm) => [jitterColor([s0.r, s0.g, s0.b], 0.04, 0.06), jitterColor([sm.r, sm.g, sm.b], 0.05, 0.07)],
+          {
+            opacity: 0.94,
+            impasto: useKnife ? (0.42 + 0.36 * lum) : (0.18 + 0.20 * lum),
+            gloss: 0.48 + 0.28 * lum,
+            wetPickup: 0.08,
+            bristleFreq: 8.5,
+            toothSens: useKnife ? 0.44 : 0.28
+          },
+          ts, 0.07
+        );
+      }
+
+      // Chiseled wet specular ledges & curved foamy water run-off on lower reefs (no comb-teeth lines!)
+      for (let i = 0; i < 36; i++) {
+        const ts = mix(13.52, 13.75, i / 36);
+        const u = 0.50 + rand() * 0.36;
+        const vTop = approxCliffY(u);
+        const v = clamp(vTop - 0.02 - rand() * 0.16, 0.04, 0.41);
+        const nearCrown = Math.exp(-Math.pow((u - 0.69) / 0.11, 2)) * Math.exp(-Math.pow((v - 0.40) / 0.09, 2));
+        const ledgeCol = nearCrown > 0.25
+          ? [0.76, 0.54, 0.30]
+          : [0.28, 0.38, 0.46];
+        addLineStroke(u - 0.016, v + 0.008, u + 0.018, v - 0.012, 0.004,
+          12 + rand() * 9, 8 + rand() * 6, ledgeCol, jitterColor(ledgeCol, 0.04, 0.06), 4,
+          { opacity: 0.72, impasto: 0.52, gloss: 0.72, wetPickup: 0.12, bristleFreq: 7.0, toothSens: 0.42 }, ts, 0.05);
+      }
+
+      // 2. Solitary Stone Lighthouse (13.75s - 15.65s):
+      // Step A: Continuous vertical cylindrical modeling strokes establishing monolithic 3D granite form!
+      let t = 13.75;
+      for (let colStrip = 0; colStrip < 9; colStrip++) {
+        const cFrac = colStrip / 8; // 0 = left lit rim, 1 = right shadow flank
+        const ang = mix(-1.42, 1.42, cFrac);
+        for (let seg = 0; seg < 6; seg++) {
+          const f0 = seg / 6, f1 = (seg + 1) / 6;
+          const y0 = mix(0.436, 0.736, f0), y1 = mix(0.436, 0.736, f1);
+          const hw0 = 0.0195 + 0.0180 * Math.pow(1.0 - f0, 2.15) + smoothstep(0.90, 1.0, f0) * 0.0065;
+          const hw1 = 0.0195 + 0.0180 * Math.pow(1.0 - f1, 2.15) + smoothstep(0.90, 1.0, f1) * 0.0065;
+          const x0 = 0.705 + Math.sin(ang) * hw0;
+          const x1 = 0.705 + Math.sin(ang) * hw1;
+          const sc = sampleScene((x0 + x1) * 0.5, (y0 + y1) * 0.5);
+          addLineStroke(x0, y0, x1, y1, 0.0, 13.0, 11.5,
+            [sc.r, sc.g, sc.b], jitterColor([sc.r, sc.g, sc.b], 0.03, 0.04), 3,
+            { opacity: 0.96, impasto: 0.30, gloss: 0.40, wetPickup: 0.06, bristleFreq: 7.5, toothSens: 0.16 }, t, 0.05);
+          t += 0.007;
+        }
+      }
+
+      // Step B: Scumbled dressed-granite block courses over the solid cylinder (natural subtle mortar!)
+      const numCourses = 22;
+      for (let row = 0; row < numCourses; row++) {
+        const sFrac = row / (numCourses - 1);
+        const vy = mix(0.440, 0.735, sFrac);
+        const halfW = 0.0195 + 0.0180 * Math.pow(1.0 - sFrac, 2.15) + smoothstep(0.90, 1.0, sFrac) * 0.0068;
+        const blocksInRow = row < 7 ? 5 : 4;
+
+        for (let b = 0; b < blocksInRow; b++) {
+          const b0 = (b + (row % 2) * 0.18) / blocksInRow;
+          const b1 = Math.min(1.0, b0 + 0.86 / blocksInRow);
+          const ang0 = mix(-1.42, 1.42, b0);
+          const ang1 = mix(-1.42, 1.42, b1);
+          const x0 = 0.705 + Math.sin(ang0) * halfW;
+          const x1 = 0.705 + Math.sin(ang1) * halfW;
+          const xm = (x0 + x1) * 0.5;
+          const perspDip = -0.0020 * Math.cos((ang0 + ang1) * 0.5);
+
+          const sc = sampleScene(xm, vy);
+          const blockTone = 0.93 + 0.15 * rand();
+          const cA = [clamp(sc.r * blockTone, 0, 1), clamp(sc.g * blockTone, 0, 1), clamp(sc.b * blockTone, 0, 1)];
+          addLineStroke(
+            x0, vy, x1, vy, perspDip,
+            13.5, 12.8, cA, jitterColor(cA, 0.03, 0.05), 3,
+            { opacity: 0.78, impasto: 0.42 + 0.16 * (1.0 - b0), gloss: 0.42, wetPickup: 0.08, bristleFreq: 7.5, toothSens: 0.24 },
+            t, 0.05
+          );
+          t += 0.009;
+        }
+      }
+
+      // Warm golden dusk/lantern rim along left edge of tower
+      for (let i = 0; i < 8; i++) {
+        const f0 = i / 8, f1 = (i + 1) / 8;
+        const y0 = mix(0.440, 0.735, f0), y1 = mix(0.440, 0.735, f1);
+        const hw0 = 0.0195 + 0.0180 * Math.pow(1.0 - f0, 2.15);
+        const hw1 = 0.0195 + 0.0180 * Math.pow(1.0 - f1, 2.15);
+        const warmRim = f0 > 0.68 ? [0.94, 0.70, 0.38] : [0.78, 0.64, 0.48];
+        addLineStroke(0.705 - hw0 + 0.0022, y0, 0.705 - hw1 + 0.0022, y1, 0.0, 7.5, 6.8,
+          warmRim, jitterColor(warmRim, 0.03, 0.04), 4,
+          { opacity: 0.88, impasto: 0.52, gloss: 0.46, wetPickup: 0.06, bristleFreq: 6.5, toothSens: 0.32 }, t, 0.045);
+        t += 0.014;
+      }
+
+      // Recessed storm windows
+      [[0.701, 0.535], [0.707, 0.615], [0.702, 0.688]].forEach(([wx, wy]) => {
+        addLineStroke(wx, wy - 0.0085, wx, wy + 0.0085, 0.0, 7.2, 6.8, [0.07, 0.06, 0.06], [0.14, 0.10, 0.08], 7,
+          { opacity: 0.96, impasto: 0.12, gloss: 0.55, wetPickup: 0.02, bristleFreq: 4.0, toothSens: 0.1 }, t, 0.045);
+        addLineStroke(wx - 0.001, wy - 0.0045, wx - 0.001, wy + 0.0045, 0.0, 3.8, 3.2, [0.86, 0.58, 0.25], [0.96, 0.74, 0.38], 7,
+          { opacity: 0.90, impasto: 0.38, gloss: 0.60, wetPickup: 0.02, bristleFreq: 4.0, toothSens: 0.1 }, t + 0.015, 0.04);
+        t += 0.022;
+      });
+
+      // Corbelled gallery deck, balustrade, glowing lantern chamber, mullions & dome
+      addLineStroke(0.676, 0.740, 0.734, 0.740, -0.003, 13.5, 12.5, [0.82, 0.59, 0.30], [0.22, 0.17, 0.15], 3,
+        { opacity: 0.97, impasto: 0.48, gloss: 0.46, wetPickup: 0.04, bristleFreq: 7.0, toothSens: 0.16 }, t, 0.05);
+      t += 0.03;
+      for (let ly = 0.757; ly <= 0.796; ly += 0.007) {
+        addLineStroke(0.687, ly, 0.723, ly, -0.001, 12.5, 12.0, [0.99, 0.86, 0.48], [0.94, 0.66, 0.26], 2,
+          { opacity: 0.96, impasto: 0.45, gloss: 0.65, wetPickup: 0.04, bristleFreq: 6.0, toothSens: 0.14 }, t, 0.045);
+        t += 0.016;
+      }
+      addLineStroke(0.678, 0.753, 0.732, 0.753, -0.002, 4.6, 4.2, [0.18, 0.14, 0.12], [0.72, 0.50, 0.26], 7,
+        { opacity: 0.94, impasto: 0.26, gloss: 0.50, wetPickup: 0.02, bristleFreq: 4.0, toothSens: 0.1 }, t, 0.045);
+      for (let rx = 0.680; rx <= 0.730; rx += 0.0072) {
+        addLineStroke(rx, 0.742, rx, 0.753, 0.0, 3.3, 2.9, [0.16, 0.13, 0.12], [0.60, 0.43, 0.24], 7,
+          { opacity: 0.92, impasto: 0.22, gloss: 0.45, wetPickup: 0.02, bristleFreq: 4.0, toothSens: 0.1 }, t, 0.035);
+        t += 0.006;
+      }
+      for (let mx = -2; mx <= 2; mx++) {
+        const xBase = 0.705 + mx * 0.0068;
+        addLineStroke(xBase - 0.003, 0.755, xBase + 0.003, 0.798, 0.0, 3.2, 3.0, [0.22, 0.15, 0.10], [0.44, 0.29, 0.16], 7,
+          { opacity: 0.84, impasto: 0.18, gloss: 0.50, wetPickup: 0.03, bristleFreq: 4.0, toothSens: 0.1 }, t, 0.04);
+        t += 0.009;
+      }
+      for (let dy = 0; dy < 5; dy++) {
+        const vy = 0.800 + dy * 0.0072;
+        const hw = 0.0205 * Math.sqrt(Math.max(0.05, 1.0 - Math.pow(dy / 5.0, 2)));
+        addLineStroke(0.705 - hw, vy, 0.705 + hw, vy, 0.003, 11.0, 10.0, [0.46, 0.42, 0.29], [0.08, 0.15, 0.15], 3,
+          { opacity: 0.96, impasto: 0.34, gloss: 0.52, wetPickup: 0.04, bristleFreq: 6.0, toothSens: 0.16 }, t, 0.045);
+        t += 0.015;
+      }
+      addLineStroke(0.702, 0.838, 0.708, 0.838, 0.002, 8.8, 8.2, [0.58, 0.46, 0.31], [0.14, 0.16, 0.16], 7,
+        { opacity: 0.97, impasto: 0.34, gloss: 0.55, wetPickup: 0.02, bristleFreq: 4.0, toothSens: 0.1 }, t, 0.04);
+      addLineStroke(0.705, 0.838, 0.705, 0.866, 0.0, 3.5, 1.8, [0.36, 0.32, 0.27], [0.76, 0.60, 0.38], 7,
+        { opacity: 0.95, impasto: 0.26, gloss: 0.55, wetPickup: 0.02, bristleFreq: 4.0, toothSens: 0.1 }, t + 0.015, 0.045);
+
+      // 3. Distant Sailboat with Seamless Wind-Bellied Canvas Sails! (15.65s - 16.48s)
+      let tb = 15.65;
+      const bx = 0.252, by = 0.357, bScale = 1.32;
+      const ca = Math.cos(-0.35), sa = Math.sin(-0.35);
+      const rotB = (lx, ly) => [bx + (lx * ca - ly * sa) * bScale, by + (lx * sa + ly * ca) * bScale];
+
+      // Paint Mainsail with sweeping vertical/leech-following strokes (seamless billowing canvas!)
+      for (let strip = 0; strip < 8; strip++) {
+        const sf = strip / 7; // 0 = shadowed leech, 1 = sunlit luff near mast
+        const pBot = rotB(mix(-0.024, 0.001, sf), 0.006);
+        const pTop = rotB(mix(-0.012, 0.001, sf), mix(0.056, 0.059, sf));
+        const cSail = [
+          mix(0.38, 0.96, Math.pow(sf, 0.85)),
+          mix(0.31, 0.79, Math.pow(sf, 0.85)),
+          mix(0.27, 0.51, Math.pow(sf, 0.85))
+        ];
+        addLineStroke(pBot[0], pBot[1], pTop[0], pTop[1], -0.003 * (1.0 - sf * 0.5),
+          11.0, 9.0, cSail, jitterColor(cSail, 0.03, 0.04), 2,
+          { opacity: 0.97, impasto: 0.38 + 0.18 * sf, gloss: 0.42, wetPickup: 0.04, bristleFreq: 7.0, toothSens: 0.14 }, tb, 0.048);
+        tb += 0.018;
+      }
+
+      // Paint Jib / Foresail with sweeping stay-following strokes (seamless golden rim!)
+      for (let strip = 0; strip < 6; strip++) {
+        const jf = strip / 5; // 0 = inner leech, 1 = sunlit outer stay luff
+        const pBot = rotB(mix(0.006, 0.029, jf), 0.006);
+        const pTop = rotB(0.003, 0.049);
+        const cJib = [
+          mix(0.44, 0.99, Math.pow(jf, 0.75)),
+          mix(0.36, 0.85, Math.pow(jf, 0.75)),
+          mix(0.31, 0.56, Math.pow(jf, 0.75))
+        ];
+        addLineStroke(pBot[0], pBot[1], pTop[0], pTop[1], 0.0028,
+          9.5, 6.5, cJib, jitterColor(cJib, 0.03, 0.04), 2,
+          { opacity: 0.97, impasto: 0.40 + 0.18 * jf, gloss: 0.44, wetPickup: 0.04, bristleFreq: 6.5, toothSens: 0.14 }, tb, 0.045);
+        tb += 0.018;
+      }
+
+      // Mast, gaff, boom, dark timber hull, bowsprit, stays & foaming bow wave!
+      {
+        const mBot = rotB(0.001, 0.004), mTop = rotB(0.001, 0.062);
+        const gPeak = rotB(-0.012, 0.057), boomEnd = rotB(-0.025, 0.006);
+        const stern = rotB(-0.025, 0.003), midH = rotB(0.0, -0.002), bow = rotB(0.026, 0.005), sprit = rotB(0.038, 0.0088);
+
+        addLineStroke(mBot[0], mBot[1], mTop[0], mTop[1], 0.0, 4.6, 3.0, [0.26, 0.16, 0.10], [0.70, 0.48, 0.26], 7,
+          { opacity: 0.96, impasto: 0.28, gloss: 0.48, wetPickup: 0.02, bristleFreq: 4.0, toothSens: 0.1 }, tb, 0.042);
+        addLineStroke(mTop[0], mTop[1] - 0.002, gPeak[0], gPeak[1], 0.0, 3.6, 2.8, [0.28, 0.18, 0.12], [0.78, 0.58, 0.34], 7,
+          { opacity: 0.94, impasto: 0.24, gloss: 0.45, wetPickup: 0.02, bristleFreq: 4.0, toothSens: 0.1 }, tb + 0.015, 0.04);
+        addLineStroke(mBot[0], mBot[1] + 0.001, boomEnd[0], boomEnd[1], 0.0, 4.0, 3.2, [0.24, 0.15, 0.10], [0.58, 0.40, 0.24], 7,
+          { opacity: 0.94, impasto: 0.24, gloss: 0.45, wetPickup: 0.02, bristleFreq: 4.0, toothSens: 0.1 }, tb + 0.03, 0.04);
+
+        addLineStroke(stern[0], stern[1], bow[0], bow[1], -0.0035, 14.5, 12.5, [0.06, 0.045, 0.042], [0.20, 0.12, 0.08], 3,
+          { opacity: 0.98, impasto: 0.32, gloss: 0.58, wetPickup: 0.04, bristleFreq: 6.0, toothSens: 0.15 }, tb + 0.045, 0.045);
+        addLineStroke(stern[0], stern[1] + 0.0024, bow[0], bow[1] + 0.0014, -0.0025, 4.4, 3.6, [0.76, 0.50, 0.26], [0.95, 0.72, 0.38], 7,
+          { opacity: 0.90, impasto: 0.38, gloss: 0.50, wetPickup: 0.03, bristleFreq: 4.0, toothSens: 0.1 }, tb + 0.06, 0.04);
+        addLineStroke(bow[0], bow[1], sprit[0], sprit[1], 0.0, 3.6, 2.0, [0.24, 0.16, 0.11], [0.66, 0.48, 0.29], 7,
+          { opacity: 0.94, impasto: 0.22, gloss: 0.45, wetPickup: 0.02, bristleFreq: 4.0, toothSens: 0.1 }, tb + 0.075, 0.04);
+        addLineStroke(mTop[0], mTop[1], sprit[0], sprit[1], 0.0, 2.1, 1.7, [0.22, 0.18, 0.16], [0.64, 0.50, 0.36], 7,
+          { opacity: 0.76, impasto: 0.12, gloss: 0.40, wetPickup: 0.02, bristleFreq: 3.0, toothSens: 0.1 }, tb + 0.09, 0.04);
+        addLineStroke(mTop[0], mTop[1], stern[0], stern[1], 0.0, 2.1, 1.7, [0.20, 0.16, 0.15], [0.48, 0.38, 0.30], 7,
+          { opacity: 0.72, impasto: 0.12, gloss: 0.40, wetPickup: 0.02, bristleFreq: 3.0, toothSens: 0.1 }, tb + 0.10, 0.04);
+        // Dark swell overlapping lower hull & crisp whitewater bow splash!
+        addLineStroke(midH[0] - 0.024, midH[1] - 0.003, bow[0] + 0.020, bow[1] - 0.005, 0.0035, 12.0, 9.5,
+          [0.06, 0.22, 0.25], [0.96, 0.91, 0.80], 2,
+          { opacity: 0.94, impasto: 0.52, gloss: 0.58, wetPickup: 0.10, bristleFreq: 8.0, toothSens: 0.2 }, tb + 0.115, 0.045);
+      }
+    })();
+
+    // =========================================================================
+    // STAGE V (16.50s – 20.60s): 暗部透明罩染、暴风雨幕与灯塔光束穿透
+    // =========================================================================
+    (() => {
+      const prussianGlaze = [0.05, 0.18, 0.28];
+      const umberGlaze    = [0.20, 0.12, 0.08];
+      const viridianGlaze = [0.06, 0.26, 0.24];
+
+      for (let i = 0; i < 660; i++) {
+        const frac = i / 660;
+        const ts = mix(16.50, 18.12, frac);
+        const u = rand();
+        const v = rand();
+        const s = sampleScene(u, v);
+        const lum = s.r * 0.3 + s.g * 0.45 + s.b * 0.25;
+        if (lum > 0.21 || s.foam > 0.22 || s.zone >= 0.72) continue;
+
+        let gColA = prussianGlaze, gColB = viridianGlaze;
+        if (s.zone >= 0.62) {
+          gColA = umberGlaze; gColB = prussianGlaze;
+        } else if (v > 0.55) {
+          gColA = prussianGlaze; gColB = [0.16, 0.12, 0.24];
+        }
+
+        traceFlowStroke(u, v, 0.085 + rand() * 0.055, 52 + rand() * 44, 5,
+          () => [gColA, gColB],
+          { opacity: 0.36 + (0.21 - lum) * 0.95, impasto: 0.0, gloss: 0.86, wetPickup: 0.0, bristleFreq: 6.0, toothSens: 0.1 },
+          ts, 0.085
+        );
+      }
+
+      for (let i = 0; i < 480; i++) {
+        const frac = i / 480;
+        const ts = mix(18.12, 19.20, frac);
+        const u0 = -0.04 + rand() * 1.04;
+        const v0 = 0.24 + rand() * 0.76;
+        const rainLen = 0.08 + rand() * 0.10;
+        const u1 = u0 + rainLen * 0.33;
+        const v1 = v0 - rainLen * 0.94;
+        const s = sampleScene((u0 + u1) * 0.5, (v0 + v1) * 0.5);
+        if (s.zone >= 0.72) continue;
+
+        const fineRain = frac > 0.52;
+        const mistCol = [
+          clamp(s.r * 1.05 + 0.045, 0, 1),
+          clamp(s.g * 1.05 + 0.045, 0, 1),
+          clamp(s.b * 1.05 + 0.055, 0, 1)
+        ];
+        addLineStroke(u0, v0, u1, v1, 0.0,
+          fineRain ? (2.4 + rand() * 2.2) : (18 + rand() * 20),
+          fineRain ? 1.6 : 14,
+          mistCol, jitterColor(mistCol, 0.03, 0.04),
+          fineRain ? 7 : 1,
+          { opacity: fineRain ? 0.22 : 0.14, impasto: 0.02, gloss: 0.45, wetPickup: 0.14, bristleFreq: 7.0, toothSens: 0.3 },
+          ts, 0.075
+        );
+      }
+
+      const lx = 0.705, ly = 0.778;
+      for (let i = 0; i < 650; i++) {
+        const frac = i / 650;
+        const ts = mix(19.20, 20.56, frac);
+
+        const isMain = rand() < 0.80;
+        const baseAng = isMain ? (-Math.PI + 0.24) : 0.24;
+        const spread = (rand() - 0.5) * (isMain ? 0.25 : 0.21);
+        const ang = baseAng + spread;
+        const rDist = isMain ? (0.025 + Math.pow(rand(), 0.75) * 0.68) : (0.025 + rand() * 0.30);
+        const segLen = 0.045 + rand() * 0.065;
+
+        const u0 = lx + Math.cos(ang) * rDist;
+        const v0 = ly + Math.sin(ang) * rDist * 1.25;
+        const u1 = lx + Math.cos(ang) * (rDist + segLen);
+        const v1 = ly + Math.sin(ang) * (rDist + segLen) * 1.25;
+        if (u0 < -0.02 || u0 > 1.02 || v0 < 0.26 || v0 > 1.02) continue;
+
+        const coreFactor = Math.exp(-Math.pow(spread / 0.092, 2)) * Math.exp(-rDist * 1.35);
+        const goldWarm = [0.96, 0.74, 0.34];
+        const paleBeam = [1.00, 0.92, 0.68];
+        const cBeam = [
+          mix(goldWarm[0], paleBeam[0], coreFactor),
+          mix(goldWarm[1], paleBeam[1], coreFactor),
+          mix(goldWarm[2], paleBeam[2], coreFactor)
+        ];
+
+        addLineStroke(u0, v0, u1, v1, 0.0,
+          mix(40, 15, frac) * (0.65 + rDist),
+          mix(34, 11, frac) * (0.75 + rDist),
+          cBeam, goldWarm,
+          coreFactor > 0.32 ? 1 : 5,
+          {
+            opacity: clamp(0.11 + 0.29 * coreFactor, 0.08, 0.40),
+            impasto: 0.04 * coreFactor,
+            gloss: 0.68,
+            wetPickup: 0.12,
+            bristleFreq: 8.0,
+            toothSens: 0.35
+          },
+          ts, 0.08
+        );
+      }
+
+      for (let i = 0; i < 130; i++) {
+        const ts = mix(19.95, 20.58, i / 130);
+        const rDist = 0.05 + rand() * 0.50;
+        const ang = -Math.PI + 0.24 + (rand() - 0.5) * 0.14;
+        const u0 = lx + Math.cos(ang) * rDist;
+        const v0 = ly + Math.sin(ang) * rDist * 1.25;
+        addLineStroke(u0, v0, u0 + 0.014, v0 - 0.040, 0.0, 2.6, 1.6,
+          [1.0, 0.89, 0.58], [0.96, 0.74, 0.38], 7,
+          { opacity: 0.40 * Math.exp(-rDist * 1.5), impasto: 0.16, gloss: 0.65, wetPickup: 0.04, bristleFreq: 4.0, toothSens: 0.2 },
+          ts, 0.05
+        );
+      }
+    })();
+
+    // =========================================================================
+    // STAGE VI (20.60s – 25.00s): 巨浪碎沫厚涂、飞沫、炽亮灯芯、迎风海鸥与点睛
+    // =========================================================================
+    (() => {
+      // 0. Soft Feathery Atmospheric Sea-Mist Scumbles around the Reef Impact Perimeter (20.60s - 21.15s)
+      // Dissolves the outer boundary of the exploding spray into the storm air with zero hard oval edges!
+      for (let i = 0; i < 160; i++) {
+        const frac = i / 160;
+        const ts = mix(20.60, 21.12, frac);
+        const ang = 0.42 + rand() * 1.55;
+        const r = 0.04 + Math.pow(rand(), 0.75) * 0.23;
+        const u = 0.510 + Math.cos(ang) * r * 0.66 + Math.max(0, r - 0.07) * 0.18;
+        const v = 0.215 + Math.sin(ang) * r * 1.08;
+        if (u > 0.645 && v > 0.41) continue;
+        const sc = sampleScene(u, v);
+        const mistWarm = smoothstep(0.24, 0.46, v);
+        const mistCol = [
+          mix(sc.r, 0.94, 0.45 + 0.25 * mistWarm),
+          mix(sc.g, 0.86, 0.45 + 0.20 * mistWarm),
+          mix(sc.b, 0.74, 0.45 + 0.15 * mistWarm)
+        ];
+        addLineStroke(u - 0.015, v - 0.012, u + Math.cos(ang) * 0.028, v + Math.sin(ang) * 0.030, -0.005,
+          28 + rand() * 24, 20 + rand() * 16, mistCol, [sc.r, sc.g, sc.b], 1,
+          { opacity: 0.16 + 0.18 * (1.0 - r * 2.5), impasto: 0.04, gloss: 0.42, wetPickup: 0.30, bristleFreq: 8.0, toothSens: 0.42 },
+          ts, 0.065);
+      }
+
+      // 1. Multi-Tiered Crashing Surf, Connected Lacy Spume & 3D Reef Fountain (21.05s - 23.55s)
+      const foamPts = [];
+      for (let i = 0; i < 28000; i++) {
+        const u = rand();
+        const v = rand() * 0.52;
+        const s = sampleScene(u, v);
+        if (s.foam > 0.20 && s.zone < 0.62) {
+          foamPts.push({ u, v, s });
+        }
+      }
+      foamPts.sort((a, b) => (a.s.foam + a.s.r * 0.35) - (b.s.foam + b.s.r * 0.35));
+      const maxFoamStrokes = 2150;
+      const fStep = Math.max(1, Math.floor(foamPts.length / maxFoamStrokes));
+      let fCount = 0;
+
+      for (let i = 0; i < foamPts.length && fCount < maxFoamStrokes; i += fStep, fCount++) {
+        const { u, v, s } = foamPts[i];
+        const frac = fCount / maxFoamStrokes;
+        const ts = mix(21.05, 23.52, frac);
+
+        const intensity = s.foam;
+        const isSprayPlume = s.zone >= 0.57;
+        const sceneLum = s.r * 0.38 + s.g * 0.44 + s.b * 0.18;
+        const litFactor = clamp(intensity * 0.48 + sceneLum * 0.68, 0, 1);
+        const isBrightPeak = litFactor > 0.68 && frac > 0.50;
+
+        let bType = 2;
+        if (isSprayPlume && rand() < 0.62) bType = 6; // fine stipple spray instead of chunky oval dabs!
+        else if (isBrightPeak || (frac > 0.55 && rand() < 0.55)) bType = 4;
+
+        const warmTint = smoothstep(0.20, 0.48, v) * smoothstep(0.40, 0.68, u) * 0.52
+                       + smoothstep(0.48, 0.14, u) * 0.32;
+        const coolShadowFoam   = [0.28, 0.44, 0.54];
+        const midTurqFoam      = [0.66, 0.78, 0.82];
+        const warmImpastoWhite = [1.00, mix(0.97, 0.91, warmTint), mix(0.91, 0.75, warmTint)];
+
+        const baseFoamCol = litFactor < 0.48
+          ? [mix(coolShadowFoam[0], midTurqFoam[0], litFactor / 0.48),
+             mix(coolShadowFoam[1], midTurqFoam[1], litFactor / 0.48),
+             mix(coolShadowFoam[2], midTurqFoam[2], litFactor / 0.48)]
+          : [mix(midTurqFoam[0], warmImpastoWhite[0], Math.pow((litFactor - 0.48) / 0.52, 0.8)),
+             mix(midTurqFoam[1], warmImpastoWhite[1], Math.pow((litFactor - 0.48) / 0.52, 0.8)),
+             mix(midTurqFoam[2], warmImpastoWhite[2], Math.pow((litFactor - 0.48) / 0.52, 0.8))];
+
+        const wPx = bType === 6 ? (18 + rand() * 20) : mix(20, 9.5, frac) * (0.75 + 0.48 * rand());
+        const curveCurl = isSprayPlume ? ((rand() - 0.35) * 0.020) : 0.009;
+        // Feathered lower opacity near top edge of spray plume so it breathes into the sky!
+        const edgeFade = isSprayPlume ? smoothstep(0.49, 0.31, v) : 1.0;
+
+        traceFlowStroke(u, v, mix(0.040, 0.019, frac), wPx, bType,
+          () => [jitterColor(baseFoamCol, 0.03, 0.05), jitterColor(baseFoamCol, 0.04, 0.06)],
+          {
+            opacity: (bType === 6 ? (0.48 + 0.38 * litFactor) : (0.80 + 0.18 * litFactor)) * (0.35 + 0.65 * edgeFade),
+            impasto: clamp(0.32 + 0.68 * Math.pow(litFactor, 1.1), 0.28, 1.0),
+            gloss: 0.54 + 0.24 * litFactor,
+            wetPickup: isSprayPlume ? 0.16 : 0.08,
+            bristleFreq: 9.5 + rand() * 4.0,
+            toothSens: bType === 4 ? 0.50 : 0.28
+          },
+          ts, 0.065,
+          curveCurl
+        );
+      }
+
+      // 2. Sculpted C-Curved Palette-Knife Impasto on Main Wave Lip & Sunlit Spray Billow Tops (23.40s - 24.15s)
+      for (let i = 0; i < 220; i++) {
+        const frac = i / 220;
+        const ts = mix(23.40, 23.96, frac);
+        const u = 0.13 + Math.pow(rand(), 0.85) * 0.42;
+        const wc = heroWaveY(u) + (rand() - 0.45) * 0.015;
+        const dx = 0.016 + rand() * 0.018;
+        const dy = (u > 0.44 ? 0.016 : 0.005) + (rand() - 0.45) * 0.012;
+        const warmGold = smoothstep(0.45, 0.16, u) * 0.34 + 0.18;
+        const crestWhite = [1.0, mix(0.97, 0.91, warmGold), mix(0.92, 0.76, warmGold)];
+        addLineStroke(u - dx * 0.5, wc - dy * 0.5, u + dx * 0.5, wc + dy * 0.5, 0.0065,
+          13.5 + rand() * 9.5, 8.5 + rand() * 6.5, crestWhite, [0.74, 0.83, 0.86], 4,
+          { opacity: 0.94, impasto: 0.98, gloss: 0.68, wetPickup: 0.04, bristleFreq: 9.0, toothSens: 0.46 },
+          ts, 0.055);
+      }
+
+      // Brilliant Titanium-Cream & Naples-Gold Impasto Highlights on the Exploding Reef Plume Core!
+      for (let i = 0; i < 115; i++) {
+        const ts = mix(23.72, 24.12, i / 115);
+        const u = 0.455 + rand() * 0.135;
+        const v = 0.225 + Math.pow(rand(), 1.25) * 0.175;
+        const s = sampleScene(u, v);
+        if (s.foam < 0.34) continue;
+        const warmBeam = smoothstep(0.25, 0.42, v) * 0.42;
+        const peakCol = [1.0, mix(0.97, 0.91, warmBeam), mix(0.91, 0.75, warmBeam)];
+        traceFlowStroke(u, v, 0.022 + rand() * 0.014, 11 + rand() * 8, 4,
+          () => [peakCol, [0.80, 0.86, 0.88]],
+          { opacity: 0.90, impasto: 0.96, gloss: 0.70, wetPickup: 0.05, bristleFreq: 9.0, toothSens: 0.48 },
+          ts, 0.05, 0.008);
+      }
+
+      // Fine misty wind-torn droplets whipped into the golden air above the reef (u=0.44..0.63, v=0.24..0.49)
+      for (let i = 0; i < 210; i++) {
+        const ts = mix(23.82, 24.24, i / 210);
+        const ang = 0.50 + rand() * 1.35;
+        const r = 0.03 + Math.pow(rand(), 0.75) * 0.25;
+        const u = 0.518 + Math.cos(ang) * r * 0.64 + Math.max(0, r - 0.07) * 0.20;
+        const v = 0.215 + Math.sin(ang) * r * 1.12;
+        if (u > 0.645 && v > 0.42) continue;
+        const warmLit = smoothstep(0.24, 0.48, v);
+        const cDrop = [1.0, mix(0.96, 0.89, warmLit), mix(0.90, 0.72, warmLit)];
+        addLineStroke(u, v, u + Math.cos(ang) * 0.018 + 0.007, v + Math.sin(ang) * 0.020, -0.005,
+          13 + rand() * 13, 9 + rand() * 8, cDrop, [0.66, 0.77, 0.83], 6,
+          { opacity: clamp(0.68 * (1.0 - r * 1.65), 0.12, 0.70), impasto: 0.76, gloss: 0.62, wetPickup: 0.06, bristleFreq: 11.0, toothSens: 0.38 },
+          ts, 0.05);
+      }
+
+      // 3. Perspective-Scaled Molten Dusk Shimmer on Distant Swells & Blazing Lantern Core (24.15s - 24.55s)
+      for (let i = 0; i < 85; i++) {
+        const frac = i / 85;
+        const ts = mix(24.12, 24.45, frac);
+        const v = 0.275 + Math.pow(rand(), 0.7) * 0.086;
+        const depthT = clamp((v - 0.275) / 0.088, 0, 1);
+        const spreadU = mix(0.11, 0.055, depthT);
+        const u = 0.232 + (rand() - 0.5) * 2.0 * spreadU;
+        if (Math.abs(u - 0.252) < 0.035 && Math.abs(v - 0.357) < 0.014) continue;
+
+        const halfSpan = mix(0.014, 0.0045, depthT) * (0.7 + 0.6 * rand());
+        const wGlint = mix(6.5, 2.6, depthT);
+        const gCol = depthT > 0.6 ? [1.0, 0.87, 0.54] : [0.95, 0.66, 0.28];
+        addLineStroke(u - halfSpan, v, u + halfSpan, v + 0.001, 0.001, wGlint, wGlint * 0.8,
+          gCol, [0.85, 0.46, 0.18], 2,
+          { opacity: 0.76, impasto: 0.52, gloss: 0.72, wetPickup: 0.12, bristleFreq: 6.0, toothSens: 0.30 }, ts, 0.045);
+      }
+
+      let tl = 24.32;
+      const lanternDabs = [
+        [0.695, 0.776, 0.715, 0.776, 20.5, [1.0, 0.88, 0.48], 0.80],
+        [0.698, 0.778, 0.712, 0.778, 15.5, [1.0, 0.96, 0.78], 0.94],
+        [0.701, 0.778, 0.709, 0.779, 11.0, [1.0, 1.00, 0.95], 1.00],
+        [0.677, 0.742, 0.714, 0.742, 6.8,  [0.99, 0.80, 0.42], 0.70],
+        [0.680, 0.753, 0.715, 0.753, 4.2,  [1.00, 0.87, 0.54], 0.64],
+        [0.686, 0.800, 0.712, 0.800, 4.6,  [0.98, 0.77, 0.38], 0.60]
+      ];
+      lanternDabs.forEach(([x0, y0, x1, y1, w, col, imp]) => {
+        addLineStroke(x0, y0, x1, y1, 0.001, w, w * 0.9, col, col, 4,
+          { opacity: 0.98, impasto: imp, gloss: 0.80, wetPickup: 0.02, bristleFreq: 6.0, toothSens: 0.1 }, tl, 0.055);
+        tl += 0.032;
+      });
+
+      // 4. Seven Graceful Wheeling Seagulls Banking into the Gale (24.50s - 24.90s)
+      const gulls = [
+        { x: 0.455, y: 0.715, s: 0.032, tilt:  0.24 },
+        { x: 0.528, y: 0.662, s: 0.027, tilt: -0.18 },
+        { x: 0.375, y: 0.648, s: 0.029, tilt:  0.30 },
+        { x: 0.578, y: 0.792, s: 0.023, tilt:  0.14 },
+        { x: 0.302, y: 0.712, s: 0.022, tilt: -0.22 },
+        { x: 0.612, y: 0.618, s: 0.024, tilt:  0.26 },
+        { x: 0.215, y: 0.575, s: 0.019, tilt:  0.16 }
+      ];
+
+      let tg = 24.50;
+      gulls.forEach((g) => {
+        const ct = Math.cos(g.tilt), st = Math.sin(g.tilt);
+        const gp = (lx, ly) => [g.x + (lx * ct - ly * st) * g.s, g.y + (lx * st + ly * ct) * g.s * 1.48];
+
+        const body = gp(0.0, 0.0);
+        const lElb = gp(-0.46, 0.28);
+        const lTip = gp(-1.06, 0.04);
+        const rElb = gp(0.45, 0.34);
+        const rTip = gp(0.98, 0.54);
+        const head = gp(-0.20, -0.05);
+        const tail = gp(0.24, -0.09);
+
+        const wingShadow  = [0.22, 0.27, 0.34];
+        const wingWarmLit = [1.00, 0.94, 0.78];
+        const wingTipDark = [0.09, 0.11, 0.15];
+        const pxW = g.s * 340.0;
+
+        addLineStroke(body[0], body[1], lElb[0], lElb[1], 0.0025, pxW, pxW * 0.82, wingShadow, wingWarmLit, 7,
+          { opacity: 0.96, impasto: 0.44, gloss: 0.48, wetPickup: 0.03, bristleFreq: 5.0, toothSens: 0.1 }, tg, 0.035);
+        addLineStroke(lElb[0], lElb[1], lTip[0], lTip[1], 0.0025, pxW * 0.78, pxW * 0.26, wingWarmLit, wingTipDark, 7,
+          { opacity: 0.96, impasto: 0.40, gloss: 0.48, wetPickup: 0.03, bristleFreq: 5.0, toothSens: 0.1 }, tg + 0.008, 0.035);
+
+        addLineStroke(body[0], body[1], rElb[0], rElb[1], 0.0025, pxW, pxW * 0.82, wingShadow, wingWarmLit, 7,
+          { opacity: 0.96, impasto: 0.44, gloss: 0.48, wetPickup: 0.03, bristleFreq: 5.0, toothSens: 0.1 }, tg + 0.015, 0.035);
+        addLineStroke(rElb[0], rElb[1], rTip[0], rTip[1], -0.0025, pxW * 0.78, pxW * 0.26, wingWarmLit, wingTipDark, 7,
+          { opacity: 0.96, impasto: 0.40, gloss: 0.48, wetPickup: 0.03, bristleFreq: 5.0, toothSens: 0.1 }, tg + 0.022, 0.035);
+
+        addLineStroke(lElb[0], lElb[1] + 0.0022, body[0], body[1] + 0.0018, 0.002, pxW * 0.58, pxW * 0.52, wingWarmLit, [1.0, 0.98, 0.90], 7,
+          { opacity: 0.97, impasto: 0.62, gloss: 0.58, wetPickup: 0.02, bristleFreq: 4.0, toothSens: 0.1 }, tg + 0.028, 0.032);
+        addLineStroke(body[0], body[1] + 0.0018, rElb[0], rElb[1] + 0.0022, 0.002, pxW * 0.58, pxW * 0.52, wingWarmLit, [1.0, 0.98, 0.90], 7,
+          { opacity: 0.97, impasto: 0.62, gloss: 0.58, wetPickup: 0.02, bristleFreq: 4.0, toothSens: 0.1 }, tg + 0.032, 0.032);
+        addLineStroke(head[0], head[1], tail[0], tail[1], 0.0, pxW * 0.88, pxW * 0.50, wingWarmLit, wingShadow, 7,
+          { opacity: 0.97, impasto: 0.48, gloss: 0.50, wetPickup: 0.02, bristleFreq: 4.0, toothSens: 0.1 }, tg + 0.036, 0.032);
+
+        tg += 0.052;
+      });
+
+      // 5. Burnt-sienna rigger monogram completing precisely at 25.00s!
+      const sigCol = [0.52, 0.25, 0.15];
+      const sigProps = { opacity: 0.72, impasto: 0.15, gloss: 0.48, wetPickup: 0.02, bristleFreq: 3.0, toothSens: 0.2 };
+      addLineStroke(0.918, 0.038, 0.925, 0.056, 0.0, 2.5, 2.0, sigCol, sigCol, 7, sigProps, 24.88, 0.05);
+      addLineStroke(0.925, 0.056, 0.932, 0.038, 0.0, 2.5, 2.0, sigCol, sigCol, 7, sigProps, 24.91, 0.05);
+      addLineStroke(0.920, 0.044, 0.931, 0.044, 0.0, 2.1, 1.8, sigCol, sigCol, 7, sigProps, 24.94, 0.04);
+      addLineStroke(0.936, 0.039, 0.952, 0.040, -0.001, 2.2, 1.5, sigCol, sigCol, 7, sigProps, 24.95, 0.05);
+    })();
+
+    rawStrokes.sort((a, b) => a.tEnd - b.tEnd || a.tStart - b.tStart);
+
+    // =========================================================================
+    // PACK INSTANCE BUFFER & CREATE VAO FOR GPU BRUSH RENDERING
+    // =========================================================================
+    const totalStrokes = rawStrokes.length;
+    const instanceData = new Float32Array(totalStrokes * FLOATS_PER_STROKE);
+
+    for (let i = 0; i < totalStrokes; i++) {
+      const s = rawStrokes[i];
+      const o = i * FLOATS_PER_STROKE;
+      instanceData[o + 0]  = s.p0[0];
+      instanceData[o + 1]  = s.p0[1];
+      instanceData[o + 2]  = s.p1[0];
+      instanceData[o + 3]  = s.p1[1];
+
+      instanceData[o + 4]  = s.p2[0];
+      instanceData[o + 5]  = s.p2[1];
+      instanceData[o + 6]  = s.w0;
+      instanceData[o + 7]  = s.w1;
+
+      instanceData[o + 8]  = s.colA[0];
+      instanceData[o + 9]  = s.colA[1];
+      instanceData[o + 10] = s.colA[2];
+      instanceData[o + 11] = s.type;
+
+      instanceData[o + 12] = s.colB[0];
+      instanceData[o + 13] = s.colB[1];
+      instanceData[o + 14] = s.colB[2];
+      instanceData[o + 15] = s.opacity;
+
+      instanceData[o + 16] = s.impasto;
+      instanceData[o + 17] = s.gloss;
+      instanceData[o + 18] = s.wetPickup;
+      instanceData[o + 19] = s.seed;
+
+      instanceData[o + 20] = s.tStart;
+      instanceData[o + 21] = s.tEnd;
+      instanceData[o + 22] = s.bristleFreq;
+      instanceData[o + 23] = s.toothSens;
+    }
+
+    const brushVAO = gl.createVertexArray();
+    const instanceVBO = gl.createBuffer();
+    gl.bindVertexArray(brushVAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, instanceVBO);
+    gl.bufferData(gl.ARRAY_BUFFER, instanceData, gl.STATIC_DRAW);
+
+    const strideBytes = FLOATS_PER_STROKE * 4;
+    for (let attr = 0; attr < 6; attr++) {
+      gl.enableVertexAttribArray(attr);
+      gl.vertexAttribPointer(attr, 4, gl.FLOAT, false, strideBytes, attr * 16);
+      gl.vertexAttribDivisor(attr, 1);
+    }
+    gl.bindVertexArray(null);
+
+    const uBrushCanvasSize  = gl.getUniformLocation(progBrush, 'uCanvasSize');
+    const uBrushCurrentTime = gl.getUniformLocation(progBrush, 'uCurrentTime');
+    const uBrushPrevPig     = gl.getUniformLocation(progBrush, 'uPrevPigment');
+    const uBrushPrevMat     = gl.getUniformLocation(progBrush, 'uPrevMaterial');
+
+    const uDispPig          = gl.getUniformLocation(progDisp, 'uPigmentTex');
+    const uDispMat          = gl.getUniformLocation(progDisp, 'uMaterialTex');
+    const uDispTexel        = gl.getUniformLocation(progDisp, 'uTexelSize');
+    const uDispLoupeCenter  = gl.getUniformLocation(progDisp, 'uLoupeCenter');
+    const uDispLoupeActive  = gl.getUniformLocation(progDisp, 'uLoupeActive');
+
+    const dynamicVAO = gl.createVertexArray();
+    const dynamicVBO = gl.createBuffer();
+    const dynamicBuf = new Float32Array(256 * FLOATS_PER_STROKE);
+    gl.bindVertexArray(dynamicVAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, dynamicVBO);
+    gl.bufferData(gl.ARRAY_BUFFER, dynamicBuf.byteLength, gl.DYNAMIC_DRAW);
+    for (let attr = 0; attr < 6; attr++) {
+      gl.enableVertexAttribArray(attr);
+      gl.vertexAttribPointer(attr, 4, gl.FLOAT, false, strideBytes, attr * 16);
+      gl.vertexAttribDivisor(attr, 1);
+    }
+    gl.bindVertexArray(null);
+
+    // =========================================================================
+    // LOCKSTEP DISJOINT-BATCH PING-PONG RENDERER
+    // =========================================================================
+    let bakedCount = 0;
+
+    function boxesOverlap(a, b) {
+      return a.bx0 < b.bx1 && a.bx1 > b.bx0 && a.by0 < b.by1 && a.by1 > b.by0;
+    }
+
+    function bakeStrokeRange(startIdx, endIdx, simTime) {
+      if (startIdx >= endIdx) return;
+
+      gl.viewport(0, 0, CANVAS_W, CANVAS_H);
+      gl.disable(gl.BLEND);
+      gl.enable(gl.SCISSOR_TEST);
+      gl.useProgram(progBrush);
+      gl.uniform2f(uBrushCanvasSize, CANVAS_W, CANVAS_H);
+      gl.uniform1f(uBrushCurrentTime, simTime);
+      gl.uniform1i(uBrushPrevPig, 0);
+      gl.uniform1i(uBrushPrevMat, 1);
+
+      let idx = startIdx;
+      const batchBoxes = [];
+
+      while (idx < endIdx) {
+        batchBoxes.length = 0;
+        const batchStart = idx;
+        let ux0 = CANVAS_W, uy0 = CANVAS_H, ux1 = 0, uy1 = 0;
+
+        while (idx < endIdx && batchBoxes.length < 48) {
+          const cand = rawStrokes[idx];
+          let conflict = false;
+          for (let j = 0; j < batchBoxes.length; j++) {
+            if (boxesOverlap(cand, batchBoxes[j])) {
+              conflict = true;
+              break;
+            }
+          }
+          if (conflict) break;
+          batchBoxes.push(cand);
+          if (cand.bx0 < ux0) ux0 = cand.bx0;
+          if (cand.by0 < uy0) uy0 = cand.by0;
+          if (cand.bx1 > ux1) ux1 = cand.bx1;
+          if (cand.by1 > uy1) uy1 = cand.by1;
+          idx++;
+        }
+
+        const batchLen = idx - batchStart;
+        const sw = Math.max(1, ux1 - ux0);
+        const sh = Math.max(1, uy1 - uy0);
+
+        gl.bindVertexArray(brushVAO);
+        gl.bindBuffer(gl.ARRAY_BUFFER, instanceVBO);
+        const baseByteOffset = batchStart * strideBytes;
+        for (let attr = 0; attr < 6; attr++) {
+          gl.vertexAttribPointer(attr, 4, gl.FLOAT, false, strideBytes, baseByteOffset + attr * 16);
+        }
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, canvasFBO.tex0);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, canvasFBO.tex1);
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, scratchFBO.fbo);
+        gl.scissor(ux0, uy0, sw, sh);
+        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, VERTS_PER_STROKE, batchLen);
+
+        gl.disable(gl.SCISSOR_TEST);
+        for (let j = 0; j < batchBoxes.length; j++) {
+          const b = batchBoxes[j];
+          blitDualRect(scratchFBO, canvasFBO, b.bx0, b.by0, b.bx1, b.by1);
+        }
+        gl.enable(gl.SCISSOR_TEST);
+      }
+
+      gl.disable(gl.SCISSOR_TEST);
+      gl.bindVertexArray(null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+
+    // =========================================================================
+    // TIMELINE PLAYBACK, ACTIVE IN-FLIGHT SWEEP & UI CONTROLS
+    // =========================================================================
+    let currentTime = 0.0;
+    let isPlaying = true;
+    let lastRAF = performance.now();
+    let loupeEnabled = false;
+    let loupeUV = [0.52, 0.30];
+
+    const btnPlayPause  = document.getElementById('btn-play-pause');
+    const btnReplay     = document.getElementById('btn-replay');
+    const btnLoupe      = document.getElementById('btn-loupe');
+    const loupeHint     = document.getElementById('loupe-hint');
+    const slider        = document.getElementById('timeline-slider');
+    const stageBadge    = document.getElementById('stage-badge');
+    const timeReadout   = document.getElementById('time-readout');
+    const strokeReadout = document.getElementById('stroke-readout');
+
+    function syncSliderCSSVars() {
+      slider.style.setProperty('--attr-min', slider.min || '0');
+      slider.style.setProperty('--attr-max', slider.max || '25');
+      slider.style.setProperty('--control-value', slider.value);
+    }
+
+    function getStageForTime(t) {
+      for (let i = STAGES.length - 1; i >= 0; i--) {
+        if (t >= STAGES[i].start) return STAGES[i].label;
+      }
+      return STAGES[0].label;
+    }
+
+    function seekToTime(targetT) {
+      currentTime = clamp(targetT, 0, TOTAL_DURATION);
+      let targetBaked = 0;
+      while (targetBaked < totalStrokes && rawStrokes[targetBaked].tEnd <= currentTime) {
+        targetBaked++;
+      }
+
+      if (targetBaked < bakedCount) {
+        initCanvasToPrimedLinen();
+        bakedCount = 0;
+      }
+      if (targetBaked > bakedCount) {
+        bakeStrokeRange(bakedCount, targetBaked, currentTime + 0.001);
+        bakedCount = targetBaked;
+      }
+      updateHUD();
+    }
+
+    function updateHUD() {
+      const stLabel = getStageForTime(currentTime);
+      slider.value = currentTime.toFixed(2);
+      syncSliderCSSVars();
+      slider.setAttribute('aria-valuetext', `${currentTime.toFixed(1)} 秒，${stLabel}`);
+      stageBadge.textContent = currentTime >= TOTAL_DURATION ? '完成 · 暮色狂澜与孤塔油画终稿' : stLabel;
+      timeReadout.textContent = `${currentTime.toFixed(2).padStart(5, '0')} / 25.00s`;
+
+      let visCount = bakedCount;
+      for (let i = bakedCount; i < totalStrokes; i++) {
+        const s = rawStrokes[i];
+        if (s.tStart < currentTime) visCount++;
+        if (s.tStart > currentTime + 0.25) break;
+      }
+      strokeReadout.textContent = `${visCount.toLocaleString('zh-CN')} 笔`;
+    }
+
+    function renderFrame(now) {
+      const dt = Math.min((now - lastRAF) / 1000, 0.1);
+      lastRAF = now;
+
+      if (isPlaying) {
+        currentTime = Math.min(currentTime + dt, TOTAL_DURATION);
+        if (currentTime >= TOTAL_DURATION) {
+          currentTime = TOTAL_DURATION;
+          isPlaying = false;
+          btnPlayPause.textContent = '重播';
+        }
+      }
+
+      let newBaked = bakedCount;
+      while (newBaked < totalStrokes && rawStrokes[newBaked].tEnd <= currentTime) {
+        newBaked++;
+      }
+      if (newBaked > bakedCount) {
+        bakeStrokeRange(bakedCount, newBaked, currentTime);
+        bakedCount = newBaked;
+      }
+
+      let activeCount = 0;
+      const scanLimit = Math.min(totalStrokes, bakedCount + 260);
+      for (let i = bakedCount; i < scanLimit && activeCount < 64; i++) {
+        const s = rawStrokes[i];
+        if (s.tStart < currentTime && s.tEnd > currentTime) {
+          const srcOff = i * FLOATS_PER_STROKE;
+          const dstOff = activeCount * FLOATS_PER_STROKE;
+          for (let k = 0; k < FLOATS_PER_STROKE; k++) {
+            dynamicBuf[dstOff + k] = instanceData[srcOff + k];
+          }
+          activeCount++;
+        }
+      }
+
+      let displaySource = canvasFBO;
+      if (activeCount > 0) {
+        gl.disable(gl.SCISSOR_TEST);
+        blitDualRect(canvasFBO, liveFBO, 0, 0, CANVAS_W, CANVAS_H);
+
+        gl.viewport(0, 0, CANVAS_W, CANVAS_H);
+        gl.useProgram(progBrush);
+        gl.uniform2f(uBrushCanvasSize, CANVAS_W, CANVAS_H);
+        gl.uniform1f(uBrushCurrentTime, currentTime);
+        gl.uniform1i(uBrushPrevPig, 0);
+        gl.uniform1i(uBrushPrevMat, 1);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, canvasFBO.tex0);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, canvasFBO.tex1);
+
+        gl.bindVertexArray(dynamicVAO);
+        gl.bindBuffer(gl.ARRAY_BUFFER, dynamicVBO);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, dynamicBuf.subarray(0, activeCount * FLOATS_PER_STROKE));
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, liveFBO.fbo);
+        gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, VERTS_PER_STROKE, activeCount);
+        gl.bindVertexArray(null);
+        displaySource = liveFBO;
+      }
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.disable(gl.SCISSOR_TEST);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.useProgram(progDisp);
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, displaySource.tex0);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, displaySource.tex1);
+
+      gl.uniform1i(uDispPig, 0);
+      gl.uniform1i(uDispMat, 1);
+      gl.uniform2f(uDispTexel, 1.0 / CANVAS_W, 1.0 / CANVAS_H);
+      gl.uniform2f(uDispLoupeCenter, loupeUV[0], loupeUV[1]);
+      gl.uniform1f(uDispLoupeActive, loupeEnabled ? 1.0 : 0.0);
+
+      gl.bindVertexArray(emptyVAO);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+      updateHUD();
+      requestAnimationFrame(renderFrame);
+    }
+
+    btnPlayPause.addEventListener('click', () => {
+      if (currentTime >= TOTAL_DURATION) {
+        seekToTime(0);
+        isPlaying = true;
+        btnPlayPause.textContent = '暂停';
+      } else {
+        isPlaying = !isPlaying;
+        btnPlayPause.textContent = isPlaying ? '暂停' : '继续';
+      }
+      lastRAF = performance.now();
+    });
+
+    btnReplay.addEventListener('click', () => {
+      seekToTime(0);
+      isPlaying = true;
+      btnPlayPause.textContent = '暂停';
+      lastRAF = performance.now();
+    });
+
+    btnLoupe.addEventListener('click', () => {
+      loupeEnabled = !loupeEnabled;
+      btnLoupe.setAttribute('aria-pressed', String(loupeEnabled));
+      loupeHint.classList.toggle('visible', loupeEnabled);
+    });
+
+    slider.addEventListener('input', () => {
+      const val = parseFloat(slider.value);
+      isPlaying = false;
+      btnPlayPause.textContent = val >= TOTAL_DURATION ? '重播' : '继续';
+      seekToTime(val);
+    });
+
+    function updatePointerUV(e) {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const u = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+      const v = clamp(1.0 - (e.clientY - rect.top) / rect.height, 0, 1);
+      loupeUV = [u, v];
+    }
+
+    canvas.addEventListener('pointermove', updatePointerUV);
+    canvas.addEventListener('pointerdown', (e) => {
+      updatePointerUV(e);
+      if (e.button === 0 && !loupeEnabled && e.detail === 2) {
+        loupeEnabled = true;
+        btnLoupe.setAttribute('aria-pressed', 'true');
+        loupeHint.classList.add('visible');
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON')) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        btnPlayPause.click();
+      } else if (e.key === 'l' || e.key === 'L') {
+        btnLoupe.click();
+      } else if (e.key === 'r' || e.key === 'R') {
+        btnReplay.click();
+      } else if (e.key === 'h' || e.key === 'H') {
+        document.body.classList.toggle('ui-hidden');
+      }
+    });
+
+    initCanvasToPrimedLinen();
+    syncSliderCSSVars();
+    lastRAF = performance.now();
+    requestAnimationFrame(now => {
+      renderFrame(now);
+      window.ToyEmbed?.ready();
+    });
+  })();
+  </script>
+</body>
+</html>

@@ -2,8 +2,8 @@ Home.strings({
   docTitle: { zh: '网页小品 · HTML Toys', en: 'Web Miniatures · HTML Toys' },
   title: { zh: '网页小品', en: 'Web Miniatures' },
   lede: {
-    zh: '看灯塔一笔笔成形，去池边喂几尾锦鲤。这里收藏着 Claude、GPT 等模型创作的互动网页。',
-    en: 'Watch a lighthouse take shape, brushstroke by brushstroke, or stop to feed the koi. A collection of interactive web pieces by Claude, GPT, and other AI models.',
+    zh: '看灯塔一笔笔成形，去池边喂几尾锦鲤。这里收藏着 Claude、GPT 和 Gemini 创作的互动网页。',
+    en: 'Watch a lighthouse take shape, brushstroke by brushstroke, or stop to feed the koi. A collection of interactive web pieces by Claude, GPT and Gemini.',
   },
   hint: { zh: '悬停看动态', en: 'Hover to preview' },
   langBtn: { zh: 'EN', en: '中文' },

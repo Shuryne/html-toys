@@ -1,0 +1,2011 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
+  <link rel="icon" href="data:,">
+  <title>索芙维尔播放器 · Softwell Player</title>
+  <style>
+    @layer reset, tokens, base, layout, components, utilities;
+
+    @property --accent {
+      syntax: "<color>";
+      inherits: true;
+      initial-value: #ef7b5c;
+    }
+
+    @layer reset {
+      html {
+        box-sizing: border-box;
+        -webkit-text-size-adjust: 100%;
+      }
+
+      body, h1, h2, p, ol, li, button, input {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      div, section, header, footer, main, span, label, canvas, svg {
+        box-sizing: border-box;
+      }
+
+      button, input {
+        font: inherit;
+        color: inherit;
+      }
+
+      ol {
+        list-style: none;
+      }
+    }
+
+    @layer tokens {
+      :root {
+        --surface: #e4e9e5;
+        --light: #ffffff;
+        --shadow: #b5bfb8;
+        --text-primary: #46524b;
+        --text-secondary: #8a978f;
+        --accent: #ef7b5c;
+
+        --font-rounded: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic", "Hiragino Maru Gothic ProN", system-ui, "Helvetica Neue", Arial, sans-serif;
+
+        /* Neumorphic elevations (light from top-left) */
+        --neu-card: -14px -14px 28px var(--light), 14px 14px 28px var(--shadow);
+        --neu-platter: -10px -10px 22px var(--light), 10px 10px 22px var(--shadow);
+        --neu-btn: -5px -5px 10px var(--light), 5px 5px 10px var(--shadow);
+        --neu-btn-lg: -8px -8px 16px var(--light), 8px 8px 16px var(--shadow);
+        --neu-row: -4px -4px 9px var(--light), 4px 4px 9px var(--shadow);
+
+        --neu-inset-sm: inset 3px 3px 6px var(--shadow), inset -3px -3px 6px var(--light);
+        --neu-inset-md: inset 4px 4px 8px var(--shadow), inset -4px -4px 8px var(--light);
+        --neu-inset-lg: inset 6px 6px 12px var(--shadow), inset -6px -6px 12px var(--light);
+
+        /* Physics-based spring easing */
+        --spring-easing: linear(
+          0, 0.016 0.5%, 0.06 1%, 0.226 2%, 1.116 5.4%, 1.375 6.6%,
+          1.527 7.7%, 1.565 8.2%, 1.585 8.8%, 1.581 9.3%, 1.559 9.8%,
+          1.458 10.9%, 0.937 14.3%, 0.784 15.5%, 0.693 16.6%, 0.67 17.1%,
+          0.657 17.7%, 0.671 18.7%, 0.729 19.8%, 1.042 23.3%, 1.13 24.5%,
+          1.182 25.6%, 1.201 26.7%, 1.192 27.7%, 1.156 28.8%, 0.977 32.2%,
+          0.925 33.4%, 0.894 34.5%, 0.882 35.6%, 0.887 36.6%, 0.907 37.7%,
+          1.045 42.4%, 1.069 44.5%, 1.059 46.3%, 0.979 50.9%, 0.96 53.4%,
+          0.966 55.3%, 1.013 59.9%, 1.024 62.3%, 0.986 71.2%, 1.008 79.9%,
+          0.995 88.9%, 1
+        );
+
+        --target-min: 24px;
+        transition: --accent 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+
+        @media (pointer: coarse) {
+          --target-min: 44px;
+        }
+
+        @media (prefers-contrast: more) {
+          --text-secondary: #58665e;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          transition: none;
+        }
+      }
+    }
+
+    @layer base {
+      body {
+        min-block-size: 100dvh;
+        background-color: var(--surface);
+        color: var(--text-primary);
+        font-family: var(--font-rounded);
+        line-height: 1.45;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding-block: clamp(18px, 3vh, 36px);
+        padding-inline: clamp(12px, 2.5vw, 36px);
+      }
+
+      :where(button, input):focus-visible {
+        outline: 2.5px solid var(--accent);
+        outline-offset: 4px;
+      }
+
+      ::selection {
+        background: color-mix(in oklab, var(--accent), var(--surface) 70%);
+        color: var(--text-primary);
+      }
+    }
+
+    @layer layout {
+      .player-stage {
+        inline-size: 100%;
+        max-inline-size: 774px;
+        display: grid;
+        grid-template-columns: 400px 340px;
+        gap: clamp(16px, 2.6vw, 34px);
+        align-items: start;
+        justify-content: center;
+
+        @media (max-width: 779.98px) {
+          grid-template-columns: minmax(0, 400px);
+          max-inline-size: 400px;
+          gap: 28px;
+        }
+      }
+
+      .card {
+        background-color: var(--surface);
+        border-radius: 38px;
+        box-shadow: var(--neu-card);
+        padding: 25px 26px;
+        position: relative;
+
+        @media (max-width: 420px) {
+          padding: 22px 18px;
+          border-radius: 36px;
+        }
+
+        @media (forced-colors: active) {
+          border: 1px solid CanvasText;
+        }
+      }
+
+      .player-card {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .queue-card {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+    }
+
+    @layer components {
+      /* Typography helpers */
+      .small-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+      }
+
+      .tabular-time {
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* Neumorphic Base Button */
+      .neu-btn {
+        appearance: none;
+        border: 0;
+        background-color: var(--surface);
+        color: var(--text-primary);
+        box-shadow: var(--neu-btn);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-inline-size: var(--target-min);
+        min-block-size: var(--target-min);
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          box-shadow 0.2s ease,
+          color 0.25s ease,
+          transform 0.16s ease;
+
+        &:hover:not(:disabled, :active, [aria-pressed="true"], .is-playing) {
+          color: color-mix(in oklab, var(--accent), var(--text-primary) 55%);
+        }
+
+        &:active,
+        &[aria-pressed="true"],
+        &.is-playing {
+          box-shadow: var(--neu-inset-md);
+        }
+
+        &[aria-pressed="true"] {
+          color: var(--accent);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          transition: none;
+        }
+
+        @media (forced-colors: active) {
+          border: 1px solid ButtonText;
+          &:is([aria-pressed="true"], .is-playing) {
+            outline: 2px solid Highlight;
+            outline-offset: -3px;
+          }
+        }
+      }
+
+      /* 1. Top Bar */
+      .top-bar {
+        display: grid;
+        grid-template-columns: 42px 1fr 42px;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .circle-btn {
+        inline-size: 42px;
+        block-size: 42px;
+        border-radius: 50%;
+      }
+
+      .top-meta {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-inline-size: 0;
+      }
+
+      .top-meta-line1 {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+      }
+
+      .top-meta-line2 {
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* Heart Button & Spring Bounce */
+      .heart-btn {
+        color: var(--text-secondary);
+
+        & .heart-svg {
+          inline-size: 19px;
+          block-size: 19px;
+          fill: transparent;
+          stroke: currentColor;
+          stroke-width: 2;
+          transition: fill 0.25s ease, stroke 0.25s ease;
+
+          @media (prefers-reduced-motion: reduce) {
+            transition: none;
+          }
+        }
+
+        &[aria-pressed="true"] {
+          color: var(--accent);
+
+          & .heart-svg {
+            fill: var(--accent);
+            stroke: var(--accent);
+          }
+        }
+
+        &.is-bouncing .heart-svg {
+          @media (prefers-reduced-motion: no-preference) {
+            animation: heart-spring 0.68s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation-timing-function: var(--spring-easing);
+          }
+        }
+      }
+
+      @keyframes heart-spring {
+        0% {
+          scale: 0.62;
+        }
+        100% {
+          scale: 1;
+        }
+      }
+
+      /* 2. Platter Base & Vinyl Record */
+      .platter-stage {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding-block: 2px;
+      }
+
+      .platter-base {
+        inline-size: 214px;
+        block-size: 214px;
+        border-radius: 50%;
+        background-color: var(--surface);
+        box-shadow: var(--neu-platter);
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      .platter-well {
+        inline-size: 100%;
+        block-size: 100%;
+        border-radius: 50%;
+        background-color: var(--surface);
+        box-shadow: var(--neu-inset-md);
+        padding: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .vinyl-disc {
+        inline-size: 100%;
+        block-size: 100%;
+        border-radius: 50%;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow:
+          -2px -2px 5px rgba(255, 255, 255, 0.7),
+          4px 4px 10px rgba(70, 82, 75, 0.32);
+      }
+
+      .vinyl-grooves {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background:
+          /* Specular sheen across micro-grooves */
+          conic-gradient(
+            from 32deg,
+            transparent 0deg,
+            rgba(255, 255, 255, 0.11) 24deg,
+            transparent 52deg,
+            transparent 180deg,
+            rgba(255, 255, 255, 0.09) 204deg,
+            transparent 234deg,
+            transparent 360deg
+          ),
+          /* Track gap rings */
+          radial-gradient(
+            circle at center,
+            transparent 0 40%,
+            rgba(255, 255, 255, 0.05) 40.5% 41.2%,
+            transparent 41.6% 58%,
+            rgba(0, 0, 0, 0.24) 58.5% 59.3%,
+            transparent 59.8% 76%,
+            rgba(255, 255, 255, 0.045) 76.4% 77.1%,
+            transparent 77.5% 95.5%,
+            #171c19 96.5% 100%
+          ),
+          /* Fine repeating radial grooves */
+          repeating-radial-gradient(
+            circle at center,
+            #262d29 0px,
+            #262d29 1.3px,
+            #1b211e 1.5px,
+            #313934 2.5px,
+            #1f2522 3.1px
+          );
+
+        @media (prefers-reduced-motion: no-preference) {
+          animation: vinyl-spin 7s linear infinite;
+          animation-play-state: paused;
+        }
+      }
+
+      /* Raised Accent Center Label (stationary lighting from top-left) */
+      .vinyl-label {
+        position: relative;
+        z-index: 2;
+        inline-size: 76px;
+        block-size: 76px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle at 30% 28%,
+          color-mix(in oklab, var(--accent), var(--light) 42%) 0%,
+          var(--accent) 56%,
+          color-mix(in oklab, var(--accent), #1f2622 24%) 100%
+        );
+        box-shadow:
+          -2px -2px 5px rgba(255, 255, 255, 0.26),
+          3px 3px 8px rgba(16, 22, 19, 0.48),
+          inset 1.5px 1.5px 2.5px rgba(255, 255, 255, 0.48),
+          inset -1.5px -1.5px 3px rgba(30, 38, 34, 0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Printed typography ring on the center label that rotates with the vinyl */
+      .vinyl-label-rotor {
+        position: absolute;
+        inset: 5px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.36);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        padding-block: 7px;
+        pointer-events: none;
+
+        @media (prefers-reduced-motion: no-preference) {
+          animation: vinyl-spin 7s linear infinite;
+          animation-play-state: paused;
+        }
+      }
+
+      .vinyl-disc.is-spinning :is(.vinyl-grooves, .vinyl-label-rotor) {
+        @media (prefers-reduced-motion: no-preference) {
+          animation-play-state: running;
+        }
+      }
+
+      .vinyl-label-brand {
+        font-size: 0.48rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.92);
+        line-height: 1;
+      }
+
+      .vinyl-label-num {
+        font-size: 0.54rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #ffffff;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* Center Spindle Hole */
+      .vinyl-spindle {
+        position: relative;
+        z-index: 3;
+        inline-size: 13px;
+        block-size: 13px;
+        border-radius: 50%;
+        background-color: var(--surface);
+        box-shadow:
+          inset 2px 2px 3.5px var(--shadow),
+          inset -1px -1px 2px var(--light),
+          0 0 0 1.5px rgba(28, 35, 31, 0.24);
+      }
+
+      @keyframes vinyl-spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* 3. Track Title & Artist (with switch fade + subtle slide) */
+      .track-header {
+        text-align: center;
+        min-block-size: 52px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .track-header-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        transition:
+          opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+          transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+
+        &.is-exiting-next {
+          opacity: 0;
+          transform: translateY(-7px);
+        }
+
+        &.is-entering-next {
+          opacity: 0;
+          transform: translateY(7px);
+          transition: none;
+        }
+
+        &.is-exiting-prev {
+          opacity: 0;
+          transform: translateY(7px);
+        }
+
+        &.is-entering-prev {
+          opacity: 0;
+          transform: translateY(-7px);
+          transition: none;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          transition: none;
+        }
+      }
+
+      .track-title {
+        font-size: 1.32rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: 0.01em;
+      }
+
+      .track-artist {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+      }
+
+      /* 4. Recessed Spectrum Display Area */
+      .spectrum-well {
+        position: relative;
+        block-size: 100px;
+        border-radius: 22px;
+        background-color: var(--surface);
+        box-shadow: var(--neu-inset-lg);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        @media (forced-colors: active) {
+          border: 1px solid CanvasText;
+        }
+      }
+
+      .spectrum-canvas {
+        inline-size: 100%;
+        block-size: 100%;
+        display: block;
+      }
+
+      .spectrum-hint {
+        position: absolute;
+        inset-inline: 14px;
+        inset-block-start: 11px;
+        text-align: center;
+        font-size: 0.74rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        background-color: color-mix(in oklab, var(--surface) 82%, transparent);
+        padding: 4px 10px;
+        border-radius: 999px;
+        pointer-events: none;
+        transition: opacity 0.35s ease, transform 0.35s ease;
+
+        &.is-hidden {
+          opacity: 0;
+          transform: translateY(-4px);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          transition: none;
+        }
+      }
+
+      /* 5. Native Range Sliders (Progress & Motion Intensity) */
+      .progress-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .neu-slider {
+        --slider-track-size: 8px;
+        --slider-thumb-size: 22px;
+        --slider-track-radius: 999px;
+        --slider-thumb-radius: 50%;
+        --slider-direction: to right;
+
+        &:dir(rtl) {
+          --slider-direction: to left;
+        }
+
+        --attr-min: attr(min type(<number>), 0);
+        --attr-max: attr(max type(<number>), 100);
+        --control-value: attr(value type(<number>), 0);
+        --slider-progress: calc(
+          progress(var(--control-value), var(--attr-min), var(--attr-max)) * 100%
+        );
+
+        appearance: none;
+        inline-size: 100%;
+        block-size: 28px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+
+        @media (pointer: coarse) {
+          block-size: 36px;
+        }
+      }
+
+      @supports not (opacity: progress(1, 0, 100)) {
+        .neu-slider {
+          --slider-progress: calc(
+            (var(--control-value) - var(--attr-min)) /
+            (var(--attr-max) - var(--attr-min)) * 100%
+          );
+        }
+      }
+
+      /* WebKit / Blink Slider Track & Thumb */
+      .neu-slider::-webkit-slider-runnable-track {
+        block-size: var(--slider-track-size);
+        border: 0;
+        border-radius: var(--slider-track-radius);
+        background-color: var(--surface);
+        background-image: linear-gradient(
+          var(--slider-direction),
+          color-mix(in oklab, var(--accent), var(--light) 34%),
+          var(--accent)
+        );
+        background-size: var(--slider-progress) 100%;
+        background-repeat: no-repeat;
+        box-shadow: var(--neu-inset-sm);
+      }
+
+      .neu-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        inline-size: var(--slider-thumb-size);
+        block-size: var(--slider-thumb-size);
+        margin-block-start: calc(
+          (var(--slider-track-size) - var(--slider-thumb-size)) / 2
+        );
+        border: 0;
+        border-radius: var(--slider-thumb-radius);
+        background: radial-gradient(
+          circle at center,
+          var(--accent) 0 4px,
+          color-mix(in oklab, var(--accent), var(--surface) 82%) 4.6px,
+          var(--surface) 5.2px 100%
+        );
+        box-shadow: -3px -3px 6px var(--light), 3px 3px 7px var(--shadow);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+        @media (prefers-reduced-motion: reduce) {
+          transition: none;
+        }
+      }
+
+      .neu-slider:active::-webkit-slider-thumb {
+        transform: scale(1.06);
+      }
+
+      /* Firefox Slider Track, Progress & Thumb */
+      .neu-slider::-moz-range-track {
+        block-size: var(--slider-track-size);
+        border: 0;
+        border-radius: var(--slider-track-radius);
+        background-color: var(--surface);
+        box-shadow: var(--neu-inset-sm);
+      }
+
+      .neu-slider::-moz-range-progress {
+        block-size: var(--slider-track-size);
+        border-radius: var(--slider-track-radius);
+        background-image: linear-gradient(
+          var(--slider-direction),
+          color-mix(in oklab, var(--accent), var(--light) 34%),
+          var(--accent)
+        );
+      }
+
+      .neu-slider::-moz-range-thumb {
+        inline-size: var(--slider-thumb-size);
+        block-size: var(--slider-thumb-size);
+        border: 0;
+        border-radius: var(--slider-thumb-radius);
+        background: radial-gradient(
+          circle at center,
+          var(--accent) 0 4px,
+          color-mix(in oklab, var(--accent), var(--surface) 82%) 4.6px,
+          var(--surface) 5.2px 100%
+        );
+        box-shadow: -3px -3px 6px var(--light), 3px 3px 7px var(--shadow);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+        @media (prefers-reduced-motion: reduce) {
+          transition: none;
+        }
+      }
+
+      .neu-slider:active::-moz-range-thumb {
+        transform: scale(1.06);
+      }
+
+      .time-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.76rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        padding-inline: 2px;
+      }
+
+      /* 6. Transport Controls */
+      .transport-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-inline: 4px;
+        gap: 10px;
+      }
+
+      .ctrl-sm {
+        inline-size: 40px;
+        block-size: 40px;
+        border-radius: 50%;
+        color: var(--text-secondary);
+      }
+
+      .ctrl-md {
+        inline-size: 46px;
+        block-size: 46px;
+        border-radius: 50%;
+      }
+
+      .ctrl-play {
+        inline-size: 68px;
+        block-size: 68px;
+        border-radius: 50%;
+        box-shadow: var(--neu-btn-lg);
+        color: var(--accent);
+
+        &:active,
+        &.is-playing {
+          box-shadow: var(--neu-inset-lg);
+        }
+      }
+
+      .icon-svg {
+        inline-size: 20px;
+        block-size: 20px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex: none;
+      }
+
+      .ctrl-sm .icon-svg {
+        inline-size: 17px;
+        block-size: 17px;
+      }
+
+      .ctrl-play .icon-svg {
+        inline-size: 26px;
+        block-size: 26px;
+        fill: currentColor;
+        stroke: none;
+      }
+
+      .ctrl-play .icon-play {
+        transform: translateX(1.5px);
+      }
+
+      .ctrl-play .icon-pause {
+        display: none;
+      }
+
+      .ctrl-play.is-playing .icon-play {
+        display: none;
+      }
+
+      .ctrl-play.is-playing .icon-pause {
+        display: block;
+      }
+
+      /* 7. Recessed Motion Intensity Slider */
+      .intensity-well {
+        border-radius: 20px;
+        background-color: var(--surface);
+        box-shadow: var(--neu-inset-md);
+        padding: 11px 16px 9px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        @media (forced-colors: active) {
+          border: 1px solid CanvasText;
+        }
+      }
+
+      .intensity-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .intensity-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        cursor: pointer;
+      }
+
+      .intensity-value {
+        font-size: 0.74rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .intensity-slider {
+        --slider-track-size: 6px;
+        --slider-thumb-size: 18px;
+        block-size: 24px;
+      }
+
+      /* Queue Card Components */
+      .queue-header {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding-inline: 4px;
+      }
+
+      .queue-title-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .queue-heading {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .queue-badge {
+        font-size: 0.74rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .queue-list {
+        display: flex;
+        flex-direction: column;
+        gap: 13px;
+      }
+
+      .queue-item-btn {
+        appearance: none;
+        border: 0;
+        inline-size: 100%;
+        background-color: var(--surface);
+        box-shadow: var(--neu-row);
+        border-radius: 20px;
+        padding: 13px 15px;
+        display: grid;
+        grid-template-columns: 26px 1fr auto;
+        align-items: center;
+        gap: 12px;
+        text-align: start;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          box-shadow 0.2s ease,
+          transform 0.16s ease;
+
+        &:hover:not(:active, [aria-current="true"]) .queue-item-title {
+          color: color-mix(in oklab, var(--accent), var(--text-primary) 45%);
+        }
+
+        &:active,
+        &[aria-current="true"] {
+          box-shadow: var(--neu-inset-md);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          transition: none;
+        }
+
+        @media (forced-colors: active) {
+          border: 1px solid ButtonText;
+          &[aria-current="true"] {
+            outline: 2px solid Highlight;
+            outline-offset: -3px;
+          }
+        }
+      }
+
+      .queue-slot {
+        inline-size: 26px;
+        block-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .queue-num {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* 3 CSS Mini Spectrum Bars on Active Queue Row */
+      .mini-eq {
+        display: none;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 3px;
+        inline-size: 16px;
+        block-size: 15px;
+      }
+
+      .mini-eq-bar {
+        inline-size: 3px;
+        block-size: 100%;
+        border-radius: 999px;
+        background-color: var(--accent);
+        transform-origin: center bottom;
+
+        &:nth-child(1) {
+          transform: scaleY(0.45);
+        }
+        &:nth-child(2) {
+          transform: scaleY(0.88);
+        }
+        &:nth-child(3) {
+          transform: scaleY(0.62);
+        }
+      }
+
+      .queue-item-btn[aria-current="true"] {
+        & .queue-num {
+          display: none;
+        }
+        & .mini-eq {
+          display: inline-flex;
+        }
+        & .queue-item-title {
+          color: var(--accent);
+        }
+      }
+
+      .queue-list.is-playing .queue-item-btn[aria-current="true"] .mini-eq-bar {
+        @media (prefers-reduced-motion: no-preference) {
+          animation: mini-eq-bounce 0.78s ease-in-out infinite alternate;
+
+          &:nth-child(1) {
+            animation-duration: 0.64s;
+            animation-delay: -0.15s;
+          }
+          &:nth-child(2) {
+            animation-duration: 0.82s;
+            animation-delay: -0.42s;
+          }
+          &:nth-child(3) {
+            animation-duration: 0.71s;
+            animation-delay: -0.28s;
+          }
+        }
+      }
+
+      @keyframes mini-eq-bounce {
+        0% {
+          transform: scaleY(0.26);
+        }
+        50% {
+          transform: scaleY(0.96);
+        }
+        100% {
+          transform: scaleY(0.48);
+        }
+      }
+
+      .queue-item-meta {
+        min-inline-size: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .queue-item-title {
+        font-size: 0.94rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: color 0.25s ease;
+
+        @media (prefers-reduced-motion: reduce) {
+          transition: none;
+        }
+      }
+
+      .queue-item-artist {
+        font-size: 0.77rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .queue-item-duration {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .queue-footnote {
+        margin-block-start: 4px;
+        padding-block-start: 14px;
+        padding-inline: 4px;
+        border-block-start: 1px solid color-mix(in oklab, var(--shadow) 45%, transparent);
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        line-height: 1.55;
+      }
+    }
+
+    @layer utilities {
+      .visually-hidden:where(:not(:focus-within, :active)) {
+        position: absolute !important;
+        clip-path: inset(50%) !important;
+        overflow: hidden !important;
+        width: 1px !important;
+        height: 1px !important;
+        margin: -1px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        white-space: nowrap !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="player-stage">
+    <h1 class="visually-hidden">索芙维尔播放器 Softwell Player</h1>
+
+    <!-- 左栏：400px 播放器卡片 -->
+    <section class="card player-card" aria-label="播放器控制面板">
+      <!-- 1. 顶栏 -->
+      <header class="top-bar">
+        <button type="button" class="neu-btn circle-btn" id="restartBtn" aria-label="从头播放">
+          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3.5 12a8.5 8.5 0 1 0 2.45-5.98L3.5 8.5" />
+            <path d="M3.5 4v4.5H8" />
+          </svg>
+        </button>
+
+        <div class="top-meta">
+          <span class="top-meta-line1">索芙维尔 · 正在播放</span>
+          <span class="top-meta-line2" id="sideTrackCounter">A 面 · 第 1 / 5 首</span>
+        </div>
+
+        <button type="button" class="neu-btn circle-btn heart-btn" id="likeBtn" aria-label="喜欢" aria-pressed="false">
+          <svg class="heart-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 20.4l-1.35-1.22C5.6 14.62 2.5 11.8 2.5 8.32 2.5 5.5 4.72 3.3 7.52 3.3c1.6 0 3.14.75 4.48 1.98 1.34-1.23 2.88-1.98 4.48-1.98 2.8 0 5.02 2.2 5.02 5.02 0 3.48-3.1 6.3-8.15 10.86L12 20.4z" stroke-linejoin="round" />
+          </svg>
+        </button>
+      </header>
+
+      <!-- 2. 凸起的唱盘托座与黑胶唱片 -->
+      <div class="platter-stage" aria-hidden="true">
+        <div class="platter-base">
+          <div class="platter-well">
+            <div class="vinyl-disc" id="vinylDisc">
+              <div class="vinyl-grooves"></div>
+              <div class="vinyl-label">
+                <div class="vinyl-label-rotor">
+                  <span class="vinyl-label-brand">Softwell</span>
+                  <span class="vinyl-label-num" id="vinylTrackNum">No. 01</span>
+                </div>
+                <div class="vinyl-spindle"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 曲名与艺人名 -->
+      <div class="track-header" aria-live="polite" aria-atomic="true">
+        <div class="track-header-inner" id="trackHeaderInner">
+          <h2 class="track-title" id="trackTitle">潮汐时分</h2>
+          <p class="track-artist" id="trackArtist">微光港</p>
+        </div>
+      </div>
+
+      <!-- 4. 内凹的频谱显示区 -->
+      <div class="spectrum-well">
+        <canvas class="spectrum-canvas" id="spectrumCanvas" role="img" aria-label="随曲目节奏变化的三十段镜像合成频谱动画"></canvas>
+        <p class="spectrum-hint" id="spectrumHint">按下播放。没有声音，画面会随节奏动起来。</p>
+      </div>
+
+      <!-- 5. 带时间读数的播放进度条 -->
+      <div class="progress-group">
+        <label for="progressSlider" class="visually-hidden">播放进度</label>
+        <input
+          type="range"
+          id="progressSlider"
+          class="neu-slider"
+          min="0"
+          max="222"
+          step="0.1"
+          value="0"
+          aria-valuetext="0分00秒，共3分42秒"
+        >
+        <div class="time-row tabular-time" aria-hidden="true">
+          <span id="currentTimeEl">0:00</span>
+          <span id="durationTimeEl">3:42</span>
+        </div>
+      </div>
+
+      <!-- 6. 控制栏：随机播放、上一首、大号播放按钮、下一首、单曲循环 -->
+      <div class="transport-bar" role="group" aria-label="播放控制">
+        <button type="button" class="neu-btn ctrl-sm" id="shuffleBtn" aria-label="随机播放" aria-pressed="false">
+          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M16 3h5v5" />
+            <path d="M4 20L21 3" />
+            <path d="M21 16v5h-5" />
+            <path d="M15 15l6 6" />
+            <path d="M4 4l5 5" />
+          </svg>
+        </button>
+
+        <button type="button" class="neu-btn ctrl-md" id="prevBtn" aria-label="上一首">
+          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6v12" />
+            <path d="M18 6l-9 6 9 6V6z" fill="currentColor" />
+          </svg>
+        </button>
+
+        <button type="button" class="neu-btn ctrl-play" id="playBtn" aria-label="播放">
+          <svg class="icon-svg icon-play" id="playIcon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 5.4v13.2a1 1 0 0 0 1.54.84l10.4-6.6a1 1 0 0 0 0-1.68L9.54 4.56A1 1 0 0 0 8 5.4z" />
+          </svg>
+          <svg class="icon-svg icon-pause" id="pauseIcon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="6.5" y="5" width="4" height="14" rx="1.5" />
+            <rect x="13.5" y="5" width="4" height="14" rx="1.5" />
+          </svg>
+        </button>
+
+        <button type="button" class="neu-btn ctrl-md" id="nextBtn" aria-label="下一首">
+          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 6v12" />
+            <path d="M6 6l9 6-9 6V6z" fill="currentColor" />
+          </svg>
+        </button>
+
+        <button type="button" class="neu-btn ctrl-sm" id="repeatBtn" aria-label="单曲循环" aria-pressed="false">
+          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M17 2l4 4-4 4" />
+            <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+            <path d="M7 22l-4-4 4-4" />
+            <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+            <path d="M11.5 10.2L12.8 9v5.5" stroke-width="1.8" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- 7. 内凹的动效强度滑杆 -->
+      <div class="intensity-well">
+        <div class="intensity-header">
+          <label for="intensitySlider" class="intensity-label">动效强度 · Motion</label>
+          <span class="intensity-value" id="intensityValueEl">80%</span>
+        </div>
+        <input
+          type="range"
+          id="intensitySlider"
+          class="neu-slider intensity-slider"
+          min="0"
+          max="100"
+          step="1"
+          value="80"
+          aria-valuetext="动效强度 80%"
+        >
+      </div>
+    </section>
+
+    <!-- 右栏：340px 播放队列卡片 -->
+    <section class="card queue-card" aria-labelledby="queueHeading">
+      <header class="queue-header">
+        <span class="small-label">Softwell Records · Cat. SW-01</span>
+        <div class="queue-title-row">
+          <h2 class="queue-heading" id="queueHeading">播放队列</h2>
+          <span class="queue-badge tabular-time">Side A · 19:25</span>
+        </div>
+      </header>
+
+      <ol class="queue-list" id="queueList" role="list">
+        <li>
+          <button type="button" class="queue-item-btn" data-index="0" aria-current="true">
+            <span class="queue-slot" aria-hidden="true">
+              <span class="queue-num">01</span>
+              <span class="mini-eq">
+                <span class="mini-eq-bar"></span>
+                <span class="mini-eq-bar"></span>
+                <span class="mini-eq-bar"></span>
+              </span>
+            </span>
+            <span class="queue-item-meta">
+              <span class="queue-item-title">潮汐时分</span>
+              <span class="queue-item-artist">微光港</span>
+            </span>
+            <span class="queue-item-duration">3:42</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="queue-item-btn" data-index="1">
+            <span class="queue-slot" aria-hidden="true">
+              <span class="queue-num">02</span>
+              <span class="mini-eq">
+                <span class="mini-eq-bar"></span>
+                <span class="mini-eq-bar"></span>
+                <span class="mini-eq-bar"></span>
+              </span>
+            </span>
+            <span class="queue-item-meta">
+              <span class="queue-item-title">纸灯悠悠</span>
+              <span class="queue-item-artist">奥达·芬威克</span>
+            </span>
+            <span class="queue-item-duration">3:18</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="queue-item-btn" data-index="2">
+            <span class="queue-slot" aria-hidden="true">
+              <span class="queue-num">03</span>
+              <span class="mini-eq">
+                <span class="mini-eq-bar"></span>
+                <span class="mini-eq-bar"></span>
+                <span class="mini-eq-bar"></span>
+              </span>
+            </span>
+            <span class="queue-item-meta">
+              <span class="queue-item-title">温室天气</span>
+              <span class="queue-item-artist">静谧果园</span>
+            </span>
+            <span class="queue-item-duration">4:05</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="queue-item-btn" data-index="3">
+            <span class="queue-slot" aria-hidden="true">
+              <span class="queue-num">04</span>
+              <span class="mini-eq">
+                <span class="mini-eq-bar"></span>
+                <span class="mini-eq-bar"></span>
+                <span class="mini-eq-bar"></span>
+              </span>
+            </span>
+            <span class="queue-item-meta">
+              <span class="queue-item-title">北行杂讯</span>
+              <span class="queue-item-artist">米蕾拉·万斯</span>
+            </span>
+            <span class="queue-item-duration">3:54</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="queue-item-btn" data-index="4">
+            <span class="queue-slot" aria-hidden="true">
+              <span class="queue-num">05</span>
+              <span class="mini-eq">
+                <span class="mini-eq-bar"></span>
+                <span class="mini-eq-bar"></span>
+                <span class="mini-eq-bar"></span>
+              </span>
+            </span>
+            <span class="queue-item-meta">
+              <span class="queue-item-title">凌晨绽放</span>
+              <span class="queue-item-artist">霍利斯与雷恩</span>
+            </span>
+            <span class="queue-item-duration">4:26</span>
+          </button>
+        </li>
+      </ol>
+
+      <footer class="queue-footnote">
+        「索芙维尔」厂牌与五首曲目皆属虚构，页面不含任何音频，频谱画面由代码随虚拟节拍实时生成。
+      </footer>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const TRACKS = [
+        {
+          title: '潮汐时分',
+          artist: '微光港',
+          duration: 222, // 3:42
+          accent: '#ef7b5c', // 珊瑚橙
+          bpm: 92,
+          profile: {
+            bassBase: 0.44,
+            bassDecay: 3.1,
+            floor: 0.08,
+            highGain: 0.20,
+            midPeakPos: 0.36,
+            midPeakAmt: 0.14,
+            swaySpeed1: 1.55,
+            swaySpeed2: 0.92,
+            swayDepth: 0.12,
+            phaseOffset: 0.4,
+            kickGain: 0.50,
+            snareGain: 0.36,
+            hatGain: 0.25,
+            kickPattern:  [1, 0, 0, 0.35, 0, 0, 0.78, 0, 0.88, 0, 0.45, 0, 0, 0, 0.3, 0],
+            snarePattern: [0, 0, 0, 0,    1, 0, 0, 0.18, 0, 0.22, 0, 0,    1, 0, 0, 0.15],
+            hatPattern:   [0.6, 0.25, 0.85, 0.3, 0.6, 0.25, 0.9, 0.35, 0.6, 0.25, 0.85, 0.3, 0.65, 0.3, 0.95, 0.45]
+          }
+        },
+        {
+          title: '纸灯悠悠',
+          artist: '奥达·芬威克',
+          duration: 198, // 3:18
+          accent: '#3fa5a0', // 蓝绿色
+          bpm: 78,
+          profile: {
+            bassBase: 0.38,
+            bassDecay: 2.6,
+            floor: 0.09,
+            highGain: 0.24,
+            midPeakPos: 0.46,
+            midPeakAmt: 0.18,
+            swaySpeed1: 1.15,
+            swaySpeed2: 0.72,
+            swayDepth: 0.16,
+            phaseOffset: 1.7,
+            kickGain: 0.40,
+            snareGain: 0.32,
+            hatGain: 0.28,
+            kickPattern:  [0.95, 0, 0, 0, 0, 0, 0.55, 0, 0, 0.65, 0, 0, 0, 0, 0.35, 0],
+            snarePattern: [0, 0, 0, 0,    0.85, 0, 0, 0, 0, 0, 0, 0.25, 0.9, 0, 0, 0],
+            hatPattern:   [0.5, 0.35, 0.7, 0.35, 0.5, 0.35, 0.8, 0.4, 0.5, 0.35, 0.75, 0.35, 0.55, 0.4, 0.85, 0.5]
+          }
+        },
+        {
+          title: '温室天气',
+          artist: '静谧果园',
+          duration: 245, // 4:05
+          accent: '#d99a2b', // 琥珀黄
+          bpm: 108,
+          profile: {
+            bassBase: 0.46,
+            bassDecay: 3.4,
+            floor: 0.08,
+            highGain: 0.22,
+            midPeakPos: 0.32,
+            midPeakAmt: 0.16,
+            swaySpeed1: 1.9,
+            swaySpeed2: 1.25,
+            swayDepth: 0.11,
+            phaseOffset: 2.9,
+            kickGain: 0.54,
+            snareGain: 0.38,
+            hatGain: 0.30,
+            kickPattern:  [1, 0, 0, 0, 0.92, 0, 0, 0.28, 1, 0, 0, 0, 0.92, 0, 0.42, 0],
+            snarePattern: [0, 0, 0, 0, 1,    0, 0, 0,    0, 0, 0, 0, 1,    0, 0, 0.28],
+            hatPattern:   [0.35, 0.45, 0.95, 0.45, 0.35, 0.45, 0.95, 0.5, 0.35, 0.45, 0.95, 0.45, 0.4, 0.5, 1.0, 0.55]
+          }
+        },
+        {
+          title: '北行杂讯',
+          artist: '米蕾拉·万斯',
+          duration: 234, // 3:54
+          accent: '#9a6fc4', // 梅紫
+          bpm: 122,
+          profile: {
+            bassBase: 0.42,
+            bassDecay: 3.8,
+            floor: 0.07,
+            highGain: 0.34,
+            midPeakPos: 0.58,
+            midPeakAmt: 0.13,
+            swaySpeed1: 2.25,
+            swaySpeed2: 1.48,
+            swayDepth: 0.10,
+            phaseOffset: 4.1,
+            kickGain: 0.52,
+            snareGain: 0.42,
+            hatGain: 0.40,
+            kickPattern:  [1, 0, 0, 0.55, 0, 0, 0.85, 0, 0, 0.72, 0, 0, 0.8, 0, 0, 0.4],
+            snarePattern: [0, 0, 0.2, 0,  1, 0, 0, 0.35, 0, 0, 0.28, 0, 1,   0, 0.3, 0.2],
+            hatPattern:   [0.85, 0.55, 0.9, 0.65, 0.75, 0.6, 1.0, 0.5, 0.85, 0.6, 0.95, 0.7, 0.8, 0.65, 1.0, 0.75]
+          }
+        },
+        {
+          title: '凌晨绽放',
+          artist: '霍利斯与雷恩',
+          duration: 266, // 4:26
+          accent: '#5b8fd9', // 天空蓝
+          bpm: 86,
+          profile: {
+            bassBase: 0.48,
+            bassDecay: 2.85,
+            floor: 0.09,
+            highGain: 0.26,
+            midPeakPos: 0.42,
+            midPeakAmt: 0.17,
+            swaySpeed1: 1.32,
+            swaySpeed2: 0.84,
+            swayDepth: 0.15,
+            phaseOffset: 5.3,
+            kickGain: 0.48,
+            snareGain: 0.35,
+            hatGain: 0.27,
+            kickPattern:  [1, 0, 0, 0.62, 0, 0, 0, 0, 0.82, 0, 0, 0.52, 0, 0.35, 0, 0],
+            snarePattern: [0, 0, 0, 0,    0.95, 0, 0, 0.2, 0, 0, 0, 0,  0.95, 0, 0, 0.3],
+            hatPattern:   [0.55, 0.25, 0.8, 0.3, 0.5, 0.3, 0.88, 0.45, 0.55, 0.25, 0.82, 0.35, 0.55, 0.35, 0.92, 0.4]
+          }
+        }
+      ];
+
+      const BAR_COUNT = 30;
+      const rootEl = document.documentElement;
+      const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      // DOM Elements
+      const restartBtn = document.getElementById('restartBtn');
+      const sideTrackCounter = document.getElementById('sideTrackCounter');
+      const likeBtn = document.getElementById('likeBtn');
+      const vinylDisc = document.getElementById('vinylDisc');
+      const vinylTrackNum = document.getElementById('vinylTrackNum');
+      const trackHeaderInner = document.getElementById('trackHeaderInner');
+      const trackTitleEl = document.getElementById('trackTitle');
+      const trackArtistEl = document.getElementById('trackArtist');
+      const spectrumCanvas = document.getElementById('spectrumCanvas');
+      const spectrumHint = document.getElementById('spectrumHint');
+      const progressSlider = document.getElementById('progressSlider');
+      const currentTimeEl = document.getElementById('currentTimeEl');
+      const durationTimeEl = document.getElementById('durationTimeEl');
+      const shuffleBtn = document.getElementById('shuffleBtn');
+      const prevBtn = document.getElementById('prevBtn');
+      const playBtn = document.getElementById('playBtn');
+      const playIcon = document.getElementById('playIcon');
+      const pauseIcon = document.getElementById('pauseIcon');
+      const nextBtn = document.getElementById('nextBtn');
+      const repeatBtn = document.getElementById('repeatBtn');
+      const intensitySlider = document.getElementById('intensitySlider');
+      const intensityValueEl = document.getElementById('intensityValueEl');
+      const queueList = document.getElementById('queueList');
+      const queueButtons = Array.from(queueList.querySelectorAll('.queue-item-btn'));
+
+      // Player State
+      const state = {
+        trackIndex: 0,
+        isPlaying: false,
+        hasPlayedOnce: false,
+        isShuffle: false,
+        isRepeatOne: false,
+        likedTracks: [false, false, false, false, false],
+        currentTime: 0,
+        isScrubbing: false,
+        intensity: 0.8,
+        prefersReducedMotion: reducedMotionQuery.matches
+      };
+
+      // Spectrum Synthesizer State
+      const bars = new Float32Array(BAR_COUNT);
+      const smoothedBars = new Float32Array(BAR_COUNT);
+      let spectrumClock = 0;
+      let idleClock = 0;
+      let pauseBlend = 0; // 0 = paused undulating line, 1 = active playing spectrum
+      let kickEnv = 0;
+      let snareEnv = 0;
+      let hatEnv = 0;
+      let lastStepIndex = -1;
+      let titleSwapTimer = null;
+
+      // Canvas setup with DPR adaptation
+      const ctx = spectrumCanvas.getContext('2d');
+      let canvasWidth = 344;
+      let canvasHeight = 108;
+
+      function resizeCanvas() {
+        const rect = spectrumCanvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const dpr = Math.min(window.ToyEmbed?.pixelRatio ?? (window.devicePixelRatio || 1), 3);
+        canvasWidth = rect.width;
+        canvasHeight = rect.height;
+        spectrumCanvas.width = Math.round(canvasWidth * dpr);
+        spectrumCanvas.height = Math.round(canvasHeight * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      const resizeObserver = new ResizeObserver(() => resizeCanvas());
+      resizeObserver.observe(spectrumCanvas);
+      window.addEventListener('resize', resizeCanvas);
+
+      // Helpers
+      function formatTime(sec) {
+        const total = Math.max(0, Math.floor(sec));
+        const m = Math.floor(total / 60);
+        const s = total % 60;
+        return `${m}:${String(s).padStart(2, '0')}`;
+      }
+
+      function formatAriaTime(sec, totalSec) {
+        const cur = Math.max(0, Math.floor(sec));
+        const tot = Math.max(0, Math.floor(totalSec));
+        const cm = Math.floor(cur / 60);
+        const cs = cur % 60;
+        const tm = Math.floor(tot / 60);
+        const ts = tot % 60;
+        return `${cm}分${String(cs).padStart(2, '0')}秒，共${tm}分${String(ts).padStart(2, '0')}秒`;
+      }
+
+      function smoothstep(edge0, edge1, x) {
+        const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+        return t * t * (3 - 2 * t);
+      }
+
+      function syncSliderVars(sliderEl) {
+        sliderEl.style.setProperty('--attr-min', sliderEl.min || '0');
+        sliderEl.style.setProperty('--attr-max', sliderEl.max || '100');
+        sliderEl.style.setProperty('--control-value', sliderEl.value);
+      }
+
+      function updateProgressUI() {
+        const track = TRACKS[state.trackIndex];
+        const clamped = Math.max(0, Math.min(track.duration, state.currentTime));
+        if (!state.isScrubbing) {
+          progressSlider.value = clamped.toFixed(1);
+          syncSliderVars(progressSlider);
+        }
+        const displaySec = state.isScrubbing ? parseFloat(progressSlider.value) : clamped;
+        currentTimeEl.textContent = formatTime(displaySec);
+        durationTimeEl.textContent = formatTime(track.duration);
+        progressSlider.setAttribute('aria-valuetext', formatAriaTime(displaySec, track.duration));
+      }
+
+      function updatePlayStateUI() {
+        playBtn.classList.toggle('is-playing', state.isPlaying);
+        playBtn.setAttribute('aria-label', state.isPlaying ? '暂停' : '播放');
+
+        const animatePlayback = state.isPlaying && (window.ToyEmbed?.active ?? true);
+        vinylDisc.classList.toggle('is-spinning', animatePlayback);
+        queueList.classList.toggle('is-playing', animatePlayback);
+
+        if (state.hasPlayedOnce) {
+          spectrumHint.classList.add('is-hidden');
+        }
+      }
+
+      function setPlayState(playing) {
+        state.isPlaying = playing;
+        if (playing && !state.hasPlayedOnce) {
+          state.hasPlayedOnce = true;
+        }
+        if (playing) {
+          lastStepIndex = -1;
+        }
+        updatePlayStateUI();
+      }
+
+      function updateTrackTitleWithMotion(track, direction) {
+        if (titleSwapTimer) {
+          clearTimeout(titleSwapTimer);
+          titleSwapTimer = null;
+        }
+        trackHeaderInner.classList.remove(
+          'is-exiting-next',
+          'is-entering-next',
+          'is-exiting-prev',
+          'is-entering-prev'
+        );
+
+        if (state.prefersReducedMotion || direction === 0) {
+          trackTitleEl.textContent = track.title;
+          trackArtistEl.textContent = track.artist;
+          return;
+        }
+
+        const exitClass = direction >= 0 ? 'is-exiting-next' : 'is-exiting-prev';
+        const enterClass = direction >= 0 ? 'is-entering-next' : 'is-entering-prev';
+
+        trackHeaderInner.classList.add(exitClass);
+        titleSwapTimer = setTimeout(() => {
+          trackTitleEl.textContent = track.title;
+          trackArtistEl.textContent = track.artist;
+          trackHeaderInner.classList.remove(exitClass);
+          trackHeaderInner.classList.add(enterClass);
+
+          // Force reflow so the entering transform transitions smoothly back to 0
+          void trackHeaderInner.offsetWidth;
+          trackHeaderInner.classList.remove(enterClass);
+          titleSwapTimer = null;
+        }, 150);
+      }
+
+      function applyTrack(index, direction = 0) {
+        const prevIndex = state.trackIndex;
+        state.trackIndex = (index + TRACKS.length) % TRACKS.length;
+        state.currentTime = 0;
+        lastStepIndex = -1;
+        kickEnv *= 0.35;
+        snareEnv *= 0.35;
+        hatEnv *= 0.35;
+
+        const track = TRACKS[state.trackIndex];
+        const numStr = String(state.trackIndex + 1).padStart(2, '0');
+
+        rootEl.style.setProperty('--accent', track.accent);
+        sideTrackCounter.textContent = `A 面 · 第 ${state.trackIndex + 1} / ${TRACKS.length} 首`;
+        vinylTrackNum.textContent = `No. ${numStr}`;
+
+        const isLiked = state.likedTracks[state.trackIndex];
+        likeBtn.setAttribute('aria-pressed', String(isLiked));
+
+        progressSlider.max = String(track.duration);
+        progressSlider.value = '0';
+        syncSliderVars(progressSlider);
+        updateProgressUI();
+
+        queueButtons.forEach((btn, idx) => {
+          if (idx === state.trackIndex) {
+            btn.setAttribute('aria-current', 'true');
+          } else {
+            btn.removeAttribute('aria-current');
+          }
+        });
+
+        if (prevIndex !== state.trackIndex || direction !== 0) {
+          updateTrackTitleWithMotion(track, direction);
+        } else {
+          trackTitleEl.textContent = track.title;
+          trackArtistEl.textContent = track.artist;
+        }
+      }
+
+      function pickNextTrackIndex(manualDirection = 1) {
+        if (state.isShuffle && TRACKS.length > 1) {
+          let candidate = state.trackIndex;
+          while (candidate === state.trackIndex) {
+            candidate = Math.floor(Math.random() * TRACKS.length);
+          }
+          return candidate;
+        }
+        return (state.trackIndex + manualDirection + TRACKS.length) % TRACKS.length;
+      }
+
+      function handleTrackEnded() {
+        if (state.isRepeatOne) {
+          state.currentTime = 0;
+          lastStepIndex = -1;
+          updateProgressUI();
+          return;
+        }
+        const nextIdx = pickNextTrackIndex(1);
+        applyTrack(nextIdx, 1);
+      }
+
+      // Event Listeners
+      playBtn.addEventListener('click', () => {
+        if (!state.isPlaying && state.currentTime >= TRACKS[state.trackIndex].duration) {
+          state.currentTime = 0;
+        }
+        setPlayState(!state.isPlaying);
+      });
+
+      restartBtn.addEventListener('click', () => {
+        state.currentTime = 0;
+        lastStepIndex = -1;
+        kickEnv = 0;
+        snareEnv = 0;
+        hatEnv = 0;
+        updateProgressUI();
+        setPlayState(true);
+      });
+
+      prevBtn.addEventListener('click', () => {
+        const prevIdx = pickNextTrackIndex(-1);
+        applyTrack(prevIdx, -1);
+      });
+
+      nextBtn.addEventListener('click', () => {
+        const nextIdx = pickNextTrackIndex(1);
+        applyTrack(nextIdx, 1);
+      });
+
+      shuffleBtn.addEventListener('click', () => {
+        state.isShuffle = !state.isShuffle;
+        shuffleBtn.setAttribute('aria-pressed', String(state.isShuffle));
+      });
+
+      repeatBtn.addEventListener('click', () => {
+        state.isRepeatOne = !state.isRepeatOne;
+        repeatBtn.setAttribute('aria-pressed', String(state.isRepeatOne));
+      });
+
+      likeBtn.addEventListener('click', () => {
+        const nextLiked = !state.likedTracks[state.trackIndex];
+        state.likedTracks[state.trackIndex] = nextLiked;
+        likeBtn.setAttribute('aria-pressed', String(nextLiked));
+
+        if (!state.prefersReducedMotion) {
+          likeBtn.classList.remove('is-bouncing');
+          void likeBtn.offsetWidth;
+          likeBtn.classList.add('is-bouncing');
+        }
+      });
+
+      likeBtn.addEventListener('animationend', () => {
+        likeBtn.classList.remove('is-bouncing');
+      });
+
+      // Progress Slider Scrubbing
+      progressSlider.addEventListener('pointerdown', () => {
+        state.isScrubbing = true;
+      });
+
+      progressSlider.addEventListener('input', () => {
+        state.isScrubbing = true;
+        syncSliderVars(progressSlider);
+        const val = parseFloat(progressSlider.value);
+        currentTimeEl.textContent = formatTime(val);
+        progressSlider.setAttribute(
+          'aria-valuetext',
+          formatAriaTime(val, TRACKS[state.trackIndex].duration)
+        );
+      });
+
+      function commitScrub() {
+        if (!state.isScrubbing) return;
+        state.currentTime = parseFloat(progressSlider.value);
+        state.isScrubbing = false;
+        lastStepIndex = -1;
+        updateProgressUI();
+      }
+
+      progressSlider.addEventListener('change', commitScrub);
+      window.addEventListener('pointerup', commitScrub);
+
+      // Motion Intensity Slider
+      function handleIntensityInput() {
+        syncSliderVars(intensitySlider);
+        const pct = parseInt(intensitySlider.value, 10);
+        state.intensity = pct / 100;
+        intensityValueEl.textContent = `${pct}%`;
+        intensitySlider.setAttribute('aria-valuetext', `动效强度 ${pct}%`);
+      }
+
+      intensitySlider.addEventListener('input', handleIntensityInput);
+
+      // Queue Track Selection
+      queueButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const targetIdx = parseInt(btn.dataset.index, 10);
+          if (targetIdx === state.trackIndex) {
+            setPlayState(!state.isPlaying);
+            return;
+          }
+          const dir = targetIdx > state.trackIndex ? 1 : -1;
+          applyTrack(targetIdx, dir);
+        });
+      });
+
+      // Reduced Motion Preference Listener
+      reducedMotionQuery.addEventListener('change', (e) => {
+        state.prefersReducedMotion = e.matches;
+      });
+
+      // Synthesized Spectrum Step & Render Loop
+      function stepSpectrum(dt) {
+        const reduced = state.prefersReducedMotion;
+        const speedFactor = reduced ? 0.25 : 1.0;
+        const track = TRACKS[state.trackIndex];
+        const p = track.profile;
+
+        // Advance playback clock at 1x real-time
+        if (state.isPlaying && !state.isScrubbing) {
+          state.currentTime += dt;
+          if (state.currentTime >= track.duration) {
+            handleTrackEnded();
+          } else {
+            updateProgressUI();
+          }
+        }
+
+        // Advance visual clocks (1/4 speed when prefers-reduced-motion is active)
+        const visualDt = dt * speedFactor;
+        idleClock += visualDt;
+
+        // Blend smoothly between paused line and active spectrum
+        const blendRate = reduced ? 3.5 : 7.5;
+        const targetBlend = state.isPlaying ? 1 : 0;
+        pauseBlend += (targetBlend - pauseBlend) * (1 - Math.exp(-dt * blendRate));
+
+        if (state.isPlaying) {
+          spectrumClock += visualDt;
+
+          // BPM-driven 16th-note step sequencer for Kick, Snare, and Hi-Hat
+          const stepsPerSec = (track.bpm / 60) * 4;
+          const totalSteps = Math.floor(spectrumClock * stepsPerSec);
+          const stepInBar = ((totalSteps % 16) + 16) % 16;
+
+          if (totalSteps !== lastStepIndex) {
+            lastStepIndex = totalSteps;
+            const kVel = p.kickPattern[stepInBar] || 0;
+            const sVel = p.snarePattern[stepInBar] || 0;
+            const hVel = p.hatPattern[stepInBar] || 0;
+
+            if (kVel > 0) kickEnv = Math.max(kickEnv, kVel);
+            if (sVel > 0) snareEnv = Math.max(snareEnv, sVel);
+            if (hVel > 0) hatEnv = Math.max(hatEnv, hVel);
+          }
+        }
+
+        // Exponential decay of drum envelopes
+        kickEnv *= Math.exp(-visualDt * 10.5);
+        snareEnv *= Math.exp(-visualDt * 14.5);
+        hatEnv *= Math.exp(-visualDt * 25.0);
+
+        const amplitudeScale = state.intensity * (reduced ? 0.46 : 1.0);
+        const attackRate = reduced ? 6.8 : 34.0;
+        const releaseRate = reduced ? 3.0 : 6.2;
+
+        for (let i = 0; i < BAR_COUNT; i++) {
+          const u = i / (BAR_COUNT - 1); // 0.0 (low freq) -> 1.0 (high freq)
+
+          // 1. Gradually decaying low-frequency base distribution
+          const lowDecay = p.bassBase * Math.exp(-p.bassDecay * u) + p.floor;
+
+          // 2. High-frequency boost + subtle per-track midrange character
+          const highBoost = p.highGain * Math.pow(smoothstep(0.48, 1.0, u), 1.35);
+          const midBell = p.midPeakAmt * Math.exp(-Math.pow((u - p.midPeakPos) / 0.17, 2));
+
+          // 3. Slow sinusoidal sway across frequency bands + multi-harmonic partials
+          const sway =
+            p.swayDepth * (
+              0.52 * Math.sin(spectrumClock * p.swaySpeed1 + u * 5.8 + p.phaseOffset) +
+              0.30 * Math.sin(spectrumClock * p.swaySpeed2 - u * 9.6 + p.phaseOffset * 0.7) +
+              0.28 * Math.sin(spectrumClock * (p.swaySpeed1 * 1.45) + i * 1.15 + p.phaseOffset * 1.3)
+            );
+
+          // 4. Kick, Snare, and Hi-Hat frequency band weights
+          const kickRipple = 0.86 + 0.14 * Math.cos(i * 0.9);
+          const kickWeight = (
+            Math.exp(-Math.pow(u / 0.17, 2)) +
+            0.32 * Math.exp(-Math.pow((u - 0.22) / 0.08, 2))
+          ) * kickRipple;
+
+          const snareRipple = 0.78 + 0.22 * Math.sin(i * 1.85 + p.phaseOffset);
+          const snareWeight = (
+            0.76 * Math.exp(-Math.pow((u - 0.31) / 0.11, 2)) +
+            0.68 * Math.exp(-Math.pow((u - 0.57) / 0.18, 2))
+          ) * snareRipple;
+
+          const hatWeight =
+            smoothstep(0.52, 0.94, u) * (0.68 + 0.32 * Math.sin(i * 2.45 + spectrumClock * 3.2 + p.phaseOffset));
+
+          const drumEnergy =
+            kickEnv * p.kickGain * kickWeight +
+            snareEnv * p.snareGain * snareWeight +
+            hatEnv * p.hatGain * hatWeight;
+
+          const activeTarget = Math.max(
+            0.03,
+            Math.min(1.0, (lowDecay + highBoost + midBell + sway + drumEnergy) * amplitudeScale)
+          );
+
+          // Paused target collapses down to a minimal capsule thickness
+          const pausedThickness = 0.015 + 0.018 * state.intensity * (reduced ? 0.4 : 1.0) *
+            (0.5 + 0.5 * Math.sin(idleClock * 1.35 - u * 4.2));
+
+          const target = pausedThickness * (1 - pauseBlend) + activeTarget * pauseBlend;
+
+          // Fast rise, slow fall
+          const rate = target > bars[i] ? attackRate : releaseRate;
+          bars[i] += (target - bars[i]) * (1 - Math.exp(-dt * rate));
+        }
+
+        // Extra spatial smoothing across neighboring bands under prefers-reduced-motion
+        if (reduced) {
+          for (let i = 0; i < BAR_COUNT; i++) {
+            const prev = bars[Math.max(0, i - 1)];
+            const curr = bars[i];
+            const next = bars[Math.min(BAR_COUNT - 1, i + 1)];
+            smoothedBars[i] = prev * 0.25 + curr * 0.5 + next * 0.25;
+          }
+        } else {
+          smoothedBars.set(bars);
+        }
+      }
+
+      function drawSpectrum() {
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+        const computedAccent = getComputedStyle(rootEl).getPropertyValue('--accent').trim() || '#ef7b5c';
+        const padX = Math.max(18, canvasWidth * 0.068);
+        const usableW = canvasWidth - padX * 2;
+        const stepX = usableW / (BAR_COUNT - 1);
+        const barWidth = Math.max(3.5, Math.min(6.2, stepX * 0.54));
+        const midY = canvasHeight * 0.5;
+        const maxHalfH = Math.max(16, canvasHeight * 0.39);
+        const minHalfH = barWidth * 0.18;
+
+        const reduced = state.prefersReducedMotion;
+        const idleUndulationScale = (1 - pauseBlend) * state.intensity * (reduced ? 1.1 : 3.2);
+
+        ctx.strokeStyle = computedAccent;
+        ctx.lineWidth = barWidth;
+        ctx.lineCap = 'round';
+
+        for (let i = 0; i < BAR_COUNT; i++) {
+          const u = i / (BAR_COUNT - 1);
+          const x = padX + i * stepX;
+
+          // When paused, centers gently undulate to form a softly rippling line
+          const waveOffsetY =
+            Math.sin(idleClock * 1.75 - u * Math.PI * 2.2) * idleUndulationScale +
+            Math.sin(idleClock * 0.95 + u * Math.PI * 1.3) * (idleUndulationScale * 0.45);
+
+          const centerY = midY + waveOffsetY;
+          const halfH = Math.max(minHalfH, smoothedBars[i] * maxHalfH);
+
+          ctx.beginPath();
+          ctx.moveTo(x, centerY - halfH);
+          ctx.lineTo(x, centerY + halfH);
+          ctx.stroke();
+        }
+      }
+
+      let rafId = 0;
+      let lastFrameTime = performance.now();
+
+      function tick(now) {
+        const dt = Math.min(0.05, Math.max(0.001, (now - lastFrameTime) / 1000));
+        lastFrameTime = now;
+
+        stepSpectrum(dt);
+        drawSpectrum();
+
+        if (!document.hidden) {
+          rafId = requestAnimationFrame(tick);
+        }
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          cancelAnimationFrame(rafId);
+        } else {
+          lastFrameTime = performance.now();
+          rafId = requestAnimationFrame(tick);
+        }
+      });
+
+      // Initialize UI & start render loop
+      syncSliderVars(progressSlider);
+      syncSliderVars(intensitySlider);
+      applyTrack(0, 0);
+      setPlayState(window.ToyEmbed?.autoplay ?? false);
+      window.addEventListener('toyvisibilitychange', updatePlayStateUI);
+      resizeCanvas();
+      rafId = requestAnimationFrame(now => {
+        tick(now);
+        window.ToyEmbed?.ready();
+      });
+    })();
+  </script>
+</body>
+</html>

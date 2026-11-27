@@ -1,0 +1,4159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
+  <link rel="icon" href="data:,">
+  <title>2号绘图仪</title>
+  <style>
+    :root {
+      --mat-bg: #D9D9D9;
+      --mat-grid-minor: rgba(17, 17, 17, 0.055);
+      --mat-grid-major: rgba(17, 17, 17, 0.115);
+      --paper-white: #FFFFFF;
+      --ink-blue: #1F3FBF;
+      --noir: #111111;
+      --noir-soft: #232528;
+      --alu-bright: #D5D8DD;
+      --alu-face: #C3C7CD;
+      --alu-mid: #A8AEB6;
+      --alu-dark: #7E848D;
+      --red-accent: #D93025;
+      --lcd-bg: #C7CEC3;
+      --lcd-fg: #111111;
+      --silk-ink: rgba(17, 17, 17, 0.78);
+      --silk-muted: rgba(17, 17, 17, 0.48);
+      --target-size: 24px;
+      --mono-font: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", "Consolas", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", monospace;
+    }
+
+    @media (pointer: coarse) {
+      :root {
+        --target-size: 44px;
+      }
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-block-size: 100dvh;
+      background-color: var(--mat-bg);
+      color: var(--noir);
+      font-family: var(--mono-font);
+      font-size: 16px;
+      overflow-wrap: break-word;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-image:
+        linear-gradient(to right, var(--mat-grid-minor) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--mat-grid-minor) 1px, transparent 1px),
+        linear-gradient(to right, var(--mat-grid-major) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--mat-grid-major) 1px, transparent 1px);
+      background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+      background-position: center top;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding-top: max(0.65rem, env(safe-area-inset-top, 0px));
+      padding-bottom: max(0.85rem, env(safe-area-inset-bottom, 0px));
+      padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+      padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+    }
+
+    .workbench-shell {
+      inline-size: 100%;
+      max-inline-size: 1260px;
+      container: workbench / inline-size;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .top-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-inline: 0.15rem;
+    }
+
+    .site-title {
+      margin: 0;
+      font-size: clamp(0.72rem, 0.66rem + 0.22vw, 0.84rem);
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      color: var(--noir);
+      text-wrap: balance;
+    }
+
+    .workbench-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.1rem;
+      align-items: start;
+    }
+
+    @container workbench (inline-size >= 62rem) {
+      .workbench-grid {
+        grid-template-columns: minmax(0, 1fr) 246px;
+        gap: 1.35rem;
+        align-items: center;
+      }
+    }
+
+    /* Plotter Unit + Stage */
+    .plotter-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      inline-size: 100%;
+      min-inline-size: 0;
+    }
+
+    .stage-wrap {
+      position: relative;
+      inline-size: 100%;
+      max-inline-size: 940px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #stageCanvas {
+      display: block;
+      inline-size: 100%;
+      block-size: auto;
+      cursor: crosshair;
+      touch-action: manipulation;
+    }
+
+    /* Hardware Control Panel */
+    .control-panel {
+      inline-size: 100%;
+      max-inline-size: 904px;
+      margin-top: 0.35rem;
+      background: linear-gradient(180deg, #CFD3D8 0%, #BFC4CA 52%, #B4B9C0 100%);
+      border: 2px solid var(--noir);
+      border-radius: 5px;
+      box-shadow:
+        0 6px 16px rgba(17, 17, 17, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.65),
+        inset 0 -2px 0 rgba(17, 17, 17, 0.18);
+      padding: 0.6rem 0.9rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.7rem 0.95rem;
+      position: relative;
+    }
+
+    /* Corner hex screws on aluminum panel */
+    .control-panel::before,
+    .control-panel::after {
+      content: "";
+      position: absolute;
+      inline-size: 6px;
+      block-size: 6px;
+      border-radius: 50%;
+      background: #8B9098;
+      border: 1px solid rgba(17, 17, 17, 0.55);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+      pointer-events: none;
+    }
+    .control-panel::before {
+      top: 5px;
+      left: 6px;
+    }
+    .control-panel::after {
+      top: 5px;
+      right: 6px;
+    }
+
+    .panel-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      min-inline-size: 0;
+    }
+
+    .control-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.22rem;
+    }
+
+    .cell-label {
+      font-size: clamp(0.62rem, 0.58rem + 0.14vw, 0.7rem);
+      letter-spacing: 0.14em;
+      color: var(--noir);
+      opacity: 0.82;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    /* Knurled Rotary Speed Knob */
+    .knob-assembly {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .knob-dial-wrap {
+      position: relative;
+      inline-size: 66px;
+      block-size: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .knurled-knob {
+      position: relative;
+      inline-size: 40px;
+      block-size: 40px;
+      min-inline-size: var(--target-size);
+      min-block-size: var(--target-size);
+      border-radius: 50%;
+      border: 2px solid var(--noir);
+      padding: 0;
+      cursor: grab;
+      background:
+        radial-gradient(circle at 38% 32%, #3A3D42 0%, #1B1C1E 58%, #111111 100%);
+      box-shadow:
+        0 3px 6px rgba(0, 0, 0, 0.36),
+        inset 0 1px 1px rgba(255, 255, 255, 0.22);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+    }
+
+    .knurled-knob:active {
+      cursor: grabbing;
+    }
+
+    /* Outer knurling teeth illusion */
+    .knurled-knob::before {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      border-radius: 50%;
+      border: 2px dashed rgba(213, 216, 221, 0.32);
+      pointer-events: none;
+    }
+
+    .knob-rotor {
+      position: relative;
+      inline-size: 100%;
+      block-size: 100%;
+      border-radius: 50%;
+      pointer-events: none;
+      @media (prefers-reduced-motion: no-preference) {
+        transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+    }
+
+    .knob-pointer {
+      position: absolute;
+      top: 4px;
+      left: 50%;
+      inline-size: 2px;
+      block-size: 11px;
+      transform: translateX(-50%);
+      background: #E8ECF0;
+      border-radius: 1px;
+    }
+
+    .speed-ticks {
+      display: grid;
+      grid-template-columns: repeat(4, auto);
+      gap: 0.14rem 0.22rem;
+    }
+
+    .speed-tick-btn {
+      appearance: none;
+      border: 1px solid rgba(17, 17, 17, 0.26);
+      background: rgba(255, 255, 255, 0.28);
+      color: var(--noir);
+      font-family: var(--mono-font);
+      font-size: 0.62rem;
+      letter-spacing: 0.04em;
+      padding: 0.1rem 0.28rem;
+      min-inline-size: var(--target-size);
+      min-block-size: var(--target-size);
+      border-radius: 2px;
+      cursor: pointer;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      transition: background-color 0.12s ease, color 0.12s ease;
+    }
+
+    @media (pointer: fine) {
+      .speed-tick-btn {
+        min-block-size: 24px;
+        min-inline-size: 28px;
+      }
+    }
+
+    .speed-tick-btn[aria-checked="true"] {
+      background: var(--noir);
+      color: var(--paper-white);
+      border-color: var(--noir);
+    }
+
+    /* Metallic Toggle Lever (Sound Switch) */
+    .lever-btn {
+      position: relative;
+      inline-size: 38px;
+      block-size: 42px;
+      min-inline-size: var(--target-size);
+      min-block-size: var(--target-size);
+      border-radius: 4px;
+      border: 1.5px solid var(--noir);
+      background: linear-gradient(180deg, #9FA5AE 0%, #868C95 100%);
+      box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.35),
+        0 1px 0 rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Hex bushing nut & slot */
+    .lever-slot {
+      position: relative;
+      inline-size: 12px;
+      block-size: 26px;
+      border-radius: 6px;
+      background: var(--noir);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.85);
+      display: flex;
+      justify-content: center;
+    }
+
+    .lever-bat {
+      position: absolute;
+      inline-size: 10px;
+      block-size: 20px;
+      left: 1px;
+      top: 10px;
+      border-radius: 5px;
+      border: 1px solid var(--noir);
+      background: linear-gradient(90deg, #B8BDC5 0%, #F1F3F6 45%, #8D939C 100%);
+      box-shadow: 0 3px 5px rgba(0, 0, 0, 0.45);
+      transform: translateY(2px);
+      @media (prefers-reduced-motion: no-preference) {
+        transition: transform 0.14s cubic-bezier(0.2, 0.9, 0.3, 1.1), box-shadow 0.14s ease;
+      }
+    }
+
+    .lever-btn[aria-checked="true"] .lever-bat {
+      transform: translateY(-10px);
+      box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.32), 0 4px 6px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Small Monospace Character LCD */
+    .lcd-bezel {
+      flex: 1 1 285px;
+      min-inline-size: 0;
+      background: var(--noir);
+      border-radius: 4px;
+      padding: 5px 7px;
+      box-shadow:
+        inset 0 2px 5px rgba(0, 0, 0, 0.75),
+        0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+
+    .lcd-screen {
+      background:
+        linear-gradient(180deg, rgba(17, 17, 17, 0.06) 0%, transparent 18%),
+        var(--lcd-bg);
+      color: var(--lcd-fg);
+      border-radius: 2px;
+      padding: 0.42rem 0.6rem;
+      min-block-size: 2.15rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.25rem 0.65rem;
+      font-family: var(--mono-font);
+      font-size: clamp(0.68rem, 0.62rem + 0.22vw, 0.79rem);
+      letter-spacing: 0.08em;
+      font-variant-numeric: tabular-nums;
+      box-shadow: inset 0 1px 3px rgba(17, 17, 17, 0.28);
+    }
+
+    .lcd-primary {
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    .lcd-secondary {
+      white-space: nowrap;
+      opacity: 0.92;
+    }
+
+    /* Black Mechanical Keycaps & Reduced-Motion Layer Buttons */
+    .buttons-cluster {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      flex-wrap: wrap;
+    }
+
+    .keycap-btn {
+      appearance: none;
+      position: relative;
+      min-inline-size: max(54px, var(--target-size));
+      min-block-size: max(38px, var(--target-size));
+      padding: 0.35rem 0.68rem;
+      border-radius: 5px;
+      border: 1.5px solid #050505;
+      background: linear-gradient(180deg, #27292C 0%, #141517 65%, #111111 100%);
+      color: #EAECEF;
+      font-family: var(--mono-font);
+      font-size: clamp(0.68rem, 0.63rem + 0.16vw, 0.76rem);
+      letter-spacing: 0.14em;
+      cursor: pointer;
+      box-shadow:
+        0 4px 0 #070708,
+        0 6px 8px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      @media (prefers-reduced-motion: no-preference) {
+        transition: transform 0.07s ease, box-shadow 0.07s ease;
+      }
+    }
+
+    .keycap-btn:hover {
+      background: linear-gradient(180deg, #303338 0%, #181A1D 65%, #111111 100%);
+    }
+
+    .keycap-btn:active {
+      transform: translateY(3px);
+      box-shadow:
+        0 1px 0 #070708,
+        0 2px 3px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .keycap-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .layer-step-group {
+      display: none;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .layer-step-group.is-visible {
+      display: flex;
+    }
+
+    /* Red Mushroom-Head Latching Pause Button (#D93025 ONLY here & on pen clip) */
+    .mushroom-collar {
+      padding: 4px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, #2A2C30 0%, #111111 100%);
+      border: 1.5px solid #080808;
+      box-shadow:
+        inset 0 2px 4px rgba(0, 0, 0, 0.8),
+        0 2px 4px rgba(0, 0, 0, 0.25);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mushroom-btn {
+      appearance: none;
+      position: relative;
+      inline-size: 50px;
+      block-size: 50px;
+      min-inline-size: var(--target-size);
+      min-block-size: var(--target-size);
+      border-radius: 50%;
+      border: 1.5px solid #7E1711;
+      background:
+        radial-gradient(circle at 36% 28%, #EC554B 0%, var(--red-accent) 46%, #AE2219 100%);
+      color: var(--paper-white);
+      font-family: var(--mono-font);
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      padding: 0;
+      cursor: pointer;
+      box-shadow:
+        0 4px 0 #6D140E,
+        0 6px 10px rgba(0, 0, 0, 0.42),
+        inset 0 1px 2px rgba(255, 255, 255, 0.36);
+      @media (prefers-reduced-motion: no-preference) {
+        transition: transform 0.09s ease, box-shadow 0.09s ease;
+      }
+    }
+
+    .mushroom-btn[aria-pressed="true"],
+    .mushroom-btn:active {
+      transform: translateY(3px);
+      box-shadow:
+        0 1px 0 #59100B,
+        0 2px 4px rgba(0, 0, 0, 0.4),
+        inset 0 2px 5px rgba(0, 0, 0, 0.28);
+    }
+
+    /* Focus visibility */
+    :where(button, [role="switch"]):focus-visible {
+      outline: 2px solid var(--ink-blue);
+      outline-offset: 3px;
+    }
+
+    /* Silkscreened Plotting Manifest on Cutting Mat (Wide Screens Only) */
+    .silkscreen-manifest {
+      display: none;
+      padding: 0.75rem 0.85rem;
+      color: var(--silk-ink);
+      border-top: 1.5px solid rgba(17, 17, 17, 0.55);
+      border-bottom: 1.5px solid rgba(17, 17, 17, 0.55);
+      position: relative;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    @container workbench (inline-size >= 62rem) {
+      .silkscreen-manifest {
+        display: block;
+      }
+    }
+
+    /* Silkscreen registration corner marks */
+    .silkscreen-manifest::before,
+    .silkscreen-manifest::after {
+      content: "+";
+      position: absolute;
+      font-size: 0.72rem;
+      line-height: 1;
+      color: var(--silk-muted);
+      pointer-events: none;
+    }
+    .silkscreen-manifest::before {
+      top: -0.95rem;
+      left: 0;
+    }
+    .silkscreen-manifest::after {
+      bottom: -0.95rem;
+      right: 0;
+    }
+
+    .manifest-heading {
+      margin: 0 0 0.55rem 0;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      color: var(--noir);
+      opacity: 0.84;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px dashed rgba(17, 17, 17, 0.32);
+      padding-bottom: 0.4rem;
+    }
+
+    .manifest-serial {
+      font-size: 0.64rem;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      color: var(--silk-muted);
+    }
+
+    .manifest-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.34rem;
+    }
+
+    .manifest-row {
+      display: grid;
+      grid-template-columns: 1.35rem 1fr auto;
+      align-items: center;
+      gap: 0.3rem;
+      line-height: 1.35;
+      color: var(--silk-ink);
+    }
+
+    .manifest-row.is-active {
+      color: var(--noir);
+      font-weight: 600;
+    }
+
+    .manifest-check {
+      display: inline-block;
+      font-family: var(--mono-font);
+      color: var(--noir);
+    }
+
+    .manifest-count {
+      text-align: right;
+      color: var(--silk-muted);
+    }
+
+    .manifest-row.is-done .manifest-count,
+    .manifest-row.is-active .manifest-count {
+      color: var(--silk-ink);
+    }
+
+    .manifest-totals {
+      margin-top: 0.65rem;
+      padding-top: 0.5rem;
+      border-top: 1px dashed rgba(17, 17, 17, 0.32);
+      display: flex;
+      flex-direction: column;
+      gap: 0.28rem;
+    }
+
+    .manifest-metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+
+    .manifest-hint {
+      margin: 0.65rem 0 0 0;
+      padding-top: 0.45rem;
+      border-top: 1px solid rgba(17, 17, 17, 0.16);
+      font-size: 0.63rem;
+      line-height: 1.55;
+      letter-spacing: 0.08em;
+      color: var(--silk-muted);
+      text-wrap: pretty;
+    }
+
+    @media (max-width: 680px) {
+      .control-panel {
+        padding: 0.55rem 0.65rem;
+        gap: 0.55rem 0.65rem;
+      }
+      .lcd-bezel {
+        order: -1;
+        flex: 1 1 100%;
+      }
+      .speed-ticks {
+        grid-template-columns: repeat(4, auto);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="workbench-shell">
+    <header class="top-header">
+      <h1 class="site-title">2号绘图仪</h1>
+    </header>
+
+    <div class="workbench-grid">
+      <section class="plotter-unit" aria-label="笔式绘图仪工作台">
+        <div class="stage-wrap">
+          <canvas id="stageCanvas" aria-label="2号绘图仪白纸画布，点击纸面可加入待绘飞鸟"></canvas>
+        </div>
+
+        <div class="control-panel" role="region" aria-label="绘图仪控制面板">
+          <div class="panel-group">
+            <div class="control-cell">
+              <span class="cell-label" id="speedKnobLabel">调速旋钮</span>
+              <div class="knob-assembly">
+                <div class="knob-dial-wrap">
+                  <button
+                    type="button"
+                    id="speedKnob"
+                    class="knurled-knob"
+                    aria-labelledby="speedKnobLabel"
+                    title="点击或拖动调节速度（快捷键 + / -）"
+                  >
+                    <span class="knob-rotor" id="knobRotor">
+                      <span class="knob-pointer"></span>
+                    </span>
+                  </button>
+                </div>
+                <div class="speed-ticks" role="radiogroup" aria-label="进给倍率选择" id="speedTicks"></div>
+              </div>
+            </div>
+
+            <div class="control-cell">
+              <span class="cell-label" id="soundSwitchLabel">声音</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked="false"
+                aria-labelledby="soundSwitchLabel"
+                id="soundSwitch"
+                class="lever-btn"
+                title="步进电机与起落笔音效拨杆"
+              >
+                <span class="lever-slot" aria-hidden="true">
+                  <span class="lever-bat"></span>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div class="lcd-bezel" aria-live="off">
+            <div class="lcd-screen" id="lcdScreen">
+              <span class="lcd-primary" id="lcdPrimary">回零  X   0.0  Y   0.0</span>
+              <span class="lcd-secondary" id="lcdSecondary">0%  剩余 --:--</span>
+            </div>
+          </div>
+
+          <div class="buttons-cluster">
+            <div class="layer-step-group" id="layerStepGroup">
+              <button type="button" class="keycap-btn" id="prevLayerBtn">上一图层</button>
+              <button type="button" class="keycap-btn" id="nextLayerBtn">下一图层</button>
+            </div>
+            <button type="button" class="keycap-btn" id="finishBtn" title="立即显示整幅成稿（快捷键 F）">完成</button>
+            <button type="button" class="keycap-btn" id="newPaperBtn" title="更换画纸并生成新构图（快捷键 N）">换纸</button>
+            <div class="mushroom-collar">
+              <button
+                type="button"
+                class="mushroom-btn"
+                id="pauseBtn"
+                aria-pressed="false"
+                title="锁定或释放当前绘制进度（快捷键 空格）"
+              >暂停</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="silkscreen-manifest" aria-label="绘图清单">
+        <h2 class="manifest-heading">
+          <span>绘图清单</span>
+          <span class="manifest-serial" id="manifestSerial">第 0417 号</span>
+        </h2>
+        <ul class="manifest-list" id="manifestList"></ul>
+        <div class="manifest-totals">
+          <div class="manifest-metric">
+            <span>累计落笔距离</span>
+            <strong id="penDownMeters">0.00 m</strong>
+          </div>
+          <div class="manifest-metric">
+            <span>累计抬笔空移</span>
+            <strong id="penUpMeters">0.00 m</strong>
+          </div>
+        </div>
+        <p class="manifest-hint">
+          点按纸面任意留白，可将飞鸟坐标排入队列。空格暂停 · F 完成 · N 换纸 · +/- 调速。
+        </p>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+
+      // ============================================================
+      // 1. CONSTANTS & PALETTE (Strictly matching specification)
+      // ============================================================
+      const COLORS = {
+        mat: '#D9D9D9',
+        paper: '#FFFFFF',
+        inkRgb: '31, 63, 191',
+        inkHex: '#1F3FBF',
+        noir: '#111111',
+        red: '#D93025'
+      };
+
+      const SPEEDS = [1, 2, 4, 8, 16, 32, 64];
+      const DEFAULT_SPEED_INDEX = 2; // 4x
+
+      // Physical kinematics (1x base units in millimeters & seconds)
+      const KINEMATICS = {
+        vDrawMax: 92,        // mm/s steady feed rate on straight lines
+        aDraw: 720,          // mm/s^2 acceleration/deceleration around corners
+        vTravelMax: 235,     // mm/s rapid pen-up travel (> vDrawMax)
+        aTravel: 1650,       // mm/s^2 rapid acceleration
+        penLiftDur: 0.022,   // s to lift pen
+        penDropDur: 0.024    // s to drop pen
+      };
+
+      // ============================================================
+      // 2. SEEDED PRNG & MULTI-OCTAVE NOISE
+      // ============================================================
+      function createRNG(seed) {
+        let s = (seed >>> 0) || 0x8F3A1234;
+        return function next() {
+          s |= 0;
+          s = (s + 0x6D2B79F5) | 0;
+          let t = Math.imul(s ^ (s >>> 15), 1 | s);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      class ValueNoise2D {
+        constructor(rng) {
+          this.perm = new Uint8Array(512);
+          this.vals = new Float32Array(256);
+          const p = new Uint8Array(256);
+          for (let i = 0; i < 256; i++) {
+            p[i] = i;
+            this.vals[i] = rng() * 2 - 1;
+          }
+          for (let i = 255; i > 0; i--) {
+            const j = Math.floor(rng() * (i + 1));
+            const tmp = p[i];
+            p[i] = p[j];
+            p[j] = tmp;
+          }
+          for (let i = 0; i < 512; i++) {
+            this.perm[i] = p[i & 255];
+          }
+        }
+
+        sample(x, y) {
+          const xi = Math.floor(x);
+          const yi = Math.floor(y);
+          const xf = x - xi;
+          const yf = y - yi;
+          const X = xi & 255;
+          const Y = yi & 255;
+          const u = xf * xf * xf * (xf * (xf * 6 - 15) + 10);
+          const v = yf * yf * yf * (yf * (yf * 6 - 15) + 10);
+
+          const aa = this.perm[this.perm[X] + Y];
+          const ab = this.perm[this.perm[X] + Y + 1];
+          const ba = this.perm[this.perm[X + 1] + Y];
+          const bb = this.perm[this.perm[X + 1] + Y + 1];
+
+          const x1 = this.vals[aa] + u * (this.vals[ba] - this.vals[aa]);
+          const x2 = this.vals[ab] + u * (this.vals[bb] - this.vals[ab]);
+          return x1 + v * (x2 - x1);
+        }
+
+        fbm(x, y, octaves = 4, lacunarity = 2.05, gain = 0.5) {
+          let sum = 0;
+          let amp = 0.5;
+          let freq = 1;
+          let norm = 0;
+          for (let i = 0; i < octaves; i++) {
+            sum += amp * this.sample(x * freq, y * freq);
+            norm += amp;
+            freq *= lacunarity;
+            amp *= gain;
+          }
+          return sum / norm;
+        }
+
+        ridged(x, y, octaves = 5) {
+          let sum = 0;
+          let amp = 0.55;
+          let freq = 1;
+          let norm = 0;
+          let weight = 1;
+          for (let i = 0; i < octaves; i++) {
+            let n = 1 - Math.abs(this.sample(x * freq + i * 17.3, y * freq + i * 9.1));
+            n = n * n * weight;
+            weight = Math.min(1, Math.max(0.25, n * 1.6));
+            sum += n * amp;
+            norm += amp;
+            freq *= 2.12;
+            amp *= 0.48;
+          }
+          return sum / norm;
+        }
+      }
+
+      // ============================================================
+      // 3. SINGLE-LINE VECTOR FONT (Built-in Hershey-style CJK & ASCII)
+      //    Normalized 24x24 grid: [x, y] pairs per stroke in reading/stroke order
+      // ============================================================
+      const VECTOR_GLYPHS = {
+        // Chinese characters for「山水第 0417 号 · 种子 8F3A · 1 支笔 · 2,318 笔」
+        '山': {
+          w: 24,
+          s: [
+            [[12, 3], [12, 20]],
+            [[4.5, 9.5], [4.5, 20.5], [19.5, 20.5]],
+            [[19.5, 8.5], [19.5, 21.5]]
+          ]
+        },
+        '水': {
+          w: 24,
+          s: [
+            [[12, 2.5], [12, 20.5], [9, 18.5]],
+            [[3, 9.5], [9.5, 9.5], [6.5, 15.5], [2.5, 20.5]],
+            [[20, 6.5], [14, 11.5]],
+            [[12.5, 10.5], [16.8, 16.5], [22, 20.5]]
+          ]
+        },
+        '第': {
+          w: 24,
+          s: [
+            [[6.8, 1.5], [2.8, 6.6]],
+            [[5.8, 4.0], [11.2, 4.0]],
+            [[8.2, 4.0], [9.2, 6.8]],
+            [[16.2, 1.5], [12.8, 6.4]],
+            [[15.0, 4.0], [21.2, 4.0]],
+            [[17.4, 4.0], [18.4, 6.8]],
+            [[5.2, 9.2], [19.0, 9.2], [18.2, 13.2]],
+            [[5.2, 13.2], [18.2, 13.2]],
+            [[5.2, 13.2], [4.2, 17.2], [20.0, 17.2], [19.0, 21.8], [16.0, 19.8]],
+            [[12.2, 9.2], [12.2, 23.2]],
+            [[11.0, 17.2], [6.8, 20.6], [2.6, 22.6]]
+          ]
+        },
+        '号': {
+          w: 24,
+          s: [
+            [[6.2, 3], [7, 9]],
+            [[6.2, 3], [17.8, 3], [17, 9]],
+            [[7, 9], [17, 9]],
+            [[2.5, 12.8], [21.5, 12.8]],
+            [[9.8, 12.8], [8, 16.8], [17.8, 16.8], [16.2, 22], [12.2, 20.2]]
+          ]
+        },
+        '种': {
+          w: 24,
+          s: [
+            [[10.4, 3.2], [3.2, 5.2]],
+            [[2.2, 10.2], [11.2, 10.2]],
+            [[7.2, 4.2], [7.2, 22.2]],
+            [[7.2, 10.2], [4.4, 15.2], [2.2, 19.2]],
+            [[7.4, 12.2], [10.4, 15]],
+            [[13.2, 8], [13.2, 15.2]],
+            [[13.2, 8], [21.6, 8], [21.6, 15.2]],
+            [[13.2, 15.2], [21.6, 15.2]],
+            [[17.4, 2.2], [17.4, 22.8]]
+          ]
+        },
+        '子': {
+          w: 24,
+          s: [
+            [[5.2, 4], [18.2, 4], [12, 9.8]],
+            [[12, 9.8], [13.2, 15.8], [12.2, 21.5], [8.8, 19.4]],
+            [[2.2, 12.2], [21.8, 12.2]]
+          ]
+        },
+        '支': {
+          w: 24,
+          s: [
+            [[3.2, 6.8], [20.8, 6.8]],
+            [[12, 2.2], [12, 12]],
+            [[5.2, 12], [18, 12], [13.2, 18], [3.8, 22]],
+            [[6.8, 13.8], [14.2, 19], [21.8, 22]]
+          ]
+        },
+        '笔': {
+          w: 24,
+          s: [
+            [[6.8, 1.5], [2.8, 6.5]],
+            [[5.8, 4.0], [11.2, 4.0]],
+            [[8.2, 4.0], [9.2, 6.8]],
+            [[16.2, 1.5], [12.8, 6.4]],
+            [[15.0, 4.0], [21.2, 4.0]],
+            [[17.4, 4.0], [18.4, 6.8]],
+            [[18.2, 8.4], [11.5, 10.4], [4.8, 10.6]],
+            [[4.8, 14.2], [18.6, 13.5]],
+            [[3.0, 17.8], [20.2, 17.0]],
+            [[11.2, 10.2], [11.2, 20.6], [12.6, 22.5], [19.8, 22.5], [20.8, 19.0]]
+          ]
+        },
+        // Digits 0-9
+        '0': {
+          w: 15,
+          s: [
+            [[7.5, 3.2], [4, 5], [3.2, 12], [4, 19], [7.5, 20.8], [11, 19], [11.8, 12], [11, 5], [7.5, 3.2]],
+            [[4.8, 17.6], [10.2, 6.4]]
+          ]
+        },
+        '1': {
+          w: 15,
+          s: [
+            [[4.8, 6.5], [8, 3.2], [8, 20.8]],
+            [[4.5, 20.8], [11.5, 20.8]]
+          ]
+        },
+        '2': {
+          w: 15,
+          s: [
+            [[3.5, 7], [5, 4], [8, 3.2], [10.8, 4.2], [11.8, 6.8], [10.8, 10.2], [3.2, 20.8], [12, 20.8]]
+          ]
+        },
+        '3': {
+          w: 15,
+          s: [
+            [[3.6, 5.2], [5.8, 3.2], [9.6, 3.2], [11.6, 5.4], [11.2, 8.8], [9, 11.2], [6.5, 11.2]],
+            [[9, 11.2], [11.6, 13.4], [11.8, 17.4], [9.8, 20.4], [6, 20.8], [3.4, 18.8]]
+          ]
+        },
+        '4': {
+          w: 15,
+          s: [
+            [[9.8, 20.8], [9.8, 3.2], [2.8, 15.6], [12.5, 15.6]]
+          ]
+        },
+        '5': {
+          w: 15,
+          s: [
+            [[11.4, 3.4], [4.2, 3.4], [3.8, 11], [7.6, 10], [10.8, 11.4], [11.8, 14.8], [11, 18.6], [8.2, 20.8], [4.8, 20.4], [3.2, 18.4]]
+          ]
+        },
+        '6': {
+          w: 15,
+          s: [
+            [[10.8, 5], [8.6, 3.2], [5.6, 3.8], [3.6, 7.6], [3.4, 15.8], [4.8, 19.6], [7.8, 20.8], [10.8, 19.4], [11.8, 16], [10.8, 12.6], [7.8, 11.2], [4.6, 12.4], [3.5, 14.8]]
+          ]
+        },
+        '7': {
+          w: 15,
+          s: [
+            [[3.2, 3.5], [12, 3.5], [6.2, 20.8]]
+          ]
+        },
+        '8': {
+          w: 15,
+          s: [
+            [[7.5, 11.2], [4.6, 9.6], [4, 6.4], [5.4, 3.8], [7.5, 3.2], [9.6, 3.8], [11, 6.4], [10.4, 9.6], [7.5, 11.2], [4.2, 13.2], [3.4, 16.6], [4.8, 19.8], [7.5, 20.8], [10.2, 19.8], [11.6, 16.6], [10.8, 13.2], [7.5, 11.2]]
+          ]
+        },
+        '9': {
+          w: 15,
+          s: [
+            [[11.4, 9.6], [10, 12], [7.2, 13], [4.4, 11.8], [3.4, 8.6], [4.4, 5], [7.2, 3.2], [10.2, 4.6], [11.6, 8.6], [11.2, 16.2], [9.4, 19.8], [6.4, 20.8], [4.2, 19.4]]
+          ]
+        },
+        // Hex / Latin Uppercase Letters A-F (plus common extras)
+        'A': {
+          w: 16,
+          s: [
+            [[2.6, 20.8], [8, 3.2], [13.4, 20.8]],
+            [[4.6, 14.8], [11.4, 14.8]]
+          ]
+        },
+        'B': {
+          w: 16,
+          s: [
+            [[3.4, 3.2], [3.4, 20.8]],
+            [[3.4, 3.2], [9.8, 3.2], [12, 4.8], [12.2, 8.2], [10, 11.2], [3.4, 11.2]],
+            [[10, 11.2], [12.4, 13], [12.6, 17.6], [10.2, 20.8], [3.4, 20.8]]
+          ]
+        },
+        'C': {
+          w: 16,
+          s: [
+            [[12.6, 6.2], [10.4, 3.6], [7.2, 3.2], [4.2, 5.4], [3, 9.8], [3, 14.2], [4.2, 18.6], [7.2, 20.8], [10.4, 20.4], [12.6, 17.8]]
+          ]
+        },
+        'D': {
+          w: 16,
+          s: [
+            [[3.4, 3.2], [3.4, 20.8]],
+            [[3.4, 3.2], [8.8, 3.2], [11.8, 5.6], [12.8, 10], [12.8, 14], [11.8, 18.4], [8.8, 20.8], [3.4, 20.8]]
+          ]
+        },
+        'E': {
+          w: 15,
+          s: [
+            [[11.8, 3.2], [3.4, 3.2], [3.4, 20.8], [12, 20.8]],
+            [[3.4, 11.6], [10.2, 11.6]]
+          ]
+        },
+        'F': {
+          w: 15,
+          s: [
+            [[11.8, 3.2], [3.4, 3.2], [3.4, 20.8]],
+            [[3.4, 11.6], [10.2, 11.6]]
+          ]
+        },
+        // Symbols
+        '·': {
+          w: 10,
+          s: [
+            [[5, 11], [5.8, 11.8], [5, 12.6], [4.2, 11.8], [5, 11]]
+          ]
+        },
+        ',': {
+          w: 8,
+          s: [
+            [[4.4, 18.6], [4.8, 20.2], [3.2, 23.2]]
+          ]
+        },
+        '.': {
+          w: 8,
+          s: [
+            [[4, 19.5], [4.6, 20.2], [4, 20.8], [3.4, 20.2], [4, 19.5]]
+          ]
+        },
+        '-': {
+          w: 12,
+          s: [
+            [[2.5, 12], [9.5, 12]]
+          ]
+        },
+        ' ': {
+          w: 8,
+          s: []
+        }
+      };
+
+      function layoutVectorText(text, startX, topY, heightMm, letterSpacingMm = 0.45) {
+        const scale = heightMm / 24;
+        const strokes = [];
+        let cursorX = startX;
+
+        for (const ch of text) {
+          const glyph = VECTOR_GLYPHS[ch] || VECTOR_GLYPHS[' '];
+          for (const rawStroke of glyph.s) {
+            const pts = rawStroke.map(([gx, gy]) => [
+              cursorX + gx * scale,
+              topY + gy * scale
+            ]);
+            strokes.push(pts);
+          }
+          cursorX += glyph.w * scale + letterSpacingMm;
+        }
+        return { strokes, widthMm: Math.max(0, cursorX - startX - letterSpacingMm) };
+      }
+
+      // ============================================================
+      // 4. GEOMETRY & OCCLUSION CLIPPING HELPERS
+      // ============================================================
+      function polyLength(pts) {
+        let len = 0;
+        for (let i = 1; i < pts.length; i++) {
+          const dx = pts[i][0] - pts[i - 1][0];
+          const dy = pts[i][1] - pts[i - 1][1];
+          len += Math.hypot(dx, dy);
+        }
+        return len;
+      }
+
+      // Resample long segments into fine steps so curved/horizon clipping is exact
+      function subdividePolyline(pts, maxStep = 0.85) {
+        if (pts.length < 2) return pts;
+        const out = [pts[0]];
+        for (let i = 1; i < pts.length; i++) {
+          const [x0, y0] = pts[i - 1];
+          const [x1, y1] = pts[i];
+          const dist = Math.hypot(x1 - x0, y1 - y0);
+          const steps = Math.max(1, Math.ceil(dist / maxStep));
+          for (let s = 1; s <= steps; s++) {
+            const t = s / steps;
+            out.push([x0 + (x1 - x0) * t, y0 + (y1 - y0) * t]);
+          }
+        }
+        return out;
+      }
+
+      // Clip a polyline against an arbitrary visibility predicate isVisible(x, y)
+      function clipPolylineByMask(pts, isVisible, minLen = 0.22) {
+        const dense = subdividePolyline(pts, 0.55);
+        const segments = [];
+        let current = null;
+
+        for (let i = 0; i < dense.length; i++) {
+          const p = dense[i];
+          const vis = isVisible(p[0], p[1]);
+          if (vis) {
+            if (!current) {
+              if (i > 0) {
+                // Binary refine entry point
+                let lo = dense[i - 1];
+                let hi = p;
+                for (let k = 0; k < 5; k++) {
+                  const mid = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
+                  if (isVisible(mid[0], mid[1])) hi = mid;
+                  else lo = mid;
+                }
+                current = [hi, p];
+              } else {
+                current = [p];
+              }
+            } else {
+              current.push(p);
+            }
+          } else if (current) {
+            // Binary refine exit point
+            let lo = current[current.length - 1];
+            let hi = p;
+            for (let k = 0; k < 5; k++) {
+              const mid = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
+              if (isVisible(mid[0], mid[1])) lo = mid;
+              else hi = mid;
+            }
+            current.push(lo);
+            if (polyLength(current) >= minLen) {
+              segments.push(simplifyCollinear(current, 0.035));
+            }
+            current = null;
+          }
+        }
+
+        if (current && polyLength(current) >= minLen) {
+          segments.push(simplifyCollinear(current, 0.035));
+        }
+        return segments;
+      }
+
+      function simplifyCollinear(pts, tol = 0.035) {
+        if (pts.length <= 2) return pts;
+        const out = [pts[0]];
+        for (let i = 1; i < pts.length - 1; i++) {
+          const prev = out[out.length - 1];
+          const curr = pts[i];
+          const next = pts[i + 1];
+          const vx = next[0] - prev[0];
+          const vy = next[1] - prev[1];
+          const vLen = Math.hypot(vx, vy);
+          if (vLen < 0.001) continue;
+          const cross = Math.abs((curr[0] - prev[0]) * vy - (curr[1] - prev[1]) * vx) / vLen;
+          if (cross > tol || Math.hypot(curr[0] - prev[0], curr[1] - prev[1]) > 2.6) {
+            out.push(curr);
+          }
+        }
+        out.push(pts[pts.length - 1]);
+        return out;
+      }
+
+      // Bidirectional nearest-neighbor path sorting to minimize pen-up air travel
+      function sortPathsMinimizeTravel(paths, startPos = [0, 0], allowReverse = true) {
+        const n = paths.length;
+        if (n <= 1) return { sorted: paths.slice(), endPos: n === 1 ? paths[0][paths[0].length - 1] : startPos };
+
+        const used = new Uint8Array(n);
+        const result = new Array(n);
+        let cx = startPos[0];
+        let cy = startPos[1];
+
+        for (let step = 0; step < n; step++) {
+          let bestIdx = -1;
+          let bestReverse = false;
+          let bestDistSq = Infinity;
+
+          for (let i = 0; i < n; i++) {
+            if (used[i]) continue;
+            const p = paths[i];
+            const s0 = p[0];
+            const d0 = (s0[0] - cx) * (s0[0] - cx) + (s0[1] - cy) * (s0[1] - cy);
+            if (d0 < bestDistSq) {
+              bestDistSq = d0;
+              bestIdx = i;
+              bestReverse = false;
+            }
+            if (allowReverse && p.length >= 2) {
+              const s1 = p[p.length - 1];
+              const d1 = (s1[0] - cx) * (s1[0] - cx) + (s1[1] - cy) * (s1[1] - cy);
+              if (d1 < bestDistSq) {
+                bestDistSq = d1;
+                bestIdx = i;
+                bestReverse = true;
+              }
+            }
+          }
+
+          used[bestIdx] = 1;
+          const chosen = bestReverse ? paths[bestIdx].slice().reverse() : paths[bestIdx];
+          result[step] = chosen;
+          const endPt = chosen[chosen.length - 1];
+          cx = endPt[0];
+          cy = endPt[1];
+        }
+
+        return { sorted: result, endPos: [cx, cy] };
+      }
+
+      // ============================================================
+      // 5. SHANSHUI LANDSCAPE GENERATOR
+      // ============================================================
+      function generateShanshui(seedInt, serialNumber, isPortrait) {
+        const rng = createRNG(seedInt);
+        const noise = new ValueNoise2D(rng);
+
+        // Paper physical dimensions in millimeters
+        const paperW = isPortrait ? 192 : 280;
+        const paperH = isPortrait ? 268 : 192;
+
+        // Inner frame margins & colophon strip
+        const marginX = isPortrait ? 14 : 16;
+        const marginTop = isPortrait ? 15 : 14;
+        const marginBottom = isPortrait ? 24 : 22;
+        const fx0 = marginX;
+        const fy0 = marginTop;
+        const fx1 = paperW - marginX;
+        const fy1 = paperH - marginBottom;
+        const fw = fx1 - fx0;
+        const fh = fy1 - fy0;
+
+        const inFrame = (x, y) => x >= fx0 && x <= fx1 && y >= fy0 && y <= fy1;
+
+        // Discretized X horizon buffer (0.2mm resolution) for exact front-to-back occlusion
+        const dxGrid = 0.2;
+        const gridN = Math.ceil(fw / dxGrid) + 1;
+        const sampleGrid = (arr, x) => {
+          const f = Math.max(0, Math.min(gridN - 1.0001, (x - fx0) / dxGrid));
+          const i = Math.floor(f);
+          const t = f - i;
+          return arr[i] + (arr[i + 1] - arr[i]) * t;
+        };
+
+        // Foreground mode: 0 = Misty Lake + Reflections, 1 = Lake + Pine Promontory, 2 = Craggy Pine Slope
+        const fgRoll = rng();
+        const hasLake = fgRoll < 0.76;
+        const hasPines = fgRoll >= 0.38;
+        const waterY = hasLake
+          ? fy0 + fh * (isPortrait ? (0.74 + rng() * 0.06) : (0.71 + rng() * 0.07))
+          : fy1;
+
+        // Light direction & Celestial setup
+        const lightFromLeft = rng() < 0.52;
+        const lightSign = lightFromLeft ? -1 : 1; // Sunlit when dY/dx has same sign as lightSign
+
+        // Number of mountain ridges: 5 to 8 ("用多层噪声生成 5–8 道由近及远的山脊")
+        const ridgeCount = 5 + Math.floor(rng() * 4); // 5, 6, 7, or 8
+        const compositionMode = Math.floor(rng() * 4);
+
+        // Initialize occlusion horizon at waterline (or bottom of frame)
+        const horizon = new Float32Array(gridN);
+        for (let i = 0; i < gridN; i++) {
+          horizon[i] = waterY;
+        }
+
+        // Optional foreground rocky pine promontory anchored to bottom frame edge (fy1)
+        // and rising cleanly above waterY on one side, occluding water & mountains behind it!
+        const shoreProfiles = [];
+        const pineShieldBoxes = [];
+        if (hasPines && hasLake) {
+          const onLeft = compositionMode === 1 ? true : (compositionMode === 0 ? false : rng() < 0.55);
+          const span = fw * (0.28 + rng() * 0.14);
+          const prof = new Float32Array(gridN);
+          for (let i = 0; i < gridN; i++) {
+            const x = fx0 + i * dxGrid;
+            const distFromSide = onLeft ? (x - fx0) : (fx1 - x);
+            if (distFromSide < span) {
+              const u = 1 - distFromSide / span; // 1 at frame side, 0 at cape tip
+              const rise = (fy1 - waterY) + fh * (0.035 + 0.045 * Math.pow(u, 0.75)) +
+                noise.fbm(x * 0.055 + 7.1, 3.7, 3) * 3.2 * Math.pow(u, 0.4);
+              prof[i] = Math.max(waterY - fh * 0.09, fy1 - Math.max(0, rise * Math.pow(u, 0.48)));
+              // Occlude mountains behind this foreground rocky cape!
+              if (prof[i] < horizon[i]) {
+                horizon[i] = prof[i];
+              }
+            } else {
+              prof[i] = fy1 + 20;
+            }
+          }
+          shoreProfiles.push({ onLeft, span, prof });
+        }
+
+        // Pre-plan pine tree positions & register soft silhouette shields so pine needles read crisply!
+        const plannedPines = [];
+        if (hasPines) {
+          const treeCount = 2 + Math.floor(rng() * 3); // 2 to 4 expressive focal pines
+          if (hasLake && shoreProfiles.length > 0) {
+            const sp = shoreProfiles[0];
+            for (let t = 0; t < treeCount; t++) {
+              const dist = 5.5 + (t / Math.max(1, treeCount - 0.3)) * (sp.span * 0.62) + rng() * 3.0;
+              const tx = sp.onLeft ? (fx0 + dist) : (fx1 - dist);
+              const ty = Math.min(fy1 - 1.2, sampleGrid(sp.prof, tx) + 2.2 + rng() * 2.4);
+              const th = (isPortrait ? 16 : 18) + rng() * 10 - t * 2.2;
+              const lean = sp.onLeft ? (0.42 + rng() * 0.45) : -(0.42 + rng() * 0.45);
+              plannedPines.push({ tx, ty, th: Math.max(11, th), lean });
+            }
+          } else {
+            const onLeft = rng() < 0.5;
+            for (let t = 0; t < treeCount; t++) {
+              const dist = 6 + t * (fw * 0.085) + rng() * 5;
+              const tx = onLeft ? (fx0 + dist) : (fx1 - dist);
+              const ty = fy1 - 1.8 - rng() * 5.5;
+              const th = (isPortrait ? 18 : 20) + rng() * 11 - t * 2.4;
+              const lean = onLeft ? (0.4 + rng() * 0.45) : -(0.4 + rng() * 0.45);
+              plannedPines.push({ tx, ty, th: Math.max(12, th), lean });
+            }
+          }
+
+          // Slightly raise horizon in narrow Halo around pine crowns so far hatching leaves misty breathing space
+          for (const p of plannedPines) {
+            pineShieldBoxes.push({
+              cx: p.tx + p.lean * p.th * 0.12,
+              topY: p.ty - p.th - 1.2,
+              botY: p.ty,
+              rx: p.th * 0.32
+            });
+          }
+        }
+
+        // Build ridge profiles m = 0 (nearest) to ridgeCount - 1 (farthest)
+        // Wait: how do we ensure natural front-to-back progression while nearer peaks can overlap farther ones?
+        // Base elevation rises upward (smaller Y) as depth t goes from 0 (near) to 1 (far),
+        // while near/mid ridges have bold asymmetric peaks that slice dramatically across behind ridges!
+        const ridges = [];
+        const stylesPool = ['scree_contour', 'cross_steep', 'rain_cliff', 'topo_flow'];
+
+        for (let m = 0; m < ridgeCount; m++) {
+          const depth = m / (ridgeCount - 1); // 0 = nearest, 1 = farthest
+          const profile = new Float32Array(gridN);
+
+          // Choose distinct hatching character per mountain ("不同山体采用不同排线，让层次自然分开")
+          let hatchType;
+          if (m === 0) {
+            hatchType = rng() < 0.55 ? 'scree_contour' : 'cross_steep';
+          } else if (depth < 0.48) {
+            hatchType = m % 2 === 1 ? 'rain_cliff' : 'cross_steep';
+          } else if (depth < 0.78) {
+            hatchType = m % 2 === 0 ? 'topo_flow' : 'rain_cliff';
+          } else {
+            hatchType = 'topo_flow';
+          }
+          // Guarantee all 4 hatching families appear across the 5-8 ridges
+          if (m < 4) {
+            hatchType = stylesPool[m];
+          }
+
+          // Macroscopic peak envelope per ridge
+          const peakCenter = (() => {
+            if (compositionMode === 0) return 0.22 + depth * 0.45 + (rng() - 0.5) * 0.22;
+            if (compositionMode === 1) return 0.78 - depth * 0.45 + (rng() - 0.5) * 0.22;
+            if (compositionMode === 2) return (m % 2 === 0 ? 0.24 : 0.76) + (rng() - 0.5) * 0.16;
+            return 0.18 + ((m * 0.618 + rng() * 0.18) % 0.68);
+          })();
+
+          const secondaryCenter = 1 - peakCenter + (rng() - 0.5) * 0.2;
+          const baseLineY = waterY - fh * (0.04 + depth * 0.34);
+          const reliefAmp = fh * (isPortrait
+            ? (0.16 + 0.14 * Math.sin(depth * Math.PI * 0.85 + 0.3))
+            : (0.18 + 0.16 * Math.sin(depth * Math.PI * 0.85 + 0.25)));
+          const noiseFreq = 0.011 + depth * 0.0045;
+          const seedOffset = m * 37.7 + rng() * 20;
+
+          // Partial ridge span for foreground ridges so valleys open up to reveal lake & mid-peaks
+          const partialSide = (m === 0 && hasLake) ? (compositionMode === 1 ? 1 : -1) : 0;
+
+          for (let i = 0; i < gridN; i++) {
+            const x = fx0 + i * dxGrid;
+            const u = (x - fx0) / fw; // 0..1
+
+            const d1 = (u - peakCenter) / (0.24 + rng() * 0.001 + (1 - depth) * 0.08);
+            const d2 = (u - secondaryCenter) / 0.31;
+            let env = Math.exp(-d1 * d1 * 1.45) + 0.46 * Math.exp(-d2 * d2 * 1.8);
+
+            if (partialSide !== 0) {
+              const sideRamp = partialSide < 0 ? (1 - u * 1.28) : ((u - 0.22) * 1.28);
+              env *= Math.max(0, Math.min(1.15, sideRamp * 1.35));
+            }
+
+            const ridgeN = noise.ridged(x * noiseFreq + seedOffset, m * 5.3, 5);
+            const detailN = noise.fbm(x * 0.048 + seedOffset * 1.7, m * 9.1, 3) * (3.4 - depth * 1.5);
+            const y = baseLineY - env * reliefAmp * (0.42 + 0.88 * ridgeN) + detailN;
+
+            // Clamp inside frame
+            profile[i] = Math.max(fy0 + 6, Math.min(waterY + (m === 0 && !hasLake ? 4 : 2), y));
+          }
+
+          ridges.push({
+            index: m,
+            depth,
+            hatchType,
+            profile,
+            visibleBottom: new Float32Array(gridN)
+          });
+        }
+
+        // Front-to-back occlusion pass + mountain stroke generation!
+        // Each ridge stores { ridgeStrokes, slopeStrokes } already clipped against all nearer ridges
+        const compiledMountains = [];
+
+        for (let m = 0; m < ridgeCount; m++) {
+          const r = ridges[m];
+          const prof = r.profile;
+          const visBot = r.visibleBottom;
+
+          // Record current occlusion silhouette BEFORE adding ridge m
+          let visibleColumns = 0;
+          for (let i = 0; i < gridN; i++) {
+            visBot[i] = horizon[i];
+            if (prof[i] < visBot[i] - 0.35) visibleColumns++;
+          }
+
+          const ridgeStrokes = [];
+          const slopeStrokes = [];
+
+          if (visibleColumns > 8) {
+            // 1) Main continuous ridgeline contour ("笔尖沿一整道山脊快速走过")
+            const rawCrest = [];
+            for (let i = 0; i < gridN; i += 3) {
+              rawCrest.push([fx0 + i * dxGrid, prof[i]]);
+            }
+            rawCrest.push([fx1, prof[gridN - 1]]);
+
+            const crestSegs = clipPolylineByMask(
+              rawCrest,
+              (x, y) => inFrame(x, y) && y <= sampleGrid(visBot, x) - 0.06,
+              0.8
+            );
+            ridgeStrokes.push(...crestSegs);
+
+            // Subtle double-shoulder accent on bold near/mid peaks (shaded side only)
+            if (r.depth < 0.65) {
+              const shoulderPts = [];
+              for (let i = 2; i < gridN - 2; i += 4) {
+                const slope = (prof[i + 2] - prof[i - 2]) / (4 * dxGrid);
+                const isShaded = slope * lightSign < -0.08;
+                if (isShaded) {
+                  shoulderPts.push([fx0 + i * dxGrid, prof[i] + 0.55 + Math.min(0.6, Math.abs(slope) * 0.45)]);
+                } else if (shoulderPts.length > 2) {
+                  const clipped = clipPolylineByMask(
+                    shoulderPts,
+                    (x, y) => inFrame(x, y) && y > sampleGrid(prof, x) + 0.15 && y < sampleGrid(visBot, x) - 0.3,
+                    1.6
+                  );
+                  ridgeStrokes.push(...clipped);
+                  shoulderPts.length = 0;
+                } else {
+                  shoulderPts.length = 0;
+                }
+              }
+              if (shoulderPts.length > 2) {
+                const clipped = clipPolylineByMask(
+                  shoulderPts,
+                  (x, y) => inFrame(x, y) && y > sampleGrid(prof, x) + 0.15 && y < sampleGrid(visBot, x) - 0.3,
+                  1.6
+                );
+                ridgeStrokes.push(...clipped);
+              }
+            }
+
+            // 2) Detect major local peaks and trace internal 3D facet ridge spurs!
+            const spurs = [];
+            for (let i = 28; i < gridN - 28; i++) {
+              const py = prof[i];
+              if (py >= visBot[i] - 3.5) continue;
+              let isPeak = true;
+              for (let k = -24; k <= 24; k += 3) {
+                if (k !== 0 && prof[i + k] < py) {
+                  isPeak = false;
+                  break;
+                }
+              }
+              if (isPeak) {
+                const px = fx0 + i * dxGrid;
+                const availH = visBot[i] - py;
+                if (availH > 7) {
+                  const spurPts = [[px, py + 0.2]];
+                  let sx = px;
+                  let sy = py + 0.2;
+                  const drift = -lightSign * (0.16 + rng() * 0.22);
+                  const steps = Math.min(34, Math.floor(availH * 0.78 / 1.4));
+                  for (let s = 1; s <= steps; s++) {
+                    sy += 1.4;
+                    sx += drift + noise.sample(sx * 0.08 + m * 3, sy * 0.08) * 0.65;
+                    if (!inFrame(sx, sy) || sy >= sampleGrid(visBot, sx) - 1.2) break;
+                    if (sy <= sampleGrid(prof, sx) + 0.4) break;
+                    spurPts.push([sx, sy]);
+                  }
+                  if (spurPts.length >= 3) {
+                    spurs.push(spurPts);
+                    if (r.depth < 0.78) ridgeStrokes.push(spurPts);
+                  }
+                  i += 32; // space out peaks
+                }
+              }
+            }
+
+            // Helper: compute local shade factor [0..1] combining ridge slope & nearest internal spur facet
+            const getShade = (x, y) => {
+              const crestY = sampleGrid(prof, x);
+              const sL = sampleGrid(prof, Math.max(fx0, x - 1.8));
+              const sR = sampleGrid(prof, Math.min(fx1, x + 1.8));
+              const slope = (sR - sL) / 3.6;
+              // slope * lightSign < 0 means facing away from sun/moon -> shaded!
+              let shade = 0.48 - slope * lightSign * 0.85;
+
+              // Modulate sharply across nearby internal 3D spur line
+              for (const sp of spurs) {
+                if (y >= sp[0][1] && y <= sp[sp.length - 1][1] + 6) {
+                  // Interpolate spur X at height y
+                  const idx = Math.min(sp.length - 1, Math.max(0, Math.floor((y - sp[0][1]) / 1.4)));
+                  const spX = sp[idx][0];
+                  const dxSpur = x - spX;
+                  if (Math.abs(dxSpur) < 18) {
+                    const sideSign = dxSpur * (-lightSign);
+                    shade += Math.tanh(sideSign * 0.35) * 0.36 * (1 - Math.abs(dxSpur) / 18);
+                  }
+                }
+              }
+
+              shade += noise.sample(x * 0.055 + m * 7, y * 0.055) * 0.16;
+              // Fade gently near misty valley bottom on distant/mid mountains
+              const botY = sampleGrid(visBot, x);
+              const bandH = Math.max(1, botY - crestY);
+              const vFrac = (y - crestY) / bandH;
+              if (r.depth > 0.22 && vFrac > 0.68) {
+                shade *= Math.max(0, 1 - (vFrac - 0.68) / 0.34);
+              }
+              return Math.max(0, Math.min(1, shade));
+            };
+
+            const notBehindPine = (x, y) => {
+              for (const pb of pineShieldBoxes) {
+                if (y >= pb.topY && y <= pb.botY) {
+                  const u = (y - pb.topY) / Math.max(1, pb.botY - pb.topY);
+                  const wAtY = pb.rx * (0.45 + 0.65 * Math.sin(u * Math.PI * 0.9));
+                  if (Math.abs(x - pb.cx) < wAtY) return false;
+                }
+              }
+              return true;
+            };
+
+            const slopeMask = (x, y) =>
+              inFrame(x, y) &&
+              y >= sampleGrid(prof, x) + 0.18 &&
+              y <= sampleGrid(visBot, x) - 0.18 &&
+              notBehindPine(x, y);
+
+            // 3) Generate the 4 distinctive shanshui hatching families!
+            if (r.hatchType === 'topo_flow') {
+              // 沿坡势起伏的细线表现地形 (Flowing topographic lines echoing ridge contours)
+              const lineGap = 1.45 + r.depth * 0.55;
+              const maxBands = Math.min(26, Math.ceil((fh * 0.34) / lineGap));
+              for (let b = 1; b <= maxBands; b++) {
+                const baseOff = b * lineGap;
+                let run = [];
+                for (let i = 0; i < gridN; i += 5) {
+                  const x = fx0 + i * dxGrid;
+                  const crestY = prof[i];
+                  const botY = visBot[i];
+                  if (botY - crestY < 1.2) {
+                    if (run.length >= 2) slopeStrokes.push(...clipPolylineByMask(run, slopeMask, 1.1));
+                    run = [];
+                    continue;
+                  }
+                  // Gently relax ridge curvature downward
+                  const smoothCrest = (prof[Math.max(0, i - 10)] + prof[i] + prof[Math.min(gridN - 1, i + 10)]) / 3;
+                  const relax = Math.min(0.65, b * 0.04);
+                  const y = crestY * (1 - relax) + smoothCrest * relax + baseOff +
+                    noise.sample(x * 0.07 + b * 2.1, m * 4.3) * 0.85;
+
+                  const shade = getShade(x, y);
+                  const mistKeep = shade + noise.sample(x * 0.13 + b * 5.7, y * 0.09) * 0.28;
+                  if (y < botY - (r.depth > 0.45 ? 1.6 : 0.35) && mistKeep > 0.28) {
+                    run.push([x, y]);
+                  } else {
+                    if (run.length >= 2) slopeStrokes.push(...clipPolylineByMask(run, slopeMask, 1.1));
+                    run = [];
+                  }
+                }
+                if (run.length >= 2) slopeStrokes.push(...clipPolylineByMask(run, slopeMask, 1.1));
+              }
+            } else if (r.hatchType === 'rain_cliff') {
+              // 雨丝般的竖线表现陡坡 (Rain-thread vertical cun strokes on steep cliffs)
+              const xStep = 1.15 + r.depth * 0.25;
+              for (let x = fx0 + 0.8; x <= fx1 - 0.8; x += xStep) {
+                const xJit = x + (rng() - 0.5) * 0.45;
+                const crestY = sampleGrid(prof, xJit);
+                const botY = sampleGrid(visBot, xJit);
+                const avail = botY - crestY;
+                if (avail < 1.5) continue;
+
+                const sL = sampleGrid(prof, Math.max(fx0, xJit - 1.5));
+                const sR = sampleGrid(prof, Math.min(fx1, xJit + 1.5));
+                const steepness = Math.abs(sR - sL) / 3.0;
+                const shade = getShade(xJit, crestY + Math.min(avail * 0.35, 6));
+
+                // Vertical rain threads cascade down from crest & cliff ledges
+                const density = Math.min(1, 0.25 + steepness * 0.55 + shade * 0.65);
+                if (rng() > density) continue;
+
+                let yCur = crestY + 0.25 + rng() * 1.1;
+                const yLimit = botY - (r.depth > 0.35 ? Math.min(avail * 0.22, 4.5) : 0.4);
+                let tier = 0;
+                while (yCur < yLimit - 1.0 && tier < 4) {
+                  const localShade = getShade(xJit, yCur);
+                  if (localShade < 0.2 && tier > 0 && rng() < 0.7) break;
+                  const segLen = (2.2 + rng() * 6.8) * (0.55 + localShade * 0.85) * (1 - tier * 0.16);
+                  const yEnd = Math.min(yLimit, yCur + segLen);
+                  if (yEnd - yCur >= 0.9) {
+                    const sway = noise.sample(xJit * 0.08, yCur * 0.08) * 0.28;
+                    const pts = [
+                      [xJit, yCur],
+                      [xJit + sway * 0.5, (yCur + yEnd) * 0.5],
+                      [xJit + sway, yEnd]
+                    ];
+                    slopeStrokes.push(...clipPolylineByMask(pts, slopeMask, 0.8));
+                  }
+                  yCur = yEnd + 1.1 + rng() * (3.6 - localShade * 1.8);
+                  tier++;
+                }
+              }
+            } else if (r.hatchType === 'cross_steep') {
+              // 交叉排线压暗背阴面 (Delicate rock-grain slope hatching + cross-hatching darkening shaded faces)
+              const spacing1 = 1.25 + r.depth * 0.22;
+              const angle1 = lightFromLeft ? 0.96 : (Math.PI - 0.96);
+              const dx1 = Math.cos(angle1);
+              const dy1 = Math.sin(angle1);
+
+              // Pass 1: Primary diagonal rock-facet strokes (tapered & curved slightly with slope)
+              for (let xSeed = fx0 - 20; xSeed <= fx1 + 20; xSeed += spacing1) {
+                for (let yBand = fy0 + 6; yBand < waterY; yBand += 4.6) {
+                  const sx = xSeed + (rng() - 0.5) * 0.65;
+                  const sy = yBand + (rng() - 0.5) * 1.5;
+                  if (!slopeMask(sx, sy)) continue;
+                  const shade = getShade(sx, sy);
+                  if (shade < 0.31 || rng() > shade * 1.28) continue;
+
+                  const len = 1.9 + shade * 3.4 + rng() * 1.5;
+                  const bend = noise.sample(sx * 0.09, sy * 0.09) * 0.28;
+                  const pts = [
+                    [sx, sy],
+                    [sx + dx1 * len * 0.5 + bend, sy + dy1 * len * 0.5],
+                    [sx + dx1 * len, sy + dy1 * len]
+                  ];
+                  slopeStrokes.push(...clipPolylineByMask(pts, slopeMask, 0.75));
+                }
+              }
+
+              // Pass 2: Finer cross-hatching strictly on deeper shadow faces ("交叉排线压暗背阴面")
+              const angle2 = lightFromLeft ? (Math.PI - 1.14) : 1.14;
+              const dx2 = Math.cos(angle2);
+              const dy2 = Math.sin(angle2);
+              for (let xSeed = fx0 - 18; xSeed <= fx1 + 18; xSeed += spacing1 * 1.28) {
+                for (let yBand = fy0 + 6; yBand < waterY; yBand += 4.4) {
+                  const sx = xSeed + (rng() - 0.5) * 0.65;
+                  const sy = yBand + (rng() - 0.5) * 1.4;
+                  if (!slopeMask(sx, sy)) continue;
+                  const shade = getShade(sx, sy);
+                  if (shade < 0.58 || rng() > (shade - 0.44) * 1.85) continue;
+
+                  const len = 1.6 + shade * 2.8 + rng() * 1.2;
+                  const pts = [
+                    [sx, sy],
+                    [sx + dx2 * len, sy + dy2 * len]
+                  ];
+                  slopeStrokes.push(...clipPolylineByMask(pts, slopeMask, 0.7));
+                }
+              }
+
+              // Sunlit side delicate ridge-hugging contour whispers
+              for (let b = 1; b <= 5; b++) {
+                let run = [];
+                for (let i = 0; i < gridN; i += 6) {
+                  const x = fx0 + i * dxGrid;
+                  const y = prof[i] + b * 2.2 + noise.sample(x * 0.08, b * 3.1) * 0.6;
+                  const shade = getShade(x, y);
+                  if (slopeMask(x, y) && shade < 0.36 && shade > 0.08) {
+                    run.push([x, y]);
+                  } else {
+                    if (run.length >= 2) slopeStrokes.push(...clipPolylineByMask(run, slopeMask, 1.3));
+                    run = [];
+                  }
+                }
+                if (run.length >= 2) slopeStrokes.push(...clipPolylineByMask(run, slopeMask, 1.3));
+              }
+            } else {
+              // scree_contour: 沿坡势细线 + 稀疏的短点划表现碎石坡 (Upper slope contours + talus scree dots & dashes)
+              // Upper crest contours & shadow strokes
+              for (let b = 1; b <= 9; b++) {
+                let run = [];
+                for (let i = 0; i < gridN; i += 5) {
+                  const x = fx0 + i * dxGrid;
+                  const crestY = prof[i];
+                  const botY = visBot[i];
+                  const y = crestY + b * 1.65 + noise.sample(x * 0.075 + m, b * 2.7) * 0.9;
+                  const shade = getShade(x, y);
+                  if (y < crestY + (botY - crestY) * 0.48 && slopeMask(x, y) && (shade > 0.32 || b <= 2)) {
+                    run.push([x, y]);
+                  } else {
+                    if (run.length >= 2) slopeStrokes.push(...clipPolylineByMask(run, slopeMask, 1.0));
+                    run = [];
+                  }
+                }
+                if (run.length >= 2) slopeStrokes.push(...clipPolylineByMask(run, slopeMask, 1.0));
+              }
+
+              // Shaded crease cross ticks near upper crags
+              for (let x = fx0 + 2; x < fx1 - 2; x += 1.9) {
+                const crestY = sampleGrid(prof, x);
+                const botY = sampleGrid(visBot, x);
+                if (botY - crestY < 4) continue;
+                const sy = crestY + 0.8 + rng() * Math.min(9, (botY - crestY) * 0.35);
+                const shade = getShade(x, sy);
+                if (shade > 0.55 && slopeMask(x, sy)) {
+                  const len = 1.8 + shade * 3.4;
+                  slopeStrokes.push(...clipPolylineByMask(
+                    [[x, sy], [x - lightSign * len * 0.42, sy + len * 0.9]],
+                    slopeMask,
+                    0.7
+                  ));
+                }
+              }
+
+              // Lower talus/scree apron: 稀疏的短点划表现碎石坡
+              const screeCount = Math.floor(fw * 1.55);
+              for (let k = 0; k < screeCount; k++) {
+                const sx = fx0 + 1 + rng() * (fw - 2);
+                const crestY = sampleGrid(prof, sx);
+                const botY = sampleGrid(visBot, sx);
+                const avail = botY - crestY;
+                if (avail < 3.5) continue;
+
+                const frac = 0.28 + Math.pow(rng(), 0.82) * 0.68;
+                const sy = crestY + avail * frac;
+                if (!slopeMask(sx, sy)) continue;
+
+                const sL = sampleGrid(prof, Math.max(fx0, sx - 2));
+                const sR = sampleGrid(prof, Math.min(fx1, sx + 2));
+                const fallSlope = (sR - sL) / 4.0;
+                const ang = Math.atan2(0.45, fallSlope >= 0 ? 1 : -1) * 0.35 + (rng() - 0.5) * 0.32;
+
+                // Alternate tiny pebble dots (0.28-0.5mm) and short scree dashes (0.9-2.2mm)
+                const isDot = rng() < 0.46;
+                const dLen = isDot ? (0.26 + rng() * 0.28) : (0.85 + rng() * 1.45);
+                const pEnd = [sx + Math.cos(ang) * dLen, sy + Math.sin(ang) * dLen];
+                if (slopeMask(pEnd[0], pEnd[1])) {
+                  slopeStrokes.push([[sx, sy], pEnd]);
+                }
+              }
+            }
+          }
+
+          compiledMountains.push({
+            index: m,
+            depth: r.depth,
+            ridgeStrokes,
+            slopeStrokes
+          });
+
+          // Update occlusion buffer with ridge m so all farther ridges behind it are clipped!
+          for (let i = 0; i < gridN; i++) {
+            if (prof[i] < horizon[i]) {
+              horizon[i] = prof[i];
+            }
+          }
+        }
+
+        // Now `horizon` holds the combined sky silhouette of ALL mountains!
+        const skyCeiling = (x) => sampleGrid(horizon, x);
+        const skyMask = (x, y) => inFrame(x, y) && y <= skyCeiling(x) - 0.65;
+
+        // ============================================================
+        // LAYER 1: 图框定位 (Border Frame + 4 Corner Registration Crosses)
+        // ============================================================
+        const layerFrame = [];
+        // Crisp drafting inner frame loop
+        layerFrame.push([
+          [fx0, fy0],
+          [fx1, fy0],
+          [fx1, fy1],
+          [fx0, fy1],
+          [fx0, fy0]
+        ]);
+
+        // Four corner registration crosses framing the full print + colophon block ("四角的定位十字")
+        const crossOff = 4.2;
+        const crossArm = 2.3;
+        const colophonBottomRef = fy1 + (isPortrait ? 8.6 : 8.2);
+        const corners = [
+          [fx0 - crossOff, fy0 - crossOff],
+          [fx1 + crossOff, fy0 - crossOff],
+          [fx1 + crossOff, colophonBottomRef + 2.2],
+          [fx0 - crossOff, colophonBottomRef + 2.2]
+        ];
+        for (const [cx, cy] of corners) {
+          layerFrame.push([[cx - crossArm, cy], [cx + crossArm, cy]]);
+          layerFrame.push([[cx, cy - crossArm], [cx, cy + crossArm]]);
+        }
+
+        // ============================================================
+        // LAYER 2: 天象云气 (Sun [Concentric/Spiral] OR Crescent Moon + Stars, Clouds, Birds)
+        // ============================================================
+        const skyBodyStrokes = [];
+        const skyDecorStrokes = [];
+
+        // Place celestial body on the side matching lightFromLeft, above mountains (or dramatically kissing distant ridge!)
+        const celX = fx0 + fw * (lightFromLeft ? (0.2 + rng() * 0.2) : (0.6 + rng() * 0.2));
+        const mountainAtCel = skyCeiling(celX);
+        const celRadius = (isPortrait ? 8.5 : 10.5) + rng() * 5.0;
+        const celY = Math.max(
+          fy0 + celRadius + 6.5,
+          Math.min(mountainAtCel - celRadius * (rng() < 0.28 ? 0.35 : 1.35), fy0 + fh * 0.28)
+        );
+
+        const celestialRoll = rng();
+        if (celestialRoll < 0.36) {
+          // Mode A: Concentric circles sun ("同心圆构成的太阳")
+          const ringStep = 1.15;
+          const rings = Math.max(4, Math.floor(celRadius / ringStep));
+          for (let rIdx = 1; rIdx <= rings; rIdx++) {
+            const rad = (rIdx / rings) * celRadius;
+            const steps = Math.max(28, Math.ceil(rad * 7));
+            const a0 = rng() * Math.PI * 2;
+            const pts = [];
+            for (let s = 0; s <= steps; s++) {
+              const a = a0 + (s / steps) * Math.PI * 2;
+              pts.push([celX + Math.cos(a) * rad, celY + Math.sin(a) * rad]);
+            }
+            skyBodyStrokes.push(...clipPolylineByMask(pts, skyMask, 0.7));
+          }
+        } else if (celestialRoll < 0.7) {
+          // Mode B: Archimedean spiral sun ("或螺旋构成的太阳")
+          const turns = Math.max(5, Math.round(celRadius / 1.25));
+          const totalSteps = turns * 42;
+          const pts = [];
+          for (let s = 0; s <= totalSteps; s++) {
+            const t = s / totalSteps;
+            const ang = t * turns * Math.PI * 2;
+            const rad = 0.35 + t * (celRadius - 0.35);
+            pts.push([celX + Math.cos(ang) * rad, celY + Math.sin(ang) * rad]);
+          }
+          skyBodyStrokes.push(...clipPolylineByMask(pts, skyMask, 0.8));
+        } else {
+          // Mode C: Crescent moon + several stars ("也可以画一弯月牙和几颗星")
+          const moonR = celRadius * 0.92;
+          const cutDx = (lightFromLeft ? 1 : -1) * moonR * 0.48;
+          const cutDy = -moonR * 0.16;
+          const cutR = moonR * 0.88;
+          const inCrescent = (x, y) => {
+            const dOuter = Math.hypot(x - celX, y - celY);
+            const dInner = Math.hypot(x - (celX + cutDx), y - (celY + cutDy));
+            return dOuter <= moonR && dInner >= cutR && skyMask(x, y);
+          };
+
+          // Outer & inner crescent arcs
+          const outerArc = [];
+          const innerArc = [];
+          for (let s = 0; s <= 72; s++) {
+            const a = (s / 72) * Math.PI * 2;
+            const ox = celX + Math.cos(a) * moonR;
+            const oy = celY + Math.sin(a) * moonR;
+            if (Math.hypot(ox - (celX + cutDx), oy - (celY + cutDy)) >= cutR - 0.08) {
+              outerArc.push([ox, oy]);
+            } else if (outerArc.length >= 2) {
+              skyBodyStrokes.push(...clipPolylineByMask(outerArc, skyMask, 0.6));
+              outerArc.length = 0;
+            }
+          }
+          if (outerArc.length >= 2) skyBodyStrokes.push(...clipPolylineByMask(outerArc, skyMask, 0.6));
+
+          for (let s = 0; s <= 72; s++) {
+            const a = (s / 72) * Math.PI * 2;
+            const ix = celX + cutDx + Math.cos(a) * cutR;
+            const iy = celY + cutDy + Math.sin(a) * cutR;
+            if (Math.hypot(ix - celX, iy - celY) <= moonR + 0.08) {
+              innerArc.push([ix, iy]);
+            } else if (innerArc.length >= 2) {
+              skyBodyStrokes.push(...clipPolylineByMask(innerArc, skyMask, 0.6));
+              innerArc.length = 0;
+            }
+          }
+          if (innerArc.length >= 2) skyBodyStrokes.push(...clipPolylineByMask(innerArc, skyMask, 0.6));
+
+          // Delicate parallel shading lines inside crescent moon
+          for (let dy = -moonR; dy <= moonR; dy += 1.05) {
+            const row = [
+              [celX - moonR - 1, celY + dy - 1.2],
+              [celX + moonR + 1, celY + dy + 1.2]
+            ];
+            skyBodyStrokes.push(...clipPolylineByMask(row, inCrescent, 0.55));
+          }
+
+          // Stars scattered across high sky ("和几颗星")
+          const starCount = 7 + Math.floor(rng() * 7);
+          const placedStars = [];
+          for (let st = 0; st < starCount * 4 && placedStars.length < starCount; st++) {
+            const sx = fx0 + 10 + rng() * (fw - 20);
+            const sy = fy0 + 6 + rng() * (fh * 0.34);
+            if (Math.hypot(sx - celX, sy - celY) < moonR + 9) continue;
+            if (sy > skyCeiling(sx) - 6) continue;
+            if (placedStars.some(([px, py]) => Math.hypot(px - sx, py - sy) < 11)) continue;
+            placedStars.push([sx, sy]);
+
+            const sr = 0.85 + rng() * 1.15;
+            // Crisp 4-point star + diagonal glint
+            skyDecorStrokes.push([[sx - sr, sy], [sx + sr, sy]]);
+            skyDecorStrokes.push([[sx, sy - sr * 1.15], [sx, sy + sr * 1.15]]);
+            if (sr > 1.35) {
+              const d = sr * 0.48;
+              skyDecorStrokes.push([[sx - d, sy - d], [sx + d, sy + d]]);
+              skyDecorStrokes.push([[sx - d, sy + d], [sx + d, sy - d]]);
+            }
+          }
+        }
+
+        // Optional Horizontal Cloud Bands broken near Sun/Moon ("有时加几道在日月旁断开的水平云带")
+        if (rng() < 0.72) {
+          const bandCount = 2 + Math.floor(rng() * 3);
+          const celGapR = celRadius + 5.2;
+          for (let b = 0; b < bandCount; b++) {
+            const cyBand = celY + (b - (bandCount - 1) * 0.5) * (4.2 + rng() * 3.4) + (rng() - 0.5) * 4;
+            if (cyBand < fy0 + 5 || cyBand > fy0 + fh * 0.46) continue;
+            const bx0 = fx0 + fw * (0.06 + rng() * 0.28);
+            const bx1 = bx0 + fw * (0.36 + rng() * 0.46);
+            const subLines = 2 + Math.floor(rng() * 2);
+
+            for (let sl = 0; sl < subLines; sl++) {
+              const ly = cyBand + (sl - (subLines - 1) * 0.5) * 1.05;
+              const trim = sl === 0 || sl === subLines - 1 ? fw * 0.05 : 0;
+              const xStart = Math.max(fx0 + 3, bx0 + trim);
+              const xEnd = Math.min(fx1 - 3, bx1 - trim);
+              if (xEnd - xStart < 10) continue;
+
+              const pts = [];
+              for (let x = xStart; x <= xEnd; x += 2.2) {
+                const wave = Math.sin(x * 0.07 + b * 2.1 + sl) * 0.24;
+                pts.push([x, ly + wave]);
+              }
+              const cloudMask = (x, y) =>
+                skyMask(x, y) && Math.hypot(x - celX, y - celY) >= celGapR;
+              skyDecorStrokes.push(...clipPolylineByMask(pts, cloudMask, 2.2));
+            }
+          }
+        }
+
+        // Helper for calligraphic V-shaped flying bird
+        function makeBirdStrokes(bx, by, span = 2.9, tilt = 0) {
+          const half = span * 0.5;
+          const lift = span * 0.34;
+          const c = Math.cos(tilt);
+          const s = Math.sin(tilt);
+          const rot = (dx, dy) => [bx + dx * c - dy * s, by + dx * s + dy * c];
+          // Single continuous arched V-wing stroke so plotter draws each bird fluidly
+          return [[
+            rot(-half, -lift * 0.72),
+            rot(-half * 0.48, -lift),
+            rot(0, 0),
+            rot(half * 0.48, -lift * 0.95),
+            rot(half, -lift * 0.65)
+          ]];
+        }
+
+        // Optional small flock of birds in open sky ("或者一小群飞鸟")
+        if (rng() < 0.66) {
+          const flockCount = 4 + Math.floor(rng() * 5);
+          const flockX = fx0 + fw * (lightFromLeft ? (0.56 + rng() * 0.25) : (0.18 + rng() * 0.25));
+          const flockY = fy0 + fh * (0.14 + rng() * 0.16);
+          const dir = lightFromLeft ? 1 : -1;
+          for (let b = 0; b < flockCount; b++) {
+            const bx = flockX + b * dir * (3.6 + rng() * 2.2) + (rng() - 0.5) * 2.0;
+            const by = flockY + Math.abs(b - 1.5) * 1.9 + (rng() - 0.5) * 1.8;
+            if (skyMask(bx, by) && Math.hypot(bx - celX, by - celY) > celRadius + 5) {
+              const span = 2.1 + rng() * 1.4 - b * 0.08;
+              const tilt = (rng() - 0.5) * 0.24;
+              for (const bs of makeBirdStrokes(bx, by, Math.max(1.7, span), tilt)) {
+                skyDecorStrokes.push(...clipPolylineByMask(bs, skyMask, 0.8));
+              }
+            }
+          }
+        }
+
+        const sortedSkyDecor = sortPathsMinimizeTravel(
+          skyDecorStrokes,
+          skyBodyStrokes.length ? skyBodyStrokes[skyBodyStrokes.length - 1][0] : [celX, celY],
+          true
+        ).sorted;
+        const layerSky = [...skyBodyStrokes, ...sortedSkyDecor];
+
+        // ============================================================
+        // LAYERS 3, 4, 5: Mountain Groups (Far -> Mid -> Near)
+        // Within each mountain: ridgeline sweep FIRST, then locally sorted slope hatching!
+        // ============================================================
+        const layerFarMtn = [];
+        const layerMidMtn = [];
+        const layerNearMtn = [];
+
+        // Plot from farthest ridge (ridgeCount - 1) forward to nearest ridge (0)
+        let penCursor = layerSky.length
+          ? layerSky[layerSky.length - 1][layerSky[layerSky.length - 1].length - 1]
+          : [fx0, fy0];
+
+        for (let m = ridgeCount - 1; m >= 0; m--) {
+          const cm = compiledMountains[m];
+          const targetBucket =
+            m >= Math.ceil(ridgeCount * 0.62)
+              ? layerFarMtn
+              : m >= Math.ceil(ridgeCount * 0.28)
+                ? layerMidMtn
+                : layerNearMtn;
+
+          const orderedRidges = sortPathsMinimizeTravel(cm.ridgeStrokes, penCursor, true);
+          targetBucket.push(...orderedRidges.sorted);
+          penCursor = orderedRidges.endPos;
+
+          const orderedSlopes = sortPathsMinimizeTravel(cm.slopeStrokes, penCursor, true);
+          targetBucket.push(...orderedSlopes.sorted);
+          penCursor = orderedSlopes.endPos;
+        }
+
+        // ============================================================
+        // LAYER 6: 水岸林木 (Lake Ripples with Wave-Broken Mountain Reflections & Jagged Pine Trees)
+        // ============================================================
+        const fgShoreStrokes = [];
+        const fgLakeStrokes = [];
+        const fgPineStrokes = [];
+
+        const shoreCeiling = (x) => {
+          let minY = fy1 + 20;
+          for (const sp of shoreProfiles) {
+            const v = sampleGrid(sp.prof, x);
+            if (v < minY) minY = v;
+          }
+          return minY;
+        };
+
+        // Draw rocky shore promontories anchored cleanly down to fy1
+        const notBehindPineFg = (x, y) => {
+          for (const pb of pineShieldBoxes) {
+            if (y >= pb.topY && y <= pb.botY - 2.5) {
+              const u = (y - pb.topY) / Math.max(1, pb.botY - pb.topY);
+              const wAtY = pb.rx * (0.4 + 0.55 * Math.sin(u * Math.PI * 0.9));
+              if (Math.abs(x - pb.cx) < wAtY) return false;
+            }
+          }
+          return true;
+        };
+
+        for (const sp of shoreProfiles) {
+          const crest = [];
+          for (let i = 0; i < gridN; i += 3) {
+            const x = fx0 + i * dxGrid;
+            const y = sp.prof[i];
+            if (y <= fy1 - 0.25) crest.push([x, y]);
+          }
+          fgShoreStrokes.push(...clipPolylineByMask(crest, inFrame, 1.0));
+
+          // Subtle topographic rock ledges & talus stipples across shore promontory down to fy1
+          for (let b = 1; b <= 7; b++) {
+            let run = [];
+            for (let i = 0; i < gridN; i += 4) {
+              const x = fx0 + i * dxGrid;
+              const top = sp.prof[i];
+              if (top > fy1 - 1.0) {
+                if (run.length >= 2) fgShoreStrokes.push(...clipPolylineByMask(run, (px, py) => inFrame(px, py) && notBehindPineFg(px, py), 1.0));
+                run = [];
+                continue;
+              }
+              const y = top + b * 2.3 + noise.sample(x * 0.09 + b, 5.1) * 0.85;
+              if (y < fy1 - 0.6 && rng() < 0.82) {
+                run.push([x, y]);
+              } else {
+                if (run.length >= 2) fgShoreStrokes.push(...clipPolylineByMask(run, (px, py) => inFrame(px, py) && notBehindPineFg(px, py), 1.0));
+                run = [];
+              }
+            }
+            if (run.length >= 2) fgShoreStrokes.push(...clipPolylineByMask(run, (px, py) => inFrame(px, py) && notBehindPineFg(px, py), 1.0));
+          }
+        }
+
+        // Lake horizontal short lines with wave-sliced mountain reflections ("用水平短线画出的湖，山的倒影被波纹切碎")
+        if (hasLake) {
+          const shoreLinePts = [];
+          for (let i = 0; i < gridN; i += 4) {
+            const x = fx0 + i * dxGrid;
+            if (shoreCeiling(x) > waterY + 0.5) {
+              shoreLinePts.push([x, waterY + Math.sin(x * 0.09) * 0.14]);
+            } else if (shoreLinePts.length >= 2) {
+              fgLakeStrokes.push(...clipPolylineByMask(shoreLinePts, inFrame, 1.5));
+              shoreLinePts.length = 0;
+            }
+          }
+          if (shoreLinePts.length >= 2) fgLakeStrokes.push(...clipPolylineByMask(shoreLinePts, inFrame, 1.5));
+
+          const lakeH = Math.max(6, fy1 - waterY);
+          // Foreshorten reflection vertically so full peak silhouettes & sky passes mirror inside the lake!
+          const highestPeakY = Math.min(...horizon);
+          const mtnSpanH = Math.max(20, waterY - highestPeakY);
+          const reflScale = Math.min(2.65, Math.max(1.35, (mtnSpanH * 0.92) / lakeH));
+
+          const rowStep = 1.28;
+          for (let y = waterY + 1.0; y <= fy1 - 0.85; y += rowStep) {
+            const depthFrac = (y - waterY) / lakeH;
+            // Wave oscillation slices the reflected peaks horizontally
+            const rippleAmp = 1.4 + depthFrac * 5.8;
+            const wavePhase = Math.sin(y * 2.15 + noise.sample(y * 0.18, 2.2) * 3.2);
+            const rippleShift = wavePhase * rippleAmp;
+
+            // Periodic horizontal breeze bands that slice gaps through the reflection
+            const waveBandKeep = 0.72 + 0.28 * Math.cos(y * 2.85 + depthFrac * 4.0);
+            const reflY = waterY - (y - waterY) * reflScale;
+
+            let x = fx0 + 1.2 + rng() * 1.6;
+            while (x < fx1 - 1.5) {
+              if (y >= shoreCeiling(x) - 0.45) {
+                x += 2.0;
+                continue;
+              }
+
+              const sampleX = Math.max(fx0, Math.min(fx1, x + rippleShift));
+              const mtnTopAtX = skyCeiling(sampleX);
+              const insideReflectedMtn = reflY >= mtnTopAtX && reflY <= waterY;
+
+              if (insideReflectedMtn) {
+                // Estimate local mountain slope shade at sampleX so shaded peaks cast darker water reflections!
+                const mL = skyCeiling(Math.max(fx0, sampleX - 2.2));
+                const mR = skyCeiling(Math.min(fx1, sampleX + 2.2));
+                const mSlope = (mR - mL) / 4.4;
+                const reflShade = Math.max(0.22, Math.min(1, 0.55 - mSlope * lightSign * 0.75));
+
+                const keepProb = reflShade * waveBandKeep * (0.86 - depthFrac * 0.34);
+                if (rng() < keepProb) {
+                  const segW = (1.8 + reflShade * 4.8 + rng() * 3.2) * (1 - depthFrac * 0.18);
+                  const xEnd = Math.min(fx1 - 1.2, x + segW);
+                  if (shoreCeiling(xEnd) > y + 0.5 && xEnd - x >= 0.85) {
+                    fgLakeStrokes.push([[x, y], [xEnd, y]]);
+                  }
+                  x = xEnd + 0.9 + rng() * (2.2 + (1 - reflShade) * 2.6 + depthFrac * 2.0);
+                } else {
+                  x += 1.9 + rng() * 3.4;
+                }
+              } else {
+                // Reflected open sky / sun glint: airy, sparse water shimmer
+                const sunAlign = Math.exp(-Math.pow((x - celX) / 18, 2));
+                if (rng() < (0.045 + sunAlign * 0.16) * (1 - depthFrac * 0.25)) {
+                  const segW = 2.0 + rng() * 4.8;
+                  const xEnd = Math.min(fx1 - 1.2, x + segW);
+                  if (shoreCeiling(xEnd) > y + 0.5 && xEnd - x >= 0.85) {
+                    fgLakeStrokes.push([[x, y], [xEnd, y]]);
+                  }
+                  x = xEnd + 4.5 + rng() * 8.5;
+                } else {
+                  x += 3.8 + rng() * 5.0;
+                }
+              }
+            }
+          }
+        }
+
+        // Pine Trees drawn with sawtooth strokes ("也可以用锯齿形笔画勾出几棵松树")
+        function generatePineTree(baseX, baseY, treeH, leanDir) {
+          const strokes = [];
+          const topX = baseX + leanDir * treeH * 0.14;
+          const topY = baseY - treeH;
+
+          // Gnarled double-line / tapered trunk
+          const trunkSegs = 7;
+          const leftTrunk = [];
+          const rightTrunk = [];
+          for (let s = 0; s <= trunkSegs; s++) {
+            const t = s / trunkSegs;
+            const bend = Math.sin(t * Math.PI * 1.15) * leanDir * treeH * 0.07 +
+              noise.sample(baseX * 0.2 + t * 3, baseY * 0.2) * 0.55;
+            const cx = baseX + (topX - baseX) * t + bend;
+            const cy = baseY - treeH * t;
+            const halfW = (1 - t * 0.78) * Math.max(0.28, treeH * 0.024);
+            leftTrunk.push([cx - halfW, cy]);
+            rightTrunk.push([cx + halfW, cy]);
+          }
+          strokes.push(...clipPolylineByMask(leftTrunk, inFrame, 0.6));
+          strokes.push(...clipPolylineByMask(rightTrunk, inFrame, 0.6));
+
+          // Outstretched branches + layered sawtooth needle pads ("锯齿形笔画")
+          const tiers = 4 + Math.floor(treeH / 7.5);
+          for (let tIdx = 0; tIdx < tiers; tIdx++) {
+            const u = 0.28 + (tIdx / Math.max(1, tiers - 1)) * 0.72; // 0.28 up to 1.0 crown
+            const bend = Math.sin(u * Math.PI * 1.15) * leanDir * treeH * 0.07;
+            const bx = baseX + (topX - baseX) * u + bend;
+            const by = baseY - treeH * u;
+
+            const sideSign = tIdx === tiers - 1 ? 0 : (tIdx % 2 === 0 ? 1 : -1) * (leanDir >= 0 ? 1 : -1);
+            const reach = treeH * (0.36 - u * 0.17) * (tIdx === tiers - 1 ? 0.65 : 1.0);
+            const padCx = bx + sideSign * reach * 0.72;
+            const padCy = by - (tIdx === tiers - 1 ? 0.9 : -0.35);
+
+            // Branch bough from trunk to needle cluster
+            if (tIdx < tiers - 1) {
+              strokes.push(...clipPolylineByMask(
+                [[bx, by + 0.6], [(bx + padCx) * 0.5, by + 0.15], [padCx, padCy + 0.35]],
+                inFrame,
+                0.5
+              ));
+            }
+
+            // Sawtooth zigzag pine needle clusters (1-2 overlapping flat tiers per bough)
+            const subPads = tIdx === tiers - 1 ? 2 : (rng() < 0.65 ? 2 : 1);
+            for (let sp = 0; sp < subPads; sp++) {
+              const pw = reach * (1.15 - sp * 0.26);
+              const px0 = padCx - pw * 0.52 + sp * sideSign * 0.6;
+              const px1 = padCx + pw * 0.52 + sp * sideSign * 0.6;
+              const pyBase = padCy - sp * 1.15;
+              const teeth = Math.max(6, Math.round((px1 - px0) / 0.62));
+              const sawPts = [];
+              for (let k = 0; k <= teeth; k++) {
+                const f = k / teeth;
+                const arch = Math.sin(f * Math.PI) * 1.15;
+                const toothH = (0.75 + Math.sin(f * Math.PI) * 0.85) * (k % 2 === 0 ? -0.55 : 0.45);
+                sawPts.push([
+                  px0 + (px1 - px0) * f,
+                  pyBase - arch + toothH
+                ]);
+              }
+              strokes.push(...clipPolylineByMask(sawPts, inFrame, 0.7));
+            }
+          }
+          return strokes;
+        }
+
+        for (const p of plannedPines) {
+          fgPineStrokes.push(...generatePineTree(p.tx, p.ty, p.th, p.lean));
+        }
+
+        const orderedShore = sortPathsMinimizeTravel(fgShoreStrokes, penCursor, true);
+        penCursor = orderedShore.endPos;
+        const orderedLake = sortPathsMinimizeTravel(fgLakeStrokes, penCursor, true);
+        penCursor = orderedLake.endPos;
+        const orderedPines = sortPathsMinimizeTravel(fgPineStrokes, penCursor, false);
+
+        const layerForeground = [
+          ...orderedShore.sorted,
+          ...orderedLake.sorted,
+          ...orderedPines.sorted
+        ];
+
+        // ============================================================
+        // LAYER 7: 画纸图签 (Single-Line Vector Colophon)
+        //「山水第 0417 号 · 种子 8F3A · 1 支笔 · 2,318 笔」
+        // Converge iteratively so written stroke count === exact total stroke count!
+        // ============================================================
+        const baseCount =
+          layerFrame.length +
+          layerSky.length +
+          layerFarMtn.length +
+          layerMidMtn.length +
+          layerNearMtn.length +
+          layerForeground.length;
+
+        const seedHex = ((seedInt >>> 0) & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+        const serialStr = String(serialNumber).padStart(4, '0');
+        const colophonHeight = isPortrait ? 3.45 : 3.85;
+        const colophonSpacing = isPortrait ? 0.48 : 0.62;
+        const colophonTopY = fy1 + (isPortrait ? 4.4 : 4.0);
+
+        let estTotal = baseCount + 175;
+        let colophonStrokes = [];
+        let colophonText = '';
+
+        for (let iter = 0; iter < 6; iter++) {
+          const formattedCount = estTotal.toLocaleString('en-US');
+          colophonText = `山水第 ${serialStr} 号 · 种子 ${seedHex} · 1 支笔 · ${formattedCount} 笔`;
+          const temp = layoutVectorText(colophonText, fx0, colophonTopY, colophonHeight, colophonSpacing);
+          colophonStrokes = temp.strokes;
+          const nextTotal = baseCount + colophonStrokes.length;
+          if (nextTotal === estTotal) break;
+          estTotal = nextTotal;
+        }
+
+        // Handle rare 2-cycle parity oscillation (e.g., digit 8 vs 9 changing stroke count by 1)
+        if (baseCount + colophonStrokes.length !== estTotal) {
+          const diff = estTotal - (baseCount + colophonStrokes.length);
+          if (diff === 1) {
+            // Add one tiny crisp period tick at the end or corner registration micro-dot
+            layerForeground.push([[fx0 + 1.2, fy1 - 1.2], [fx0 + 1.5, fy1 - 1.2]]);
+          }
+          const finalTotal =
+            layerFrame.length +
+            layerSky.length +
+            layerFarMtn.length +
+            layerMidMtn.length +
+            layerNearMtn.length +
+            layerForeground.length +
+            colophonStrokes.length;
+          const formattedCount = finalTotal.toLocaleString('en-US');
+          colophonText = `山水第 ${serialStr} 号 · 种子 ${seedHex} · 1 支笔 · ${formattedCount} 笔`;
+          colophonStrokes = layoutVectorText(colophonText, fx0, colophonTopY, colophonHeight, colophonSpacing).strokes;
+        }
+
+        const layers = [
+          { id: 'frame', name: '图框定位', rawStrokes: layerFrame, wobbleAmp: 0.015 },
+          { id: 'sky', name: '天象云气', rawStrokes: layerSky, wobbleAmp: 0.032 },
+          { id: 'far', name: '远山叠嶂', rawStrokes: layerFarMtn, wobbleAmp: 0.038 },
+          { id: 'mid', name: '中景峰峦', rawStrokes: layerMidMtn, wobbleAmp: 0.042 },
+          { id: 'near', name: '近岭坡石', rawStrokes: layerNearMtn, wobbleAmp: 0.045 },
+          { id: 'water', name: '水岸林木', rawStrokes: layerForeground, wobbleAmp: 0.038 },
+          { id: 'colophon', name: '画纸图签', rawStrokes: colophonStrokes, wobbleAmp: 0.012 }
+        ].filter((l) => l.rawStrokes.length > 0);
+
+        return {
+          seedInt,
+          seedHex,
+          serialNumber,
+          serialStr,
+          isPortrait,
+          paperW,
+          paperH,
+          frame: { fx0, fy0, fx1, fy1 },
+          colophonText,
+          layers,
+          noise,
+          makeBirdStrokes
+        };
+      }
+
+      // ============================================================
+      // 6. KINEMATIC PATH COMPILER (Corner Deceleration + Micro-Wobble)
+      // ============================================================
+      function compileStrokeKinematics(rawPts, layerIndex, layerName, wobbleAmp, noise, strokeSalt, isFrameLayer = false) {
+        // Subdivide long runs slightly so subtle ballpoint micro-wobble & speed shading feel alive
+        const pts = [];
+        for (let i = 0; i < rawPts.length; i++) {
+          if (i === 0) {
+            pts.push([rawPts[0][0], rawPts[0][1]]);
+            continue;
+          }
+          const [x0, y0] = rawPts[i - 1];
+          const [x1, y1] = rawPts[i];
+          const segD = Math.hypot(x1 - x0, y1 - y0);
+          const sub = segD > 2.8 ? Math.ceil(segD / 2.2) : 1;
+          const nx = segD > 0.001 ? -(y1 - y0) / segD : 0;
+          const ny = segD > 0.001 ? (x1 - x0) / segD : 0;
+
+          for (let s = 1; s <= sub; s++) {
+            const t = s / sub;
+            let px = x0 + (x1 - x0) * t;
+            let py = y0 + (y1 - y0) * t;
+            if (s < sub && wobbleAmp > 0) {
+              const wob = noise.sample(px * 0.28 + strokeSalt * 3.1, py * 0.28) * wobbleAmp;
+              px += nx * wob;
+              py += ny * wob;
+            }
+            pts.push([px, py]);
+          }
+        }
+
+        const m = pts.length;
+        const segLen = new Float32Array(Math.max(0, m - 1));
+        const ux = new Float32Array(Math.max(0, m - 1));
+        const uy = new Float32Array(Math.max(0, m - 1));
+        let totalLen = 0;
+
+        for (let i = 0; i < m - 1; i++) {
+          const dx = pts[i + 1][0] - pts[i][0];
+          const dy = pts[i + 1][1] - pts[i][1];
+          const d = Math.hypot(dx, dy);
+          segLen[i] = d;
+          if (d > 1e-5) {
+            ux[i] = dx / d;
+            uy[i] = dy / d;
+          }
+          totalLen += d;
+        }
+
+        // Frame border uses crisp rapid drafting feed so homing + frame finishes right around ~2 seconds at 4x!
+        const vMax = isFrameLayer ? 155 : KINEMATICS.vDrawMax;
+        const accel = isFrameLayer ? 1200 : KINEMATICS.aDraw;
+
+        // Vertex speed array with corner angle deceleration ("接近转角时减速，转过去再加速")
+        const v = new Float32Array(m);
+        v[0] = Math.min(vMax * 0.22, 16);
+        v[m - 1] = Math.min(vMax * 0.18, 14);
+
+        for (let i = 1; i < m - 1; i++) {
+          if (segLen[i - 1] < 1e-4 || segLen[i] < 1e-4) {
+            v[i] = 10;
+            continue;
+          }
+          const cosTheta = Math.max(-1, Math.min(1, ux[i - 1] * ux[i] + uy[i - 1] * uy[i]));
+          // cosTheta = 1 -> straight (full vMax); cosTheta = 0 -> 90 deg corner (~28% speed); sharp reversal -> ~8%
+          const cornerFactor = Math.max(0.08, Math.pow((1 + cosTheta) * 0.5, 1.35));
+          v[i] = vMax * cornerFactor;
+        }
+
+        // Forward acceleration pass
+        for (let i = 0; i < m - 1; i++) {
+          const maxReach = Math.sqrt(v[i] * v[i] + 2 * accel * segLen[i]);
+          if (maxReach < v[i + 1]) v[i + 1] = maxReach;
+        }
+        // Backward deceleration pass
+        for (let i = m - 2; i >= 0; i--) {
+          const maxEntry = Math.sqrt(v[i + 1] * v[i + 1] + 2 * accel * segLen[i]);
+          if (maxEntry < v[i]) v[i] = maxEntry;
+        }
+
+        // Compute segment durations
+        const segDur = new Float32Array(Math.max(0, m - 1));
+        let duration = 0;
+        for (let i = 0; i < m - 1; i++) {
+          if (segLen[i] < 1e-5) {
+            segDur[i] = 0;
+          } else {
+            const vAvg = Math.max(6, 0.5 * (v[i] + v[i + 1]));
+            segDur[i] = segLen[i] / vAvg;
+          }
+          duration += segDur[i];
+        }
+        // Tiny minimum dwell for micro-dots
+        if (duration < 0.008) duration = 0.008;
+
+        return {
+          layerIndex,
+          layerName,
+          pts,
+          segLen,
+          segDur,
+          ux,
+          uy,
+          v,
+          vMax,
+          totalLen,
+          duration,
+          inkSeed: (strokeSalt * 0.6180339887) % 1
+        };
+      }
+
+      function computeTravelDuration(distMm) {
+        if (distMm < 0.05) return 0.005;
+        const vMax = KINEMATICS.vTravelMax;
+        const a = KINEMATICS.aTravel;
+        const dCrit = (vMax * vMax) / a;
+        if (distMm <= dCrit) {
+          return 2 * Math.sqrt(distMm / a);
+        }
+        return (distMm / vMax) + (vMax / a);
+      }
+
+      // ============================================================
+      // 7. WEB AUDIO DUAL-AXIS STEPPER & PEN SOLENOID SYNTHESIZER
+      // ============================================================
+      class PlotterAudio {
+        constructor() {
+          this.enabled = false;
+          this.ctx = null;
+          this.master = null;
+          this.oscX = null;
+          this.oscY = null;
+          this.gainX = null;
+          this.gainY = null;
+          this.filterX = null;
+          this.filterY = null;
+          this.noiseBuf = null;
+          this.lastClickTime = 0;
+        }
+
+        init() {
+          if (this.ctx) return;
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+          const ctx = new AudioCtx();
+          this.ctx = ctx;
+          window.ToyEmbed?.trackAudio(ctx);
+
+          const master = ctx.createGain();
+          master.gain.value = 0.0;
+          master.connect(ctx.destination);
+          this.master = master;
+
+          // X-axis stepper motor oscillator
+          const oscX = ctx.createOscillator();
+          oscX.type = 'sawtooth';
+          oscX.frequency.value = 80;
+          const filterX = ctx.createBiquadFilter();
+          filterX.type = 'bandpass';
+          filterX.frequency.value = 420;
+          filterX.Q.value = 2.4;
+          const gainX = ctx.createGain();
+          gainX.gain.value = 0;
+          oscX.connect(filterX);
+          filterX.connect(gainX);
+          gainX.connect(master);
+          oscX.start();
+
+          // Y-axis stepper motor oscillator
+          const oscY = ctx.createOscillator();
+          oscY.type = 'triangle';
+          oscY.frequency.value = 65;
+          const filterY = ctx.createBiquadFilter();
+          filterY.type = 'lowpass';
+          filterY.frequency.value = 680;
+          filterY.Q.value = 3.2;
+          const gainY = ctx.createGain();
+          gainY.gain.value = 0;
+          oscY.connect(filterY);
+          filterY.connect(gainY);
+          gainY.connect(master);
+          oscY.start();
+
+          // Short white-noise buffer for pen lift/drop solenoid clicks
+          const len = Math.floor(ctx.sampleRate * 0.04);
+          const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+          const data = buf.getChannelData(0);
+          for (let i = 0; i < len; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.22));
+          }
+
+          this.oscX = oscX;
+          this.oscY = oscY;
+          this.filterX = filterX;
+          this.filterY = filterY;
+          this.gainX = gainX;
+          this.gainY = gainY;
+          this.noiseBuf = buf;
+        }
+
+        setEnabled(on) {
+          this.enabled = on;
+          if (on) {
+            this.init();
+            if (this.ctx && this.ctx.state === 'suspended') {
+              this.ctx.resume();
+            }
+            if (this.master && this.ctx) {
+              this.master.gain.setTargetAtTime(0.24, this.ctx.currentTime, 0.025);
+            }
+          } else if (this.master && this.ctx) {
+            this.master.gain.setTargetAtTime(0.0, this.ctx.currentTime, 0.02);
+          }
+        }
+
+        updateMotors(vxEffective, vyEffective, active) {
+          if (!this.ctx || !this.enabled) return;
+          const now = this.ctx.currentTime;
+          if (!active) {
+            this.gainX.gain.setTargetAtTime(0, now, 0.015);
+            this.gainY.gain.setTargetAtTime(0, now, 0.015);
+            return;
+          }
+
+          const ax = Math.abs(vxEffective);
+          const ay = Math.abs(vyEffective);
+
+          // Soft-knee pitch mapping so high multipliers stay musical and pleasant
+          const mappedVx = ax < 180 ? ax : 180 + Math.log1p(ax - 180) * 38;
+          const mappedVy = ay < 180 ? ay : 180 + Math.log1p(ay - 180) * 38;
+
+          const fx = 52 + mappedVx * 2.55;
+          const fy = 44 + mappedVy * 2.25;
+
+          this.oscX.frequency.setTargetAtTime(fx, now, 0.012);
+          this.filterX.frequency.setTargetAtTime(Math.min(1800, 260 + fx * 1.45), now, 0.015);
+          this.gainX.gain.setTargetAtTime(ax > 1.2 ? Math.min(0.16, 0.03 + (ax / 240) * 0.12) : 0, now, 0.012);
+
+          this.oscY.frequency.setTargetAtTime(fy, now, 0.012);
+          this.filterY.frequency.setTargetAtTime(Math.min(1600, 220 + fy * 1.65), now, 0.015);
+          this.gainY.gain.setTargetAtTime(ay > 1.2 ? Math.min(0.2, 0.035 + (ay / 240) * 0.14) : 0, now, 0.012);
+        }
+
+        triggerPenClick(isPenDown) {
+          if (!this.ctx || !this.enabled || !this.noiseBuf) return;
+          const now = this.ctx.currentTime;
+          if (now - this.lastClickTime < 0.036) return;
+          this.lastClickTime = now;
+
+          // Filtered click burst
+          const src = this.ctx.createBufferSource();
+          src.buffer = this.noiseBuf;
+          const filt = this.ctx.createBiquadFilter();
+          filt.type = 'bandpass';
+          filt.frequency.value = isPenDown ? 950 : 1750;
+          filt.Q.value = 1.8;
+
+          const g = this.ctx.createGain();
+          g.gain.setValueAtTime(isPenDown ? 0.22 : 0.15, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.026);
+
+          src.connect(filt);
+          filt.connect(g);
+          g.connect(this.master);
+          src.start(now);
+
+          // Subtle pitched solenoid/nib transient
+          const ping = this.ctx.createOscillator();
+          ping.type = 'sine';
+          ping.frequency.setValueAtTime(isPenDown ? 320 : 540, now);
+          ping.frequency.exponentialRampToValueAtTime(isPenDown ? 135 : 760, now + 0.018);
+          const pg = this.ctx.createGain();
+          pg.gain.setValueAtTime(isPenDown ? 0.12 : 0.08, now);
+          pg.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+          ping.connect(pg);
+          pg.connect(this.master);
+          ping.start(now);
+          ping.stop(now + 0.022);
+        }
+      }
+
+      // ============================================================
+      // 8. PLOTTER APPLICATION & RENDERING ENGINE
+      // ============================================================
+      const stageCanvas = document.getElementById('stageCanvas');
+      const stageCtx = stageCanvas.getContext('2d');
+
+      // High-DPI offscreen paper canvases (current sheet & outgoing sheet during paper change)
+      const paperCanvas = document.createElement('canvas');
+      const paperCtx = paperCanvas.getContext('2d');
+      const outgoingPaperCanvas = document.createElement('canvas');
+      const outgoingPaperCtx = outgoingPaperCanvas.getContext('2d');
+
+      // DOM elements
+      const speedKnob = document.getElementById('speedKnob');
+      const knobRotor = document.getElementById('knobRotor');
+      const speedTicksWrap = document.getElementById('speedTicks');
+      const soundSwitch = document.getElementById('soundSwitch');
+      const lcdPrimary = document.getElementById('lcdPrimary');
+      const lcdSecondary = document.getElementById('lcdSecondary');
+      const finishBtn = document.getElementById('finishBtn');
+      const newPaperBtn = document.getElementById('newPaperBtn');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const layerStepGroup = document.getElementById('layerStepGroup');
+      const prevLayerBtn = document.getElementById('prevLayerBtn');
+      const nextLayerBtn = document.getElementById('nextLayerBtn');
+      const manifestSerial = document.getElementById('manifestSerial');
+      const manifestList = document.getElementById('manifestList');
+      const penDownMetersEl = document.getElementById('penDownMeters');
+      const penUpMetersEl = document.getElementById('penUpMeters');
+
+      const audio = new PlotterAudio();
+      const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      const state = {
+        serialNumber: 417,
+        speedIndex: DEFAULT_SPEED_INDEX,
+        paused: false,
+        reducedMotion: reducedMotionQuery.matches,
+        visibleLayerCount: 7,
+
+        comp: null,
+        strokes: [],            // Compiled stroke objects in execution order
+        layerStats: [],         // [{ name, total, done }]
+        currentStrokeIdx: 0,
+
+        // Sub-stroke execution machine
+        // phases: 'homing' | 'travel' | 'dropping' | 'drawing' | 'lifting' | 'parking' | 'finished' | 'changing_paper'
+        phase: 'homing',
+        phaseTime: 0,
+        phaseDuration: 0.45,
+        homingPath: [],
+
+        // Current physical carriage state (in paper mm; (0,0) = top-left paper corner)
+        penX: 46,
+        penY: 34,
+        penZ: 1,                // 0 = touching paper, 1 = lifted
+        vx: 0,                  // physical velocity mm/s (1x)
+        vy: 0,
+
+        travelFrom: [0, 0],
+        travelTo: [0, 0],
+        travelDist: 0,
+        travelCounted: 0,
+
+        // Drawing cursor inside strokes[currentStrokeIdx]
+        segIdx: 0,
+        segTime: 0,
+        lastDrawnPt: [0, 0],
+
+        // Cumulative metrics (in millimeters)
+        cumDrawMm: 0,
+        cumTravelMm: 0,
+        strokeRemainPhysSec: new Float32Array(0),
+        totalStrokesInitial: 0,
+
+        // Interactive click-to-bird visual markers
+        queuedMarkers: [],      // [{ x, y, strokeRef, alpha }]
+        userBirdLayerIdx: -1,
+
+        // Paper swap transition
+        paperSwapT: 0,
+        hasOutgoingPaper: false,
+
+        // Layout metrics (stage mm -> canvas px)
+        stageMetrics: {
+          dpr: 1,
+          cssW: 900,
+          cssH: 600,
+          pxPerMm: 3,
+          paperLeftMm: 22,
+          paperTopMm: 14,
+          stageWMm: 324,
+          stageHMm: 220,
+          simplifiedGantry: false
+        }
+      };
+
+      // Build Speed Tick Radio Buttons around the Knurled Knob
+      function initSpeedTicks() {
+        speedTicksWrap.innerHTML = '';
+        SPEEDS.forEach((mult, idx) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'speed-tick-btn';
+          btn.setAttribute('role', 'radio');
+          btn.setAttribute('aria-checked', String(idx === state.speedIndex));
+          btn.textContent = `${mult}×`;
+          btn.addEventListener('click', () => setSpeedIndex(idx));
+          speedTicksWrap.appendChild(btn);
+        });
+        syncSpeedUI();
+      }
+
+      function setSpeedIndex(newIdx) {
+        const clamped = Math.max(0, Math.min(SPEEDS.length - 1, newIdx));
+        if (clamped === state.speedIndex) return;
+        state.speedIndex = clamped;
+        syncSpeedUI();
+      }
+
+      function syncSpeedUI() {
+        const angle = -114 + state.speedIndex * 38; // -114deg to +114deg across 7 detents
+        knobRotor.style.transform = `rotate(${angle}deg)`;
+        const children = speedTicksWrap.children;
+        for (let i = 0; i < children.length; i++) {
+          children[i].setAttribute('aria-checked', String(i === state.speedIndex));
+        }
+      }
+
+      // Compute suffix remaining physical time for accurate ETA on LCD
+      function recomputeRemainingTimes() {
+        const n = state.strokes.length;
+        const rem = new Float32Array(n + 1);
+        rem[n] = 0;
+        for (let i = n - 1; i >= 0; i--) {
+          const st = state.strokes[i];
+          const prevEnd = i > 0
+            ? state.strokes[i - 1].pts[state.strokes[i - 1].pts.length - 1]
+            : [0, 0];
+          const startPt = st.pts[0];
+          const tDist = Math.hypot(startPt[0] - prevEnd[0], startPt[1] - prevEnd[1]);
+          const tTime = computeTravelDuration(tDist);
+          const stepCost = tTime + KINEMATICS.penDropDur + st.duration + KINEMATICS.penLiftDur;
+          rem[i] = rem[i + 1] + stepCost;
+        }
+        state.strokeRemainPhysSec = rem;
+      }
+
+      // Resize & setup high-DPI canvases matching viewport form factor
+      function updateStageLayout(redrawPaper = true) {
+        const isMobileViewport = window.innerWidth < 680;
+        const comp = state.comp;
+        if (!comp) return;
+
+        const simplified = isMobileViewport || comp.isPortrait;
+        const padXMm = simplified ? 14 : 24;
+        const padTopMm = simplified ? 16 : 21;
+        const padBotMm = simplified ? 11 : 14;
+
+        const stageWMm = comp.paperW + padXMm * 2;
+        const stageHMm = comp.paperH + padTopMm + padBotMm;
+
+        const wrapRect = stageCanvas.parentElement.getBoundingClientRect();
+        const availCssW = Math.max(280, Math.min(940, wrapRect.width || (window.innerWidth - 24)));
+        // Fit comfortably inside viewport height leaving room for header & control panel
+        const maxStageCssH = Math.max(300, window.innerHeight - (isMobileViewport ? 210 : 152));
+        const pxPerMmByW = availCssW / stageWMm;
+        const pxPerMmByH = maxStageCssH / stageHMm;
+        const cssPxPerMm = Math.min(pxPerMmByW, pxPerMmByH);
+
+        const cssW = Math.round(stageWMm * cssPxPerMm);
+        const cssH = Math.round(stageHMm * cssPxPerMm);
+        const dpr = Math.min(window.ToyEmbed?.pixelRatio ?? (window.devicePixelRatio || 1), 2.5);
+
+        stageCanvas.style.width = `${cssW}px`;
+        stageCanvas.style.height = `${cssH}px`;
+        stageCanvas.width = Math.round(cssW * dpr);
+        stageCanvas.height = Math.round(cssH * dpr);
+
+        // Paper offscreen canvas at crisp high resolution
+        const paperPxPerMm = Math.max(4.2, cssPxPerMm * dpr);
+        const targetPaperW = Math.round(comp.paperW * paperPxPerMm);
+        const targetPaperH = Math.round(comp.paperH * paperPxPerMm);
+
+        const sizeChanged = paperCanvas.width !== targetPaperW || paperCanvas.height !== targetPaperH;
+        state.stageMetrics = {
+          dpr,
+          cssW,
+          cssH,
+          cssPxPerMm,
+          paperPxPerMm,
+          paperLeftMm: padXMm,
+          paperTopMm: padTopMm,
+          stageWMm,
+          stageHMm,
+          simplifiedGantry: simplified
+        };
+
+        if (sizeChanged && redrawPaper) {
+          paperCanvas.width = targetPaperW;
+          paperCanvas.height = targetPaperH;
+          replayDrawnInkToPaper();
+        }
+      }
+
+      function clearPaperToWhite(ctx, w, h) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = COLORS.paper;
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      }
+
+      // Ballpoint pen ink rendering primitives (strictly #1F3FBF)
+      function drawPenDownBead(ctx, pxPerMm, xMm, yMm, inkSeed, isFine = false) {
+        const r = ((isFine ? 0.135 : 0.185) + inkSeed * 0.035) * pxPerMm;
+        ctx.fillStyle = `rgba(${COLORS.inkRgb}, 0.86)`;
+        ctx.beginPath();
+        ctx.arc(xMm * pxPerMm, yMm * pxPerMm, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawBallpointSegment(ctx, pxPerMm, x0, y0, x1, y1, speedRatio, inkSeed, isFine = false) {
+        // Faster feed -> slightly lighter & finer ballpoint trace ("快速走笔时线色略浅")
+        const s = Math.max(0, Math.min(1, speedRatio));
+        const grain = 0.96 + 0.04 * Math.sin(x0 * 1.9 + y0 * 1.7 + inkSeed * 12);
+        const alpha = ((isFine ? 0.94 : 0.91) - s * 0.21) * grain;
+        const widthMm = (isFine ? 0.215 : 0.295) - s * 0.048;
+
+        ctx.strokeStyle = `rgba(${COLORS.inkRgb}, ${alpha.toFixed(3)})`;
+        ctx.lineWidth = Math.max(0.7, widthMm * pxPerMm);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x0 * pxPerMm, y0 * pxPerMm);
+        ctx.lineTo(x1 * pxPerMm, y1 * pxPerMm);
+        ctx.stroke();
+      }
+
+      function drawWholeCompiledStroke(ctx, pxPerMm, st) {
+        const pts = st.pts;
+        if (!pts.length) return;
+        const isFine = st.layerName === '画纸图签';
+        drawPenDownBead(ctx, pxPerMm, pts[0][0], pts[0][1], st.inkSeed, isFine);
+        for (let i = 0; i < pts.length - 1; i++) {
+          const vAvg = 0.5 * (st.v[i] + st.v[i + 1]);
+          const ratio = vAvg / st.vMax;
+          drawBallpointSegment(ctx, pxPerMm, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], ratio, st.inkSeed, isFine);
+        }
+      }
+
+      // Replay already-completed ink after resize or reduced-motion layer stepping
+      function replayDrawnInkToPaper() {
+        if (!state.comp) return;
+        const pxPerMm = state.stageMetrics.paperPxPerMm;
+        clearPaperToWhite(paperCtx, paperCanvas.width, paperCanvas.height);
+
+        if (state.reducedMotion) {
+          for (const st of state.strokes) {
+            if (st.layerIndex < state.visibleLayerCount || st.isUserBird) {
+              drawWholeCompiledStroke(paperCtx, pxPerMm, st);
+            }
+          }
+          return;
+        }
+
+        const completedCount = Math.min(state.currentStrokeIdx, state.strokes.length);
+        for (let i = 0; i < completedCount; i++) {
+          drawWholeCompiledStroke(paperCtx, pxPerMm, state.strokes[i]);
+        }
+
+        if (state.phase === 'drawing' && state.currentStrokeIdx < state.strokes.length) {
+          const st = state.strokes[state.currentStrokeIdx];
+          const isFine = st.layerName === '画纸图签';
+          drawPenDownBead(paperCtx, pxPerMm, st.pts[0][0], st.pts[0][1], st.inkSeed, isFine);
+          for (let s = 0; s < state.segIdx; s++) {
+            const ratio = (0.5 * (st.v[s] + st.v[s + 1])) / st.vMax;
+            drawBallpointSegment(paperCtx, pxPerMm, st.pts[s][0], st.pts[s][1], st.pts[s + 1][0], st.pts[s + 1][1], ratio, st.inkSeed, isFine);
+          }
+          if (state.segIdx < st.pts.length - 1) {
+            const s = state.segIdx;
+            const ratio = (0.5 * (st.v[s] + st.v[s + 1])) / st.vMax;
+            drawBallpointSegment(paperCtx, pxPerMm, st.pts[s][0], st.pts[s][1], state.lastDrawnPt[0], state.lastDrawnPt[1], ratio, st.inkSeed, isFine);
+          }
+        }
+      }
+
+      // ============================================================
+      // 9. BUILD & START A NEW SHEET OF PAPER
+      // ============================================================
+      function startNewSheet(withSlideTransition = false) {
+        const isMobile = window.innerWidth < 680;
+        if (withSlideTransition && !state.reducedMotion && paperCanvas.width > 0) {
+          outgoingPaperCanvas.width = paperCanvas.width;
+          outgoingPaperCanvas.height = paperCanvas.height;
+          outgoingPaperCtx.drawImage(paperCanvas, 0, 0);
+          state.hasOutgoingPaper = true;
+          state.paperSwapT = 0;
+        } else {
+          state.hasOutgoingPaper = false;
+        }
+
+        const randomSeed = Math.floor(Math.random() * 0xFFFFFFFF) >>> 0;
+        const comp = generateShanshui(randomSeed, state.serialNumber, isMobile);
+        state.comp = comp;
+
+        // Compile all strokes across layers
+        const compiled = [];
+        const layerStats = [];
+        let salt = 1;
+
+        comp.layers.forEach((layer, lIdx) => {
+          const isFrame = layer.id === 'frame';
+          for (const raw of layer.rawStrokes) {
+            compiled.push(
+              compileStrokeKinematics(raw, lIdx, layer.name, layer.wobbleAmp, comp.noise, salt++, isFrame)
+            );
+          }
+          layerStats.push({
+            id: layer.id,
+            name: layer.name,
+            total: layer.rawStrokes.length,
+            done: 0
+          });
+        });
+
+        state.strokes = compiled;
+        state.totalStrokesInitial = compiled.length;
+        state.layerStats = layerStats;
+        state.userBirdLayerIdx = -1;
+        state.queuedMarkers = [];
+        state.currentStrokeIdx = 0;
+        state.cumDrawMm = 0;
+        state.cumTravelMm = 0;
+
+        recomputeRemainingTimes();
+        updateStageLayout(false);
+        paperCanvas.width = Math.round(comp.paperW * state.stageMetrics.paperPxPerMm);
+        paperCanvas.height = Math.round(comp.paperH * state.stageMetrics.paperPxPerMm);
+        clearPaperToWhite(paperCtx, paperCanvas.width, paperCanvas.height);
+
+        manifestSerial.textContent = `第 ${comp.serialStr} 号`;
+
+        if (state.reducedMotion) {
+          state.visibleLayerCount = state.layerStats.length;
+          applyReducedMotionCompleteState();
+        } else if (withSlideTransition) {
+          // Lift pen, park near top-left margin while swapping sheets
+          state.penZ = 1;
+          state.phase = 'changing_paper';
+          state.phaseTime = 0;
+          state.phaseDuration = 1.15;
+          state.travelFrom = [state.penX, state.penY];
+          state.travelTo = [18, 16];
+        } else {
+          beginHomingSequence(44, 30);
+        }
+
+        renderManifestDOM();
+        updateModeButtonsUI();
+      }
+
+      // Opening mechanical homing to (0, 0) with subtle limit-switch bounce ("带一下轻微的机械顿挫")
+      function beginHomingSequence(fromX, fromY) {
+        state.penX = fromX;
+        state.penY = fromY;
+        state.penZ = 1;
+        state.phase = 'homing';
+        state.phaseTime = 0;
+        state.phaseDuration = 1.45; // physical 1x seconds (~0.36s wall-clock at default 4x!)
+        state.homingStart = [fromX, fromY];
+      }
+
+      function startNextStrokeOrPark() {
+        if (state.currentStrokeIdx >= state.strokes.length) {
+          // Park smoothly back to origin (0, 0)
+          const dist = Math.hypot(state.penX, state.penY);
+          if (dist > 0.25) {
+            state.phase = 'parking';
+            state.phaseTime = 0;
+            state.travelFrom = [state.penX, state.penY];
+            state.travelTo = [0, 0];
+            state.travelDist = dist;
+            state.travelCounted = 0;
+            state.phaseDuration = computeTravelDuration(dist);
+          } else {
+            state.penX = 0;
+            state.penY = 0;
+            state.vx = 0;
+            state.vy = 0;
+            state.phase = 'finished';
+          }
+          return;
+        }
+
+        const st = state.strokes[state.currentStrokeIdx];
+        const target = st.pts[0];
+        const dist = Math.hypot(target[0] - state.penX, target[1] - state.penY);
+
+        if (dist < 0.08 && state.penZ === 0) {
+          // Already right at start point with pen down
+          beginDrawingCurrentStroke();
+        } else {
+          if (state.penZ < 1) {
+            state.penZ = 1;
+            audio.triggerPenClick(false);
+          }
+          state.phase = 'travel';
+          state.phaseTime = 0;
+          state.travelFrom = [state.penX, state.penY];
+          state.travelTo = [target[0], target[1]];
+          state.travelDist = dist;
+          state.travelCounted = 0;
+          state.phaseDuration = computeTravelDuration(dist);
+        }
+      }
+
+      function beginDrawingCurrentStroke() {
+        const st = state.strokes[state.currentStrokeIdx];
+        state.penX = st.pts[0][0];
+        state.penY = st.pts[0][1];
+        state.penZ = 0;
+        state.phase = 'drawing';
+        state.segIdx = 0;
+        state.segTime = 0;
+        state.lastDrawnPt = [st.pts[0][0], st.pts[0][1]];
+
+        // Clear any queued click marker attached to this bird stroke
+        for (const mk of state.queuedMarkers) {
+          if (mk.strokeRef === st) mk.done = true;
+        }
+
+        drawPenDownBead(
+          paperCtx,
+          state.stageMetrics.paperPxPerMm,
+          state.penX,
+          state.penY,
+          st.inkSeed,
+          st.layerName === '画纸图签'
+        );
+      }
+
+      // Advance simulation by dtPhys (physical seconds = wallDt * speedMultiplier)
+      function stepPlotterPhysics(wallDt) {
+        if (state.reducedMotion || state.paused || !state.comp) {
+          state.vx = 0;
+          state.vy = 0;
+          audio.updateMotors(0, 0, false);
+          return;
+        }
+
+        // Paper slide animation runs in real wall-clock time regardless of feed knob
+        if (state.phase === 'changing_paper') {
+          state.phaseTime += wallDt;
+          const u = Math.min(1, state.phaseTime / state.phaseDuration);
+          state.paperSwapT = u;
+          // Ease carriage out of the way to [38, 28] ready for homing
+          const ease = u * u * (3 - 2 * u);
+          state.penX = state.travelFrom[0] + (38 - state.travelFrom[0]) * ease;
+          state.penY = state.travelFrom[1] + (28 - state.travelFrom[1]) * ease;
+          state.vx = 0;
+          state.vy = 0;
+          audio.updateMotors(0, 0, false);
+
+          if (u >= 1) {
+            state.hasOutgoingPaper = false;
+            beginHomingSequence(state.penX, state.penY);
+          }
+          return;
+        }
+
+        if (state.phase === 'finished') {
+          state.vx = 0;
+          state.vy = 0;
+          audio.updateMotors(0, 0, false);
+          return;
+        }
+
+        const speedMult = SPEEDS[state.speedIndex];
+        // Homing uses slightly damped multiplier so high speeds still show the crisp mechanical home tap
+        const effectiveMult = state.phase === 'homing' ? Math.min(speedMult, 8) : speedMult;
+        let remainPhys = Math.min(wallDt, 0.055) * effectiveMult;
+
+        let guard = 0;
+        const pxPerMm = state.stageMetrics.paperPxPerMm;
+
+        while (remainPhys > 1e-6 && guard++ < 600 && state.phase !== 'finished') {
+          if (state.phase === 'homing') {
+            const step = Math.min(remainPhys, state.phaseDuration - state.phaseTime);
+            const prevX = state.penX;
+            const prevY = state.penY;
+            state.phaseTime += step;
+            remainPhys -= step;
+
+            const u = Math.min(1, state.phaseTime / state.phaseDuration);
+            // 0..0.66: rapid seek to (0, 0)
+            // 0.66..0.78: mechanical limit-switch pause & step-off (2.4mm, 2.0mm)
+            // 0.78..0.94: crisp precision latch back to (0, 0)
+            // 0.94..1.00: brief settle at origin
+            if (u < 0.66) {
+              const k = u / 0.66;
+              const ease = 1 - Math.pow(1 - k, 2.4);
+              state.penX = state.homingStart[0] * (1 - ease);
+              state.penY = state.homingStart[1] * (1 - ease);
+            } else if (u < 0.78) {
+              const k = (u - 0.66) / 0.12;
+              const bump = Math.sin(k * Math.PI * 0.5);
+              state.penX = 2.4 * bump;
+              state.penY = 1.9 * bump;
+            } else if (u < 0.94) {
+              const k = (u - 0.78) / 0.16;
+              const ease = k * k * (3 - 2 * k);
+              state.penX = 2.4 * (1 - ease);
+              state.penY = 1.9 * (1 - ease);
+            } else {
+              state.penX = 0;
+              state.penY = 0;
+            }
+
+            if (step > 1e-5) {
+              state.vx = (state.penX - prevX) / step;
+              state.vy = (state.penY - prevY) / step;
+            }
+
+            if (state.phaseTime >= state.phaseDuration - 1e-6) {
+              state.penX = 0;
+              state.penY = 0;
+              audio.triggerPenClick(false);
+              startNextStrokeOrPark();
+            }
+          } else if (state.phase === 'travel' || state.phase === 'parking') {
+            const step = Math.min(remainPhys, state.phaseDuration - state.phaseTime);
+            const prevX = state.penX;
+            const prevY = state.penY;
+            state.phaseTime += step;
+            remainPhys -= step;
+
+            const u = state.phaseDuration > 1e-5 ? Math.min(1, state.phaseTime / state.phaseDuration) : 1;
+            // Smooth S-curve rapid travel profile
+            const sCurve = u * u * (3 - 2 * u);
+            state.penX = state.travelFrom[0] + (state.travelTo[0] - state.travelFrom[0]) * sCurve;
+            state.penY = state.travelFrom[1] + (state.travelTo[1] - state.travelFrom[1]) * sCurve;
+            state.penZ = 1;
+
+            const newDist = state.travelDist * sCurve;
+            state.cumTravelMm += Math.max(0, newDist - state.travelCounted);
+            state.travelCounted = newDist;
+
+            if (step > 1e-5) {
+              state.vx = (state.penX - prevX) / step;
+              state.vy = (state.penY - prevY) / step;
+            }
+
+            if (state.phaseTime >= state.phaseDuration - 1e-6) {
+              state.penX = state.travelTo[0];
+              state.penY = state.travelTo[1];
+              if (state.phase === 'parking') {
+                state.vx = 0;
+                state.vy = 0;
+                state.phase = 'finished';
+              } else {
+                state.phase = 'dropping';
+                state.phaseTime = 0;
+                state.phaseDuration = KINEMATICS.penDropDur;
+              }
+            }
+          } else if (state.phase === 'dropping') {
+            const step = Math.min(remainPhys, state.phaseDuration - state.phaseTime);
+            state.phaseTime += step;
+            remainPhys -= step;
+            state.penZ = Math.max(0, 1 - state.phaseTime / state.phaseDuration);
+            state.vx = 0;
+            state.vy = 0;
+
+            if (state.phaseTime >= state.phaseDuration - 1e-6) {
+              audio.triggerPenClick(true);
+              beginDrawingCurrentStroke();
+            }
+          } else if (state.phase === 'drawing') {
+            const st = state.strokes[state.currentStrokeIdx];
+            if (!st || state.segIdx >= st.pts.length - 1) {
+              // Finished stroke!
+              if (st) {
+                state.layerStats[st.layerIndex].done++;
+              }
+              state.currentStrokeIdx++;
+
+              // Keep pen down only if next stroke starts essentially at the exact same point
+              const nextSt = state.strokes[state.currentStrokeIdx];
+              if (nextSt && Math.hypot(nextSt.pts[0][0] - state.penX, nextSt.pts[0][1] - state.penY) < 0.08) {
+                beginDrawingCurrentStroke();
+              } else {
+                state.phase = 'lifting';
+                state.phaseTime = 0;
+                state.phaseDuration = KINEMATICS.penLiftDur;
+              }
+              continue;
+            }
+
+            const sIdx = state.segIdx;
+            const segDur = st.segDur[sIdx];
+            if (segDur < 1e-6) {
+              state.segIdx++;
+              state.segTime = 0;
+              continue;
+            }
+
+            const step = Math.min(remainPhys, segDur - state.segTime);
+            state.segTime += step;
+            remainPhys -= step;
+
+            const frac = Math.min(1, state.segTime / segDur);
+            const p0 = st.pts[sIdx];
+            const p1 = st.pts[sIdx + 1];
+            const nx = p0[0] + (p1[0] - p0[0]) * frac;
+            const ny = p0[1] + (p1[1] - p0[1]) * frac;
+
+            const instSpeed = st.v[sIdx] + (st.v[sIdx + 1] - st.v[sIdx]) * frac;
+            const ratio = instSpeed / st.vMax;
+
+            drawBallpointSegment(
+              paperCtx,
+              pxPerMm,
+              state.lastDrawnPt[0],
+              state.lastDrawnPt[1],
+              nx,
+              ny,
+              ratio,
+              st.inkSeed,
+              st.layerName === '画纸图签'
+            );
+
+            state.cumDrawMm += Math.hypot(nx - state.lastDrawnPt[0], ny - state.lastDrawnPt[1]);
+            state.lastDrawnPt = [nx, ny];
+            state.penX = nx;
+            state.penY = ny;
+            state.penZ = 0;
+            state.vx = st.ux[sIdx] * instSpeed;
+            state.vy = st.uy[sIdx] * instSpeed;
+
+            if (state.segTime >= segDur - 1e-6) {
+              state.segIdx++;
+              state.segTime = 0;
+            }
+          } else if (state.phase === 'lifting') {
+            const step = Math.min(remainPhys, state.phaseDuration - state.phaseTime);
+            state.phaseTime += step;
+            remainPhys -= step;
+            state.penZ = Math.min(1, state.phaseTime / state.phaseDuration);
+            state.vx = 0;
+            state.vy = 0;
+
+            if (state.phaseTime >= state.phaseDuration - 1e-6) {
+              state.penZ = 1;
+              audio.triggerPenClick(false);
+              startNextStrokeOrPark();
+            }
+          }
+        }
+
+        const motorActive = state.phase === 'homing' || state.phase === 'travel' || state.phase === 'drawing' || state.phase === 'parking';
+        audio.updateMotors(state.vx * effectiveMult, state.vy * effectiveMult, motorActive);
+      }
+
+      // Instant Finish ("「完成」键立即显示整幅成稿")
+      function finishDrawingImmediately() {
+        if (!state.comp) return;
+        const pxPerMm = state.stageMetrics.paperPxPerMm;
+
+        if (state.reducedMotion) {
+          state.visibleLayerCount = state.layerStats.length;
+          applyReducedMotionCompleteState();
+          renderManifestDOM();
+          return;
+        }
+
+        // Complete current partially-drawn stroke & all remaining strokes
+        for (let i = state.currentStrokeIdx; i < state.strokes.length; i++) {
+          const st = state.strokes[i];
+          const prevPt = i === state.currentStrokeIdx
+            ? [state.penX, state.penY]
+            : state.strokes[i - 1].pts[state.strokes[i - 1].pts.length - 1];
+
+          if (!(i === state.currentStrokeIdx && state.phase === 'drawing')) {
+            state.cumTravelMm += Math.hypot(st.pts[0][0] - prevPt[0], st.pts[0][1] - prevPt[1]);
+          }
+          drawWholeCompiledStroke(paperCtx, pxPerMm, st);
+
+          if (i === state.currentStrokeIdx && state.phase === 'drawing') {
+            // Add remaining length of current stroke
+            let remLen = 0;
+            for (let s = state.segIdx; s < st.segLen.length; s++) remLen += st.segLen[s];
+            state.cumDrawMm += remLen;
+          } else {
+            state.cumDrawMm += st.totalLen;
+          }
+          state.layerStats[st.layerIndex].done = state.layerStats[st.layerIndex].total;
+        }
+
+        for (const ls of state.layerStats) ls.done = ls.total;
+        for (const mk of state.queuedMarkers) mk.done = true;
+
+        if (state.strokes.length > 0) {
+          const lastEnd = state.strokes[state.strokes.length - 1].pts.slice(-1)[0];
+          state.cumTravelMm += Math.hypot(lastEnd[0], lastEnd[1]);
+        }
+
+        state.currentStrokeIdx = state.strokes.length;
+        state.hasOutgoingPaper = false;
+        state.penX = 0;
+        state.penY = 0;
+        state.penZ = 1;
+        state.vx = 0;
+        state.vy = 0;
+        state.phase = 'finished';
+        if (state.paused) setPaused(false);
+        audio.updateMotors(0, 0, false);
+        renderManifestDOM();
+      }
+
+      function applyReducedMotionCompleteState() {
+        state.hasOutgoingPaper = false;
+        state.paused = false;
+        pauseBtn.setAttribute('aria-pressed', 'false');
+        state.currentStrokeIdx = state.strokes.length;
+        state.penX = 0;
+        state.penY = 0;
+        state.penZ = 1;
+        state.vx = 0;
+        state.vy = 0;
+        state.phase = 'finished';
+
+        // Recompute distances & checkmarks up to visibleLayerCount
+        let drawMm = 0;
+        let travelMm = 0;
+        let prev = [0, 0];
+        for (const ls of state.layerStats) ls.done = 0;
+
+        for (const st of state.strokes) {
+          if (st.layerIndex < state.visibleLayerCount || st.isUserBird) {
+            travelMm += Math.hypot(st.pts[0][0] - prev[0], st.pts[0][1] - prev[1]);
+            drawMm += st.totalLen;
+            prev = st.pts[st.pts.length - 1];
+            state.layerStats[st.layerIndex].done++;
+          }
+        }
+        state.cumDrawMm = drawMm;
+        state.cumTravelMm = travelMm;
+
+        replayDrawnInkToPaper();
+        updateLayerStepperButtons();
+      }
+
+      function updateLayerStepperButtons() {
+        if (!state.reducedMotion || !state.layerStats.length) return;
+        prevLayerBtn.disabled = state.visibleLayerCount <= 1;
+        nextLayerBtn.disabled = state.visibleLayerCount >= state.layerStats.length;
+      }
+
+      function updateModeButtonsUI() {
+        if (state.reducedMotion) {
+          layerStepGroup.classList.add('is-visible');
+          pauseBtn.parentElement.style.display = 'none';
+          finishBtn.style.display = 'none';
+          updateLayerStepperButtons();
+        } else {
+          layerStepGroup.classList.remove('is-visible');
+          pauseBtn.parentElement.style.display = 'inline-flex';
+          finishBtn.style.display = '';
+        }
+      }
+
+      function setPaused(nextPaused) {
+        if (state.reducedMotion) return;
+        state.paused = nextPaused;
+        pauseBtn.setAttribute('aria-pressed', String(state.paused));
+        if (state.paused) {
+          audio.updateMotors(0, 0, false);
+        }
+      }
+
+      // Click on Paper -> Queue V-shaped Flying Bird ("点击纸面，把该位置加入待绘队列…画完后再点击也可以唤醒机器")
+      function handleCanvasClick(evt) {
+        if (!state.comp || state.phase === 'changing_paper') return;
+        const rect = stageCanvas.getBoundingClientRect();
+        const m = state.stageMetrics;
+        const clickStageXMm = (evt.clientX - rect.left) / m.cssPxPerMm;
+        const clickStageYMm = (evt.clientY - rect.top) / m.cssPxPerMm;
+
+        const paperX = clickStageXMm - m.paperLeftMm;
+        const paperY = clickStageYMm - m.paperTopMm;
+
+        const { fx0, fy0, fx1, fy1 } = state.comp.frame;
+        if (paperX < fx0 + 2 || paperX > fx1 - 2 || paperY < fy0 + 2 || paperY > fy1 - 2) {
+          return; // Outside inner drawing area
+        }
+
+        // Ensure dynamic "补绘飞鸟" layer exists in manifest
+        if (state.userBirdLayerIdx < 0) {
+          state.userBirdLayerIdx = state.layerStats.length;
+          state.layerStats.push({
+            id: 'user_birds',
+            name: '补绘飞鸟',
+            total: 0,
+            done: 0
+          });
+          if (state.reducedMotion) {
+            state.visibleLayerCount = state.layerStats.length;
+          }
+        }
+
+        const span = 2.6 + Math.random() * 1.1;
+        const tilt = (Math.random() - 0.5) * 0.22;
+        const rawBird = state.comp.makeBirdStrokes(paperX, paperY, span, tilt)[0];
+        const compiledBird = compileStrokeKinematics(
+          rawBird,
+          state.userBirdLayerIdx,
+          '补绘飞鸟',
+          0.025,
+          state.comp.noise,
+          9000 + state.strokes.length,
+          false
+        );
+        compiledBird.isUserBird = true;
+        state.layerStats[state.userBirdLayerIdx].total++;
+
+        if (state.reducedMotion) {
+          state.strokes.push(compiledBird);
+          applyReducedMotionCompleteState();
+          renderManifestDOM();
+          return;
+        }
+
+        // Insert ~8 strokes ahead if actively plotting ("稍后，笔尖会走过去补画"), or append & wake up if finished!
+        const wasFinishedOrParking = state.phase === 'finished' || state.phase === 'parking';
+        const insertAt = wasFinishedOrParking
+          ? state.strokes.length
+          : Math.min(state.strokes.length, state.currentStrokeIdx + 8);
+
+        state.strokes.splice(insertAt, 0, compiledBird);
+        recomputeRemainingTimes();
+
+        state.queuedMarkers.push({
+          x: paperX,
+          y: paperY,
+          strokeRef: compiledBird,
+          done: false
+        });
+
+        if (wasFinishedOrParking) {
+          // Wake up the machine!
+          if (state.paused) setPaused(false);
+          startNextStrokeOrPark();
+        }
+        renderManifestDOM();
+      }
+
+      // ============================================================
+      // 10. STAGE CANVAS RENDERER (Paper, Rails, Gantry, Cable Loop, Pen & Shadow)
+      // ============================================================
+      function drawPaperSheet(ctx, xPx, yPx, wPx, hPx, sourceCanvas) {
+        ctx.save();
+        // Clean drafting paper subtle elevation shadow on cutting mat
+        ctx.shadowColor = 'rgba(17, 17, 17, 0.13)';
+        ctx.shadowBlur = Math.max(4, wPx * 0.012);
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = Math.max(2, wPx * 0.004);
+        ctx.fillStyle = COLORS.paper;
+        ctx.fillRect(xPx, yPx, wPx, hPx);
+        ctx.restore();
+
+        ctx.drawImage(sourceCanvas, xPx, yPx, wPx, hPx);
+
+        // Crisp 1px paper edge definition against light mat
+        ctx.strokeStyle = 'rgba(17, 17, 17, 0.14)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(xPx + 0.5, yPx + 0.5, wPx - 1, hPx - 1);
+      }
+
+      function renderStage() {
+        const comp = state.comp;
+        if (!comp) return;
+
+        const m = state.stageMetrics;
+        const s = m.cssPxPerMm * m.dpr; // 1 mm -> stage canvas device pixels
+        const W = stageCanvas.width;
+        const H = stageCanvas.height;
+
+        stageCtx.save();
+        stageCtx.clearRect(0, 0, W, H);
+
+        const paperX = m.paperLeftMm * s;
+        const paperY = m.paperTopMm * s;
+        const paperW = comp.paperW * s;
+        const paperH = comp.paperH * s;
+
+        // 1) Subtle paper tray guide ticks printed on cutting mat
+        stageCtx.strokeStyle = 'rgba(17, 17, 17, 0.25)';
+        stageCtx.lineWidth = Math.max(1, 0.32 * s);
+        const guideLen = 3.5 * s;
+        // Top & bottom tray alignment stops
+        stageCtx.beginPath();
+        stageCtx.moveTo(paperX - 1.5 * s, paperY - 1.5 * s);
+        stageCtx.lineTo(paperX + guideLen, paperY - 1.5 * s);
+        stageCtx.moveTo(paperX + paperW - guideLen, paperY - 1.5 * s);
+        stageCtx.lineTo(paperX + paperW + 1.5 * s, paperY - 1.5 * s);
+        stageCtx.moveTo(paperX - 1.5 * s, paperY + paperH + 1.5 * s);
+        stageCtx.lineTo(paperX + guideLen, paperY + paperH + 1.5 * s);
+        stageCtx.moveTo(paperX + paperW - guideLen, paperY + paperH + 1.5 * s);
+        stageCtx.lineTo(paperX + paperW + 1.5 * s, paperY + paperH + 1.5 * s);
+        stageCtx.stroke();
+
+        // 2) Paper sheet(s) — sliding right into output tray & feeding in from left during 'changing_paper'
+        if (state.phase === 'changing_paper' && state.hasOutgoingPaper) {
+          const u = state.paperSwapT;
+          const outProgress = Math.min(1, u / 0.62);
+          const outEase = outProgress * outProgress * (3 - 2 * outProgress);
+          const outOffsetPx = outEase * (W - paperX + 24 * m.dpr);
+          if (outProgress < 1) {
+            drawPaperSheet(stageCtx, paperX + outOffsetPx, paperY, paperW, paperH, outgoingPaperCanvas);
+          }
+
+          const inProgress = Math.max(0, Math.min(1, (u - 0.28) / 0.72));
+          const inEase = 1 - Math.pow(1 - inProgress, 3);
+          const startLeftPx = -paperW - 24 * m.dpr;
+          const curInXPx = startLeftPx + (paperX - startLeftPx) * inEase;
+          if (inProgress > 0) {
+            drawPaperSheet(stageCtx, curInXPx, paperY, paperW, paperH, paperCanvas);
+          }
+        } else {
+          drawPaperSheet(stageCtx, paperX, paperY, paperW, paperH, paperCanvas);
+        }
+
+        // Subtle target markers on paper for pending user-clicked flying birds
+        for (const mk of state.queuedMarkers) {
+          if (mk.done) continue;
+          const mx = paperX + mk.x * s;
+          const my = paperY + mk.y * s;
+          const r = 1.6 * s;
+          stageCtx.strokeStyle = 'rgba(31, 63, 191, 0.36)';
+          stageCtx.lineWidth = Math.max(1, 0.25 * s);
+          stageCtx.beginPath();
+          stageCtx.moveTo(mx - r, my);
+          stageCtx.lineTo(mx + r, my);
+          stageCtx.moveTo(mx, my - r);
+          stageCtx.lineTo(mx, my + r);
+          stageCtx.stroke();
+        }
+
+        // 3) Side Linear Guide Rails ("纸张两侧各有一条导轨")
+        const railOffsetMm = m.simplifiedGantry ? 6.5 : 11.5;
+        const railWMm = m.simplifiedGantry ? 3.2 : 5.2;
+        const leftRailX = (m.paperLeftMm - railOffsetMm) * s;
+        const rightRailX = (m.paperLeftMm + comp.paperW + railOffsetMm - railWMm) * s;
+        const railTopY = (m.paperTopMm - (m.simplifiedGantry ? 11.5 : 15.5)) * s;
+        const railBotY = (m.paperTopMm + comp.paperH + 6.5) * s;
+        const railW = railWMm * s;
+        const railH = railBotY - railTopY;
+
+        function drawSideRail(rx) {
+          // Rail shadow
+          stageCtx.fillStyle = 'rgba(17, 17, 17, 0.14)';
+          stageCtx.fillRect(rx + 1.2 * s, railTopY + 1.2 * s, railW, railH);
+
+          // Anodized aluminum linear rail shaft
+          const grad = stageCtx.createLinearGradient(rx, 0, rx + railW, 0);
+          grad.addColorStop(0, '#8A9098');
+          grad.addColorStop(0.35, '#D2D6DC');
+          grad.addColorStop(0.7, '#B2B7BF');
+          grad.addColorStop(1, '#7D828A');
+          stageCtx.fillStyle = grad;
+          stageCtx.fillRect(rx, railTopY, railW, railH);
+          stageCtx.strokeStyle = COLORS.noir;
+          stageCtx.lineWidth = Math.max(1, 0.28 * s);
+          stageCtx.strokeRect(rx, railTopY, railW, railH);
+
+          // Center guide groove
+          stageCtx.strokeStyle = 'rgba(17, 17, 17, 0.35)';
+          stageCtx.beginPath();
+          stageCtx.moveTo(rx + railW * 0.5, railTopY);
+          stageCtx.lineTo(rx + railW * 0.5, railBotY);
+          stageCtx.stroke();
+
+          // Near-black #111111 stepper/bearing end-mounts at top & bottom of rail
+          const blockW = railW + 2.4 * s;
+          const blockH = (m.simplifiedGantry ? 4.5 : 6.5) * s;
+          stageCtx.fillStyle = COLORS.noir;
+          stageCtx.fillRect(rx - 1.2 * s, railTopY - blockH * 0.45, blockW, blockH);
+          stageCtx.fillRect(rx - 1.2 * s, railBotY - blockH * 0.55, blockW, blockH);
+        }
+
+        drawSideRail(leftRailX);
+        drawSideRail(rightRailX);
+
+        // 4) Y-Axis Moving Gantry ("横梁沿 Y 轴移动")
+        // Pen nib sits slightly below gantry centerline so audience clearly sees ink emerging from pen tip!
+        const nibToGantryCenterMm = m.simplifiedGantry ? 5.2 : 7.8;
+        const penTipPxX = paperX + state.penX * s;
+        const penTipPxY = paperY + state.penY * s;
+        const gantryCenterY = penTipPxY - nibToGantryCenterMm * s;
+        const gantryThick = (m.simplifiedGantry ? 4.2 : 7.2) * s;
+        const gantryX0 = leftRailX - 1.4 * s;
+        const gantryX1 = rightRailX + railW + 1.4 * s;
+        const gantrySpanW = gantryX1 - gantryX0;
+
+        // Soft cast shadow of gantry onto white paper & cutting mat
+        stageCtx.fillStyle = 'rgba(17, 17, 17, 0.095)';
+        stageCtx.fillRect(
+          gantryX0 + 1.5 * s,
+          gantryCenterY - gantryThick * 0.5 + 3.2 * s,
+          gantrySpanW,
+          gantryThick + 0.8 * s
+        );
+
+        // Gantry brushed aluminum beam
+        const beamGrad = stageCtx.createLinearGradient(0, gantryCenterY - gantryThick * 0.5, 0, gantryCenterY + gantryThick * 0.5);
+        beamGrad.addColorStop(0, '#D4D8DE');
+        beamGrad.addColorStop(0.28, '#BDC2C9');
+        beamGrad.addColorStop(0.68, '#9DA3AC');
+        beamGrad.addColorStop(1, '#7D838C');
+        stageCtx.fillStyle = beamGrad;
+        stageCtx.fillRect(gantryX0, gantryCenterY - gantryThick * 0.5, gantrySpanW, gantryThick);
+        stageCtx.strokeStyle = COLORS.noir;
+        stageCtx.lineWidth = Math.max(1, 0.3 * s);
+        stageCtx.strokeRect(gantryX0, gantryCenterY - gantryThick * 0.5, gantrySpanW, gantryThick);
+
+        // Timing belt slot along gantry (#111111)
+        if (!m.simplifiedGantry) {
+          stageCtx.fillStyle = COLORS.noir;
+          stageCtx.fillRect(gantryX0 + 4 * s, gantryCenterY - 0.85 * s, gantrySpanW - 8 * s, 1.7 * s);
+        }
+
+        // Left & right Y-slider bearing carriages (#111111) riding on the two side rails
+        const ySlideW = railW + 3.0 * s;
+        const ySlideH = gantryThick + (m.simplifiedGantry ? 3.5 : 5.8) * s;
+        stageCtx.fillStyle = COLORS.noir;
+        stageCtx.fillRect(leftRailX - 1.5 * s, gantryCenterY - ySlideH * 0.5, ySlideW, ySlideH);
+        stageCtx.fillRect(rightRailX - 1.5 * s, gantryCenterY - ySlideH * 0.5, ySlideW, ySlideH);
+
+        // 5) Flexible Ribbon / Drag-Chain Cable Loop ("带着线缆弯环的笔架沿横梁在 X 轴上滑动")
+        const anchorX = leftRailX + ySlideW * 0.7;
+        const anchorY = gantryCenterY - gantryThick * 0.42;
+        const carAttachX = penTipPxX - (m.simplifiedGantry ? 2.5 : 4.2) * s;
+        const carAttachY = gantryCenterY - gantryThick * 0.42;
+        const loopMidX = (anchorX + carAttachX) * 0.5 - 3.5 * s;
+        const spanFrac = Math.max(0, Math.min(1, state.penX / comp.paperW));
+        const loopArchH = (m.simplifiedGantry ? 6.5 : 11.5) * s * (0.65 + 0.45 * (1 - spanFrac));
+
+        // Cable loop soft shadow
+        stageCtx.strokeStyle = 'rgba(17, 17, 17, 0.12)';
+        stageCtx.lineWidth = (m.simplifiedGantry ? 1.5 : 2.5) * s;
+        stageCtx.lineCap = 'round';
+        stageCtx.beginPath();
+        stageCtx.moveTo(anchorX, anchorY + 2.2 * s);
+        stageCtx.bezierCurveTo(
+          anchorX + 6 * s, anchorY - loopArchH + 2.2 * s,
+          loopMidX, carAttachY - loopArchH + 2.2 * s,
+          carAttachX, carAttachY + 2.2 * s
+        );
+        stageCtx.stroke();
+
+        // Near-black #111111 flat flex cable loop
+        stageCtx.strokeStyle = COLORS.noir;
+        stageCtx.lineWidth = (m.simplifiedGantry ? 1.45 : 2.35) * s;
+        stageCtx.beginPath();
+        stageCtx.moveTo(anchorX, anchorY);
+        stageCtx.bezierCurveTo(
+          anchorX + 6 * s, anchorY - loopArchH,
+          loopMidX, carAttachY - loopArchH,
+          carAttachX, carAttachY
+        );
+        stageCtx.stroke();
+
+        // Thin metallic highlight along cable rib
+        stageCtx.strokeStyle = 'rgba(210, 214, 220, 0.28)';
+        stageCtx.lineWidth = Math.max(0.7, 0.35 * s);
+        stageCtx.stroke();
+
+        // 6) Pen Shadow & Pen Carriage + Blue Ballpoint Pen with Red Clip (#D93025)
+        // CRITICAL REQUIREMENT:
+        // "抬笔时，笔尖离开纸面，阴影和笔尖明显分开。落笔后，墨线严格跟随笔尖，画到哪里才显现到哪里。"
+        const liftZ = state.penZ; // 0 = touching paper, 1 = lifted
+
+        // X-Carriage block (#111111) mounted on gantry
+        const carW = (m.simplifiedGantry ? 8.5 : 12.6) * s;
+        const carH = gantryThick + (m.simplifiedGantry ? 3.2 : 5.2) * s;
+        stageCtx.fillStyle = COLORS.noir;
+        stageCtx.fillRect(penTipPxX - carW * 0.5, gantryCenterY - carH * 0.5, carW, carH);
+
+        // Machined aluminum Z-slide plate on carriage front
+        const zLiftPx = liftZ * (m.simplifiedGantry ? 2.6 : 3.6) * s;
+        const zPlateW = carW * 0.58;
+        const zPlateH = (m.simplifiedGantry ? 5.2 : 7.0) * s;
+        stageCtx.fillStyle = '#B8BDC5';
+        stageCtx.fillRect(
+          penTipPxX - zPlateW * 0.5,
+          gantryCenterY - 1.2 * s - zLiftPx * 0.45,
+          zPlateW,
+          zPlateH
+        );
+
+        // Cast shadow of Pen Nib & Cone on paper!
+        // When liftZ === 0: shadow converges right onto (penTipPxX, penTipPxY).
+        // When liftZ > 0: shadow separates clearly down-right on the paper while nib lifts up-left!
+        const nibVisualX = penTipPxX - liftZ * 1.65 * s;
+        const nibVisualY = penTipPxY - liftZ * 3.15 * s;
+        const shadowTipX = penTipPxX + liftZ * 2.55 * s;
+        const shadowTipY = penTipPxY + liftZ * 2.35 * s;
+
+        stageCtx.save();
+        const shadowAlpha = 0.28 - liftZ * 0.1;
+        stageCtx.fillStyle = `rgba(17, 17, 17, ${shadowAlpha.toFixed(3)})`;
+        stageCtx.beginPath();
+        stageCtx.moveTo(shadowTipX, shadowTipY);
+        stageCtx.lineTo(shadowTipX - 1.5 * s - liftZ * 0.5 * s, shadowTipY - 4.8 * s);
+        stageCtx.lineTo(shadowTipX + 2.1 * s + liftZ * 0.5 * s, shadowTipY - 4.4 * s);
+        stageCtx.closePath();
+        stageCtx.fill();
+
+        // Tiny crisp shadow dot of the ballpoint tip on the paper when lifted
+        if (liftZ > 0.08) {
+          stageCtx.fillStyle = `rgba(17, 17, 17, ${(0.22 * liftZ).toFixed(3)})`;
+          stageCtx.beginPath();
+          stageCtx.arc(shadowTipX, shadowTipY, (0.42 + liftZ * 0.35) * s, 0, Math.PI * 2);
+          stageCtx.fill();
+        }
+        stageCtx.restore();
+
+        // Draw Ballpoint Pen Assembly (seen from clean oblique top-front drafting angle)
+        // Pen axis angled slightly (-10 deg) from carriage clamp down to exact nibVisualX, nibVisualY
+        const penAng = -0.16;
+        stageCtx.save();
+        stageCtx.translate(nibVisualX, nibVisualY);
+        stageCtx.rotate(penAng);
+
+        const coneLen = (m.simplifiedGantry ? 3.2 : 4.2) * s;
+        const barrelW = (m.simplifiedGantry ? 2.4 : 3.2) * s;
+        const barrelLen = (m.simplifiedGantry ? 11.5 : 15.8) * s;
+
+        // Blue ballpoint ink nib micro-tip (#1F3FBF) right at (0, 0)
+        stageCtx.fillStyle = COLORS.inkHex;
+        stageCtx.beginPath();
+        stageCtx.arc(0, 0, Math.max(1.1, 0.36 * s), 0, Math.PI * 2);
+        stageCtx.fill();
+
+        // Machined silver/aluminum nose cone tapering down to nib
+        stageCtx.fillStyle = '#C9CDD3';
+        stageCtx.strokeStyle = COLORS.noir;
+        stageCtx.lineWidth = Math.max(0.9, 0.24 * s);
+        stageCtx.beginPath();
+        stageCtx.moveTo(0, -0.25 * s);
+        stageCtx.lineTo(-barrelW * 0.5, -coneLen);
+        stageCtx.lineTo(barrelW * 0.5, -coneLen);
+        stageCtx.closePath();
+        stageCtx.fill();
+        stageCtx.stroke();
+
+        // Near-black #111111 pen barrel with blue indicator collar
+        stageCtx.fillStyle = COLORS.noir;
+        stageCtx.fillRect(-barrelW * 0.5, -coneLen - barrelLen, barrelW, barrelLen);
+
+        // Thin #1F3FBF ballpoint color ring near grip
+        stageCtx.fillStyle = COLORS.inkHex;
+        stageCtx.fillRect(-barrelW * 0.5, -coneLen - 2.1 * s, barrelW, 1.15 * s);
+
+        // RED PEN CLIP & CLAMP (#D93025 — strictly one of the ONLY two red elements!)
+        const clipW = barrelW + 1.5 * s;
+        const clipH = (m.simplifiedGantry ? 5.2 : 7.0) * s;
+        const clipTop = -coneLen - barrelLen * 0.78;
+        stageCtx.fillStyle = COLORS.red;
+        stageCtx.fillRect(-clipW * 0.5, clipTop, clipW, clipH * 0.42);
+        // Pocket clip tongue extending down the barrel side
+        stageCtx.fillRect(barrelW * 0.28, clipTop, 1.05 * s, clipH);
+        stageCtx.strokeStyle = COLORS.noir;
+        stageCtx.lineWidth = Math.max(0.8, 0.22 * s);
+        stageCtx.strokeRect(-clipW * 0.5, clipTop, clipW, clipH * 0.42);
+
+        stageCtx.restore();
+        stageCtx.restore();
+      }
+
+      // ============================================================
+      // 11. LCD READOUT & SILKSCREEN MANIFEST UPDATES
+      // ============================================================
+      function renderManifestDOM() {
+        manifestList.innerHTML = '';
+        const activeLayer = (!state.reducedMotion && state.currentStrokeIdx < state.strokes.length)
+          ? state.strokes[state.currentStrokeIdx].layerIndex
+          : -1;
+
+        state.layerStats.forEach((ls, idx) => {
+          const isDone = ls.done >= ls.total && ls.total > 0;
+          const isActive = !isDone && (idx === activeLayer || (ls.done > 0 && ls.done < ls.total));
+          const li = document.createElement('li');
+          li.className = 'manifest-row' + (isDone ? ' is-done' : '') + (isActive ? ' is-active' : '');
+
+          const checkSpan = document.createElement('span');
+          checkSpan.className = 'manifest-check';
+          checkSpan.textContent = isDone ? '✓' : (isActive ? '›' : '·');
+
+          const nameSpan = document.createElement('span');
+          nameSpan.textContent = ls.name;
+
+          const countSpan = document.createElement('span');
+          countSpan.className = 'manifest-count';
+          countSpan.textContent = `${ls.total.toLocaleString('en-US')} 笔`;
+
+          li.appendChild(checkSpan);
+          li.appendChild(nameSpan);
+          li.appendChild(countSpan);
+          manifestList.appendChild(li);
+        });
+
+        updateDistanceDOM();
+      }
+
+      function updateManifestLiveStatus() {
+        const rows = manifestList.children;
+        if (rows.length !== state.layerStats.length) {
+          renderManifestDOM();
+          return;
+        }
+        const activeLayer = (!state.reducedMotion && state.currentStrokeIdx < state.strokes.length)
+          ? state.strokes[state.currentStrokeIdx].layerIndex
+          : -1;
+
+        for (let i = 0; i < state.layerStats.length; i++) {
+          const ls = state.layerStats[i];
+          const isDone = ls.done >= ls.total && ls.total > 0;
+          const isActive = !isDone && (i === activeLayer || (ls.done > 0 && ls.done < ls.total));
+          const row = rows[i];
+          row.className = 'manifest-row' + (isDone ? ' is-done' : '') + (isActive ? ' is-active' : '');
+          const checkEl = row.firstElementChild;
+          const mark = isDone ? '✓' : (isActive ? '›' : '·');
+          if (checkEl.textContent !== mark) checkEl.textContent = mark;
+        }
+        updateDistanceDOM();
+      }
+
+      function updateDistanceDOM() {
+        penDownMetersEl.textContent = `${(state.cumDrawMm / 1000).toFixed(2)} m`;
+        penUpMetersEl.textContent = `${(state.cumTravelMm / 1000).toFixed(2)} m`;
+      }
+
+      function formatMMSS(sec) {
+        const clamped = Math.max(0, Math.ceil(sec));
+        const mins = Math.floor(clamped / 60);
+        const secs = clamped % 60;
+        return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      }
+
+      function updateLCD() {
+        if (!state.comp) return;
+
+        if (state.reducedMotion) {
+          const curLayerName = state.layerStats[Math.max(0, state.visibleLayerCount - 1)]?.name || '全部';
+          lcdPrimary.textContent = `静态呈现  图层 ${state.visibleLayerCount}/${state.layerStats.length}`;
+          lcdSecondary.textContent = `${curLayerName}  100%  剩余 00:00`;
+          return;
+        }
+
+        let statusWord = '抬笔';
+        if (state.paused) {
+          statusWord = '暂停';
+        } else if (state.phase === 'changing_paper') {
+          statusWord = '换纸';
+        } else if (state.phase === 'homing') {
+          statusWord = '回零';
+        } else if (state.phase === 'finished') {
+          statusWord = '完成';
+        } else if (state.penZ < 0.25) {
+          statusWord = '落笔';
+        }
+
+        const xStr = state.penX.toFixed(1).padStart(5, ' ');
+        const yStr = state.penY.toFixed(1).padStart(5, ' ');
+
+        const totalStrokes = Math.max(1, state.strokes.length);
+        const pct = state.phase === 'finished'
+          ? 100
+          : Math.min(99, Math.floor((state.currentStrokeIdx / totalStrokes) * 100));
+
+        const speedMult = SPEEDS[state.speedIndex];
+        let remPhys = 0;
+        if (state.phase !== 'finished' && state.currentStrokeIdx < state.strokeRemainPhysSec.length) {
+          remPhys = state.strokeRemainPhysSec[state.currentStrokeIdx];
+          if (state.phase === 'homing') {
+            remPhys += Math.max(0, state.phaseDuration - state.phaseTime);
+          }
+        }
+        const remWallSec = state.phase === 'finished' ? 0 : (remPhys / speedMult);
+
+        lcdPrimary.textContent = `${statusWord}  X ${xStr}  Y ${yStr}`;
+        lcdSecondary.textContent = `${String(pct).padStart(2, ' ')}%  剩余 ${formatMMSS(remWallSec)}`;
+      }
+
+      // ============================================================
+      // 12. CONTROLS, DRAGGABLE KNOB & KEYBOARD EVENTS
+      // ============================================================
+      // Knurled Speed Knob: click cycles, vertical/horizontal drag or wheel steps cleanly
+      let knobDrag = { active: false, startY: 0, startX: 0, startIdx: 0, moved: false };
+
+      speedKnob.addEventListener('pointerdown', (e) => {
+        knobDrag = {
+          active: true,
+          startY: e.clientY,
+          startX: e.clientX,
+          startIdx: state.speedIndex,
+          moved: false
+        };
+        speedKnob.setPointerCapture(e.pointerId);
+      });
+
+      speedKnob.addEventListener('pointermove', (e) => {
+        if (!knobDrag.active) return;
+        const delta = (knobDrag.startY - e.clientY) + (e.clientX - knobDrag.startX) * 0.65;
+        if (Math.abs(delta) > 7) knobDrag.moved = true;
+        const steps = Math.round(delta / 18);
+        setSpeedIndex(knobDrag.startIdx + steps);
+      });
+
+      speedKnob.addEventListener('pointerup', (e) => {
+        if (!knobDrag.active) return;
+        knobDrag.active = false;
+        if (!knobDrag.moved) {
+          // Simple click steps forward (wrapping around after 64x)
+          setSpeedIndex((state.speedIndex + 1) % SPEEDS.length);
+        }
+        if (speedKnob.hasPointerCapture(e.pointerId)) {
+          speedKnob.releasePointerCapture(e.pointerId);
+        }
+      });
+
+      speedKnob.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        setSpeedIndex(state.speedIndex + (e.deltaY < 0 ? 1 : -1));
+      }, { passive: false });
+
+      // Sound Toggle Lever
+      soundSwitch.addEventListener('click', () => {
+        const nextOn = soundSwitch.getAttribute('aria-checked') !== 'true';
+        soundSwitch.setAttribute('aria-checked', String(nextOn));
+        audio.setEnabled(nextOn);
+        if (nextOn) {
+          audio.triggerPenClick(false);
+        }
+      });
+
+      // Pause Mushroom Button
+      pauseBtn.addEventListener('click', () => {
+        setPaused(!state.paused);
+      });
+
+      // Finish Keycap
+      finishBtn.addEventListener('click', () => {
+        finishDrawingImmediately();
+      });
+
+      // Change Paper Keycap
+      newPaperBtn.addEventListener('click', () => {
+        state.serialNumber++;
+        if (state.paused) setPaused(false);
+        startNewSheet(true);
+      });
+
+      // Reduced-motion Layer Stepper Keycaps
+      prevLayerBtn.addEventListener('click', () => {
+        if (!state.reducedMotion) return;
+        if (state.visibleLayerCount > 1) {
+          state.visibleLayerCount--;
+          applyReducedMotionCompleteState();
+          renderManifestDOM();
+        }
+      });
+
+      nextLayerBtn.addEventListener('click', () => {
+        if (!state.reducedMotion) return;
+        if (state.visibleLayerCount < state.layerStats.length) {
+          state.visibleLayerCount++;
+          applyReducedMotionCompleteState();
+          renderManifestDOM();
+        }
+      });
+
+      // Click on Paper to add V-shaped flying bird
+      stageCanvas.addEventListener('click', handleCanvasClick);
+
+      // Keyboard Shortcuts: Space (Pause/Resume), F (Finish), N (New Paper), + / - (Speed)
+      window.addEventListener('keydown', (e) => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+        if (e.code === 'Space') {
+          // Avoid double-firing if user pressed Space while a button has focus
+          if (tag === 'button') return;
+          e.preventDefault();
+          setPaused(!state.paused);
+        } else if (e.key === 'f' || e.key === 'F') {
+          e.preventDefault();
+          finishDrawingImmediately();
+        } else if (e.key === 'n' || e.key === 'N') {
+          e.preventDefault();
+          state.serialNumber++;
+          if (state.paused) setPaused(false);
+          startNewSheet(true);
+        } else if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
+          e.preventDefault();
+          setSpeedIndex(state.speedIndex + 1);
+        } else if (e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract') {
+          e.preventDefault();
+          setSpeedIndex(state.speedIndex - 1);
+        }
+      });
+
+      // Listen for live system prefers-reduced-motion changes
+      reducedMotionQuery.addEventListener('change', (e) => {
+        state.reducedMotion = e.matches;
+        updateModeButtonsUI();
+        if (state.reducedMotion) {
+          audio.updateMotors(0, 0, false);
+          state.visibleLayerCount = state.layerStats.length;
+          applyReducedMotionCompleteState();
+          renderManifestDOM();
+        } else if (state.phase === 'finished') {
+          replayDrawnInkToPaper();
+        }
+      });
+
+      // Responsive Resize
+      let resizeRaf = 0;
+      window.addEventListener('resize', () => {
+        cancelAnimationFrame(resizeRaf);
+        resizeRaf = requestAnimationFrame(() => {
+          updateStageLayout(true);
+          renderStage();
+        });
+      });
+
+      // ============================================================
+      // 13. MAIN ANIMATION LOOP
+      // ============================================================
+      let lastFrameTs = performance.now();
+      let uiTickAccum = 0;
+
+      function frameLoop(now) {
+        const dt = Math.max(0, Math.min(0.1, (now - lastFrameTs) / 1000));
+        lastFrameTs = now;
+
+        stepPlotterPhysics(dt);
+        renderStage();
+
+        uiTickAccum += dt;
+        if (uiTickAccum >= 0.05 || state.phase === 'finished') {
+          uiTickAccum = 0;
+          updateLCD();
+          updateManifestLiveStatus();
+        }
+
+        requestAnimationFrame(frameLoop);
+      }
+
+      // Initialize & Start Drawing Immediately on Open ("页面一打开就开始绘制")
+      initSpeedTicks();
+      startNewSheet(false);
+      updateLCD();
+      renderStage();
+      window.ToyEmbed?.ready();
+      requestAnimationFrame(frameLoop);
+    })();
+  </script>
+</body>
+</html>

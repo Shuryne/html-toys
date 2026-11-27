@@ -1,0 +1,1899 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
+  <link rel="icon" href="data:,">
+  <title>万花尺工作室 · Orbis 第 7 号绘图盘</title>
+  <style>
+    :root {
+      --paper-bg: #f6f1e7;
+      --card-bg: #fcfaf4;
+      --ink-primary: #1d2433;
+      --ink-secondary: #7a7262;
+      --line-divider: #d8ccb4;
+      --line-grid: rgba(122, 114, 98, 0.13);
+
+      --ink-vermilion: #e2462b;
+      --ink-prussian: #1f3f78;
+      --ink-emerald: #1c7d64;
+      --ink-saffron: #e8a21b;
+      --ink-plum: #7a2e6b;
+
+      --active-ink: #e2462b;
+
+      --font-sans: "Avenir Next", "Avenir", "Futura", "Century Gothic", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+      --font-mono: "Courier New", Courier, "SF Mono", Menlo, Consolas, "PingFang SC", monospace;
+
+      --touch-min: 26px;
+    }
+
+    @media (pointer: coarse) {
+      :root {
+        --touch-min: 44px;
+      }
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    .visually-hidden:where(:not(:focus-within, :active)) {
+      position: absolute !important;
+      clip-path: inset(50%) !important;
+      overflow: hidden !important;
+      width: 1px !important;
+      height: 1px !important;
+      margin: -1px !important;
+      padding: 0 !important;
+      border: 0 !important;
+      white-space: nowrap !important;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-block-size: 100dvh;
+      background-color: var(--paper-bg);
+      color: var(--ink-primary);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    /* 横纵两组线性渐变绘制 24px 暖色制图方格纸 */
+    body {
+      background-image:
+        linear-gradient(to right, var(--line-grid) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--line-grid) 1px, transparent 1px);
+      background-size: 24px 24px;
+      background-position: top center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding:
+        max(0.75rem, env(safe-area-inset-top, 0px))
+        max(1.25rem, env(safe-area-inset-right, 0px))
+        max(0.85rem, env(safe-area-inset-bottom, 0px))
+        max(1.25rem, env(safe-area-inset-left, 0px));
+    }
+
+    .studio-shell {
+      inline-size: 100%;
+      max-inline-size: 1160px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    /* 顶部标题栏与粗横线 */
+    .studio-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 0.5rem 1.25rem;
+      padding-block-end: 0.52rem;
+      border-block-end: 3px solid var(--ink-primary);
+      position: relative;
+    }
+
+    .studio-header::after {
+      content: "";
+      position: absolute;
+      inset-inline: 0;
+      bottom: -6px;
+      block-size: 1px;
+      background-color: var(--line-divider);
+    }
+
+    .brand-block {
+      display: flex;
+      flex-direction: column;
+      gap: 0.14rem;
+    }
+
+    .maker-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-secondary);
+      margin: 0;
+    }
+
+    .studio-title {
+      margin: 0;
+      font-size: clamp(1.55rem, 1.2rem + 1.4vw, 2.1rem);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      line-height: 1.1;
+      color: var(--ink-primary);
+    }
+
+    .studio-title .accent {
+      color: var(--ink-vermilion);
+    }
+
+    .instrument-stamp {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.12rem;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      color: var(--ink-secondary);
+      text-align: right;
+    }
+
+    .instrument-stamp strong {
+      color: var(--ink-primary);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      border: 1px solid var(--line-divider);
+      background-color: rgba(252, 250, 244, 0.78);
+      padding: 0.14rem 0.5rem;
+      border-radius: 3px;
+    }
+
+    /* 双栏主布局，低于 820px 切换为单栏 */
+    .studio-main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.18fr) minmax(330px, 416px);
+      gap: 1.85rem;
+      align-items: center;
+      padding-block-start: 0.15rem;
+    }
+
+    @media (max-width: 819.98px) {
+      .studio-main {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+
+      .instrument-stamp {
+        align-items: flex-start;
+        text-align: left;
+      }
+    }
+
+    /* 左侧：第 7 号圆形绘图盘 */
+    .platen-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.78rem;
+      inline-size: 100%;
+    }
+
+    .platen-frame {
+      position: relative;
+      inline-size: min(100%, 520px, calc(100dvh - 205px));
+      min-inline-size: min(100%, 285px);
+      aspect-ratio: 1 / 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+    }
+
+    @media (max-width: 819.98px) {
+      .platen-frame {
+        inline-size: min(100%, 500px);
+      }
+    }
+
+    /* 径向渐变纸面 + 外缘两圈淡淡光晕与柔和投影 */
+    .platen-disc {
+      position: relative;
+      inline-size: 100%;
+      block-size: 100%;
+      border-radius: 50%;
+      isolation: isolate;
+      overflow: hidden;
+      background: radial-gradient(
+        circle at 45% 40%,
+        #fffdf9 0%,
+        #fbf7ee 55%,
+        #f2ead9 84%,
+        #e6dcc6 100%
+      );
+      border: 1.5px solid #cbbda2;
+      box-shadow:
+        0 0 0 7px rgba(255, 252, 245, 0.72),
+        0 0 0 8px rgba(216, 204, 180, 0.62),
+        0 0 0 16px rgba(255, 252, 245, 0.36),
+        0 0 0 17px rgba(216, 204, 180, 0.34),
+        0 20px 42px rgba(29, 36, 51, 0.11),
+        0 5px 14px rgba(122, 114, 98, 0.10),
+        inset 0 2px 12px rgba(122, 114, 98, 0.12);
+    }
+
+    .platen-disc canvas {
+      position: absolute;
+      inset: 0;
+      inline-size: 100%;
+      block-size: 100%;
+      display: block;
+    }
+
+    #ink-canvas {
+      z-index: 1;
+      mix-blend-mode: multiply;
+    }
+
+    #gear-canvas {
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* 绘图盘下方等宽参数铭牌读数 */
+    .platen-caption {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.24rem;
+      text-align: center;
+      max-inline-size: 100%;
+    }
+
+    .platen-plate-tag {
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      letter-spacing: 0.1em;
+      color: var(--ink-secondary);
+    }
+
+    .platen-readout {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.45;
+      color: var(--ink-primary);
+      background-color: rgba(252, 250, 244, 0.86);
+      border: 1px solid var(--line-divider);
+      border-radius: 999px;
+      padding: 0.3rem 0.95rem;
+      max-inline-size: 100%;
+      overflow-wrap: anywhere;
+    }
+
+    /* 右侧参数卡：米白底 + 6px 硬边偏移投影 */
+    .control-card {
+      background-color: var(--card-bg);
+      border: 1.5px solid var(--ink-primary);
+      border-radius: 14px;
+      box-shadow: 6px 6px 0 var(--line-divider);
+      padding: 0.98rem 1.18rem 1.02rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.68rem;
+    }
+
+    .card-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.2rem 0.65rem;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--ink-primary);
+      white-space: nowrap;
+    }
+
+    .card-serial {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--ink-secondary);
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .card-intro {
+      margin: 0;
+      font-size: 0.81rem;
+      line-height: 1.48;
+      color: var(--ink-secondary);
+    }
+
+    /* 虚线分隔四个滑杆 */
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      border-block-end: 1px dashed var(--line-divider);
+    }
+
+    .slider-item {
+      border-block-start: 1px dashed var(--line-divider);
+      padding-block: 0.44rem 0.38rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.14rem;
+    }
+
+    .slider-label-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .slider-label-row label {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--ink-primary);
+      letter-spacing: 0.02em;
+      cursor: pointer;
+    }
+
+    .slider-label-row .unit-code {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--ink-secondary);
+      margin-inline-start: 0.25rem;
+    }
+
+    .slider-value {
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--ink-primary);
+      min-inline-size: 4.5ch;
+      text-align: right;
+    }
+
+    /* 尺状刻度滑轨容器 */
+    .ruler-slider-wrap {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .ruler-ticks {
+      position: absolute;
+      inset-inline: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      block-size: 16px;
+      pointer-events: none;
+      background-image:
+        repeating-linear-gradient(
+          to right,
+          rgba(29, 36, 51, 0.38) 0 1px,
+          transparent 1px 10%
+        ),
+        repeating-linear-gradient(
+          to right,
+          rgba(122, 114, 98, 0.30) 0 1px,
+          transparent 1px 2%
+        );
+      background-size: 100% 16px, 100% 9px;
+      background-position: left center, left center;
+      background-repeat: no-repeat;
+    }
+
+    /* 原生 input[type="range"] 定制：尺轨 + 靶心滑块 */
+    input[type="range"].orbis-slider {
+      --slider-track-size: 5px;
+      --slider-thumb-size: 22px;
+      --slider-track-radius: 999px;
+      --slider-thumb-radius: 50%;
+      --slider-track-color: #dfd5c1;
+      --slider-fill-color: var(--ink-primary);
+      --slider-direction: to right;
+
+      --attr-min: attr(min type(<number>), 0);
+      --attr-max: attr(max type(<number>), 100);
+      --control-value: attr(value type(<number>), 50);
+      --slider-progress: calc(
+        progress(var(--control-value), var(--attr-min), var(--attr-max)) * 100%
+      );
+
+      position: relative;
+      z-index: 1;
+      appearance: none;
+      inline-size: 100%;
+      block-size: max(26px, var(--touch-min));
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    input[type="range"].orbis-slider:dir(rtl) {
+      --slider-direction: to left;
+    }
+
+    @supports not (opacity: progress(1, 0, 100)) {
+      input[type="range"].orbis-slider {
+        --slider-progress: calc(
+          (var(--control-value) - var(--attr-min)) /
+          (var(--attr-max) - var(--attr-min)) * 100%
+        );
+      }
+    }
+
+    input[type="range"].orbis-slider:focus-visible {
+      outline: 2px solid var(--ink-primary);
+      outline-offset: 3px;
+      border-radius: 6px;
+    }
+
+    /* WebKit / Blink 轨道与靶心滑块（严格与 Firefox 伪元素分块） */
+    input[type="range"].orbis-slider::-webkit-slider-runnable-track {
+      block-size: var(--slider-track-size);
+      border: 1px solid #b5a78e;
+      border-radius: var(--slider-track-radius);
+      background: linear-gradient(
+        var(--slider-direction),
+        var(--slider-fill-color) var(--slider-progress),
+        var(--slider-track-color) var(--slider-progress)
+      );
+    }
+
+    input[type="range"].orbis-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      inline-size: var(--slider-thumb-size);
+      block-size: var(--slider-thumb-size);
+      margin-block-start: calc(
+        (var(--slider-track-size) - var(--slider-thumb-size)) / 2 - 1px
+      );
+      border: 1.5px solid var(--ink-primary);
+      border-radius: var(--slider-thumb-radius);
+      background: radial-gradient(
+        circle,
+        var(--active-ink) 0 3px,
+        var(--card-bg) 3px 6px,
+        var(--ink-primary) 6px 7.5px,
+        var(--card-bg) 7.5px 10px
+      );
+      box-shadow: 0 2px 5px rgba(29, 36, 51, 0.22);
+    }
+
+    /* Firefox 轨道与靶心滑块 */
+    input[type="range"].orbis-slider::-moz-range-track {
+      block-size: var(--slider-track-size);
+      border: 1px solid #b5a78e;
+      border-radius: var(--slider-track-radius);
+      background: var(--slider-track-color);
+    }
+
+    input[type="range"].orbis-slider::-moz-range-progress {
+      block-size: var(--slider-track-size);
+      border-radius: var(--slider-track-radius);
+      background: var(--slider-fill-color);
+    }
+
+    input[type="range"].orbis-slider::-moz-range-thumb {
+      inline-size: var(--slider-thumb-size);
+      block-size: var(--slider-thumb-size);
+      border: 1.5px solid var(--ink-primary);
+      border-radius: var(--slider-thumb-radius);
+      background: radial-gradient(
+        circle,
+        var(--active-ink) 0 3px,
+        var(--card-bg) 3px 6px,
+        var(--ink-primary) 6px 7.5px,
+        var(--card-bg) 7.5px 10px
+      );
+      box-shadow: 0 2px 5px rgba(29, 36, 51, 0.22);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      input[type="range"].orbis-slider::-webkit-slider-thumb {
+        transition:
+          transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1),
+          box-shadow 0.2s ease;
+      }
+
+      input[type="range"].orbis-slider:hover::-webkit-slider-thumb {
+        transform: scale(1.18);
+        box-shadow: 0 4px 9px rgba(29, 36, 51, 0.28);
+      }
+
+      input[type="range"].orbis-slider:active::-webkit-slider-thumb {
+        transform: scale(1.06);
+      }
+
+      input[type="range"].orbis-slider::-moz-range-thumb {
+        transition:
+          transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1),
+          box-shadow 0.2s ease;
+      }
+
+      input[type="range"].orbis-slider:hover::-moz-range-thumb {
+        transform: scale(1.18);
+        box-shadow: 0 4px 9px rgba(29, 36, 51, 0.28);
+      }
+
+      input[type="range"].orbis-slider:active::-moz-range-thumb {
+        transform: scale(1.06);
+      }
+    }
+
+    .ruler-scale-ends {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--ink-secondary);
+      line-height: 1;
+      padding-inline: 2px;
+    }
+
+    /* 五种圆形墨色色样 */
+    .ink-fieldset {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+
+    .ink-header-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .ink-legend {
+      padding: 0;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--ink-primary);
+    }
+
+    .ink-active-name {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: var(--ink-secondary);
+    }
+
+    .ink-swatch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      padding-block: 0.15rem;
+    }
+
+    .ink-option {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ink-swatch {
+      --swatch-color: var(--ink-vermilion);
+      inline-size: max(34px, var(--touch-min));
+      block-size: max(34px, var(--touch-min));
+      border-radius: 50%;
+      background: radial-gradient(
+        circle at 35% 32%,
+        color-mix(in srgb, var(--swatch-color) 84%, #ffffff) 0%,
+        var(--swatch-color) 62%,
+        color-mix(in srgb, var(--swatch-color) 82%, #000000) 100%
+      );
+      background-color: var(--swatch-color);
+      border: 2px solid rgba(29, 36, 51, 0.22);
+      box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.35),
+        0 2px 5px rgba(29, 36, 51, 0.14);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .ink-swatch::after {
+      content: "";
+      inline-size: 8px;
+      block-size: 8px;
+      border-radius: 50%;
+      background-color: var(--card-bg);
+      opacity: 0;
+      transform: scale(0.4);
+      box-shadow: 0 1px 2px rgba(29, 36, 51, 0.35);
+    }
+
+    .ink-radio:checked + .ink-swatch {
+      border-color: var(--card-bg);
+      box-shadow:
+        0 0 0 2px var(--ink-primary),
+        0 4px 10px rgba(29, 36, 51, 0.22);
+    }
+
+    .ink-radio:checked + .ink-swatch::after {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .ink-radio:focus-visible + .ink-swatch {
+      outline: 2px solid var(--ink-primary);
+      outline-offset: 4px;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .ink-swatch {
+        transition:
+          transform 0.36s cubic-bezier(0.34, 1.56, 0.64, 1),
+          box-shadow 0.2s ease;
+      }
+
+      .ink-swatch::after {
+        transition:
+          opacity 0.2s ease,
+          transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      .ink-swatch:hover {
+        transform: translateY(-2px) scale(1.15);
+      }
+
+      .ink-swatch:active {
+        transform: translateY(0) scale(0.97);
+      }
+    }
+
+    /* 四个胶囊形按钮 */
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.55rem;
+    }
+
+    .pill-btn {
+      appearance: none;
+      border-radius: 999px;
+      min-block-size: max(34px, var(--touch-min));
+      padding: 0.36rem 0.85rem;
+      font-family: var(--font-sans);
+      font-size: 0.84rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      border: 1.5px solid var(--ink-primary);
+      background-color: var(--paper-bg);
+      color: var(--ink-primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.38rem;
+      transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+    }
+
+    .pill-btn:hover {
+      background-color: #ebe3d3;
+    }
+
+    .pill-btn:focus-visible {
+      outline: 2px solid var(--ink-primary);
+      outline-offset: 3px;
+    }
+
+    .pill-btn.primary {
+      background-color: var(--ink-primary);
+      color: var(--card-bg);
+    }
+
+    .pill-btn.primary:hover {
+      background-color: #2b354b;
+    }
+
+    .pill-btn.accent-outline {
+      border-color: var(--ink-primary);
+      background-color: var(--card-bg);
+    }
+
+    .pill-btn.accent-outline:hover {
+      background-color: #efe7d6;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .pill-btn {
+        transition:
+          transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1),
+          background-color 0.16s ease,
+          color 0.16s ease;
+      }
+
+      .pill-btn:active {
+        transform: scale(0.97);
+      }
+    }
+
+    /* 闭合进度条与圈数计数器 */
+    .progress-panel {
+      background-color: var(--paper-bg);
+      border: 1px solid var(--line-divider);
+      border-radius: 10px;
+      padding: 0.56rem 0.78rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.36rem;
+    }
+
+    .progress-meta-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .progress-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--ink-primary);
+    }
+
+    .lap-counter {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--ink-primary);
+    }
+
+    /* 原生 <progress> 完全定制样式（WebKit 与 Firefox 伪元素分块） */
+    progress.orbis-progress {
+      --progress-bar-radius: 999px;
+      --progress-bar-track: #dfd5c1;
+      --progress-bar-fill: var(--active-ink);
+
+      appearance: none;
+      border: 0 solid;
+      overflow: clip;
+      inline-size: 100%;
+      block-size: 8px;
+      border-radius: var(--progress-bar-radius);
+      background: var(--progress-bar-track);
+      box-shadow: inset 0 1px 2px rgba(29, 36, 51, 0.12);
+      display: block;
+    }
+
+    progress.orbis-progress::-webkit-progress-bar {
+      background: transparent;
+    }
+
+    progress.orbis-progress::-webkit-progress-value {
+      background: var(--progress-bar-fill);
+      border-radius: var(--progress-bar-radius);
+    }
+
+    progress.orbis-progress::-moz-progress-bar {
+      background: var(--progress-bar-fill);
+      border-radius: var(--progress-bar-radius);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      progress.orbis-progress::-webkit-progress-value {
+        transition: inline-size 0.12s linear;
+      }
+
+      progress.orbis-progress::-moz-progress-bar {
+        transition: inline-size 0.12s linear;
+      }
+    }
+
+    .progress-meta-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      color: var(--ink-secondary);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.32rem;
+      color: var(--ink-primary);
+      font-weight: 700;
+    }
+
+    .status-dot {
+      inline-size: 7px;
+      block-size: 7px;
+      border-radius: 50%;
+      background-color: var(--active-ink);
+      display: inline-block;
+    }
+
+    .studio-footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 0.4rem 1rem;
+      padding-block-start: 0.35rem;
+      border-block-start: 1px solid var(--line-divider);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--ink-secondary);
+    }
+  </style>
+</head>
+<body>
+  <div class="studio-shell">
+    <header class="studio-header">
+      <div class="brand-block">
+        <p class="maker-eyebrow">ORBIS DRAFTING CO. · Orbis 制图公司出品</p>
+        <h1 class="studio-title">万花尺<span class="accent">工作室</span></h1>
+      </div>
+      <div class="instrument-stamp">
+        <strong>第 7 号绘图盘 · MODEL NO. 7</strong>
+        <span>HYPOTROCHOID PRECISION PLATEN</span>
+      </div>
+    </header>
+
+    <main class="studio-main">
+      <!-- 左侧大型圆形绘图盘 -->
+      <div class="platen-stage">
+        <div class="platen-frame">
+          <div class="platen-disc" id="platen-disc" role="img" aria-label="第 7 号齿轮万花尺绘图盘画布">
+            <canvas id="ink-canvas"></canvas>
+            <canvas id="gear-canvas" aria-hidden="true"></canvas>
+          </div>
+        </div>
+        <div class="platen-caption">
+          <span class="platen-plate-tag">ORBIS 制图公司 · 第 7 号绘图盘 · 步长 Δt = 0.015 rad</span>
+          <p class="platen-readout" id="platen-readout">
+            R=96 · r=40 · d=0.76r · gcd=8 · 闭合=5圈(12瓣) · 图层=1
+          </p>
+        </div>
+      </div>
+
+      <!-- 右侧参数卡 -->
+      <aside class="control-card" aria-labelledby="card-heading">
+        <div class="card-header">
+          <h2 class="card-title" id="card-heading">第 7 号绘图盘 · 调校台</h2>
+          <span class="card-serial">SER. ORB-07-1968</span>
+        </div>
+
+        <p class="card-intro">
+          小齿轮沿外齿圈内壁啮合滚动，带动笔尖描出内旋轮线，滚满 r / gcd(R, r) 圈自动闭合。切换制图油墨叠印多层花纹，交叉处以正片叠底自然加深。
+        </p>
+
+        <div class="slider-group">
+          <!-- 1. 外齿圈齿数 -->
+          <div class="slider-item">
+            <div class="slider-label-row">
+              <label for="slider-R">外齿圈齿数<span class="unit-code">(R)</span></label>
+              <output class="slider-value" id="val-R" for="slider-R">96 齿</output>
+            </div>
+            <div class="ruler-slider-wrap">
+              <div class="ruler-ticks" aria-hidden="true"></div>
+              <input
+                type="range"
+                class="orbis-slider"
+                id="slider-R"
+                min="40"
+                max="144"
+                step="1"
+                value="96"
+                aria-valuetext="96 齿"
+              >
+            </div>
+            <div class="ruler-scale-ends" aria-hidden="true">
+              <span>40</span><span>92</span><span>144</span>
+            </div>
+          </div>
+
+          <!-- 2. 内齿轮齿数 -->
+          <div class="slider-item">
+            <div class="slider-label-row">
+              <label for="slider-r">内齿轮齿数<span class="unit-code">(r)</span></label>
+              <output class="slider-value" id="val-r" for="slider-r">40 齿</output>
+            </div>
+            <div class="ruler-slider-wrap">
+              <div class="ruler-ticks" aria-hidden="true"></div>
+              <input
+                type="range"
+                class="orbis-slider"
+                id="slider-r"
+                min="12"
+                max="100"
+                step="1"
+                value="40"
+                aria-valuetext="40 齿"
+              >
+            </div>
+            <div class="ruler-scale-ends" aria-hidden="true">
+              <span>12</span><span>56</span><span>100</span>
+            </div>
+          </div>
+
+          <!-- 3. 笔孔位置 -->
+          <div class="slider-item">
+            <div class="slider-label-row">
+              <label for="slider-hole">笔孔位置<span class="unit-code">(d/r)</span></label>
+              <output class="slider-value" id="val-hole" for="slider-hole">0.76</output>
+            </div>
+            <div class="ruler-slider-wrap">
+              <div class="ruler-ticks" aria-hidden="true"></div>
+              <input
+                type="range"
+                class="orbis-slider"
+                id="slider-hole"
+                min="0.10"
+                max="1.00"
+                step="0.01"
+                value="0.76"
+                aria-valuetext="0.76"
+              >
+            </div>
+            <div class="ruler-scale-ends" aria-hidden="true">
+              <span>0.10</span><span>0.55</span><span>1.00</span>
+            </div>
+          </div>
+
+          <!-- 4. 绘制速度 -->
+          <div class="slider-item">
+            <div class="slider-label-row">
+              <label for="slider-speed">绘制速度<span class="unit-code">(V)</span></label>
+              <output class="slider-value" id="val-speed" for="slider-speed">5 档</output>
+            </div>
+            <div class="ruler-slider-wrap">
+              <div class="ruler-ticks" aria-hidden="true"></div>
+              <input
+                type="range"
+                class="orbis-slider"
+                id="slider-speed"
+                min="1"
+                max="10"
+                step="1"
+                value="5"
+                aria-valuetext="5 档"
+              >
+            </div>
+            <div class="ruler-scale-ends" aria-hidden="true">
+              <span>1</span><span>5</span><span>10</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 五种墨色色样 -->
+        <fieldset class="ink-fieldset">
+          <div class="ink-header-row">
+            <legend class="ink-legend">制图油墨</legend>
+            <span class="ink-active-name" id="ink-name-label">朱红 · #E2462B</span>
+          </div>
+          <div class="ink-swatch-row">
+            <div class="ink-option">
+              <input class="ink-radio visually-hidden" type="radio" name="ink-color" id="ink-vermilion" value="#e2462b" data-name="朱红" checked>
+              <label class="ink-swatch" for="ink-vermilion" style="--swatch-color: #e2462b;" aria-label="朱红 #e2462b"></label>
+            </div>
+            <div class="ink-option">
+              <input class="ink-radio visually-hidden" type="radio" name="ink-color" id="ink-prussian" value="#1f3f78" data-name="普鲁士蓝">
+              <label class="ink-swatch" for="ink-prussian" style="--swatch-color: #1f3f78;" aria-label="普鲁士蓝 #1f3f78"></label>
+            </div>
+            <div class="ink-option">
+              <input class="ink-radio visually-hidden" type="radio" name="ink-color" id="ink-emerald" value="#1c7d64" data-name="翠绿">
+              <label class="ink-swatch" for="ink-emerald" style="--swatch-color: #1c7d64;" aria-label="翠绿 #1c7d64"></label>
+            </div>
+            <div class="ink-option">
+              <input class="ink-radio visually-hidden" type="radio" name="ink-color" id="ink-saffron" value="#e8a21b" data-name="藏红花黄">
+              <label class="ink-swatch" for="ink-saffron" style="--swatch-color: #e8a21b;" aria-label="藏红花黄 #e8a21b"></label>
+            </div>
+            <div class="ink-option">
+              <input class="ink-radio visually-hidden" type="radio" name="ink-color" id="ink-plum" value="#7a2e6b" data-name="梅紫">
+              <label class="ink-swatch" for="ink-plum" style="--swatch-color: #7a2e6b;" aria-label="梅紫 #7a2e6b"></label>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- 四个胶囊形按钮 -->
+        <div class="button-grid">
+          <button type="button" class="pill-btn primary" id="btn-toggle">暂停</button>
+          <button type="button" class="pill-btn accent-outline" id="btn-new-layer">新建图层</button>
+          <button type="button" class="pill-btn" id="btn-random">随机一组</button>
+          <button type="button" class="pill-btn" id="btn-clear">换张新纸</button>
+        </div>
+
+        <!-- 进度条与圈数计数器 -->
+        <div class="progress-panel">
+          <div class="progress-meta-top">
+            <label class="progress-label" id="progress-label" for="draw-progress">花纹闭合进度</label>
+            <span class="lap-counter" id="lap-counter">0.00 / 5 圈 (0%)</span>
+          </div>
+          <progress class="orbis-progress" id="draw-progress" max="1" value="0"></progress>
+          <div class="progress-meta-bottom">
+            <span class="status-pill" role="status" aria-live="polite" id="draw-status">
+              <span class="status-dot" aria-hidden="true"></span>
+              <span id="draw-status-text">绘制中</span>
+            </span>
+            <span id="layer-summary">当前第 1 层 · 已叠印 0 层</span>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="studio-footer">
+      <span>ORBIS 制图公司 · 精密旋轮绘图仪器系列 · 第 7 号绘图盘</span>
+      <span>x = (R−r)cos(t) + d·cos((R−r)/r·t) · y = (R−r)sin(t) − d·sin((R−r)/r·t)</span>
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const STEP_RAD = 0.015;
+      const TWO_PI = Math.PI * 2;
+
+      const INKS = [
+        { id: 'ink-vermilion', name: '朱红', hex: '#e2462b' },
+        { id: 'ink-prussian', name: '普鲁士蓝', hex: '#1f3f78' },
+        { id: 'ink-emerald', name: '翠绿', hex: '#1c7d64' },
+        { id: 'ink-saffron', name: '藏红花黄', hex: '#e8a21b' },
+        { id: 'ink-plum', name: '梅紫', hex: '#7a2e6b' }
+      ];
+
+      // DOM 引用
+      const rootEl = document.documentElement;
+      const platenDisc = document.getElementById('platen-disc');
+      const inkCanvas = document.getElementById('ink-canvas');
+      const gearCanvas = document.getElementById('gear-canvas');
+      const inkCtx = inkCanvas.getContext('2d');
+      const gearCtx = gearCanvas.getContext('2d');
+
+      // 离屏缓存画布：保存已完成图层 + 当前图层已闭合的半瓣分支，避免每帧全量重算
+      const savedBuffer = document.createElement('canvas');
+      const savedCtx = savedBuffer.getContext('2d');
+      const activeArchBuffer = document.createElement('canvas');
+      const activeArchCtx = activeArchBuffer.getContext('2d');
+
+      const sliderR = document.getElementById('slider-R');
+      const sliderr = document.getElementById('slider-r');
+      const sliderHole = document.getElementById('slider-hole');
+      const sliderSpeed = document.getElementById('slider-speed');
+
+      const valR = document.getElementById('val-R');
+      const valr = document.getElementById('val-r');
+      const valHole = document.getElementById('val-hole');
+      const valSpeed = document.getElementById('val-speed');
+
+      const inkRadios = Array.from(document.querySelectorAll('.ink-radio'));
+      const inkNameLabel = document.getElementById('ink-name-label');
+
+      const btnToggle = document.getElementById('btn-toggle');
+      const btnNewLayer = document.getElementById('btn-new-layer');
+      const btnRandom = document.getElementById('btn-random');
+      const btnClear = document.getElementById('btn-clear');
+
+      const drawProgress = document.getElementById('draw-progress');
+      const lapCounter = document.getElementById('lap-counter');
+      const drawStatusText = document.getElementById('draw-status-text');
+      const layerSummary = document.getElementById('layer-summary');
+      const platenReadout = document.getElementById('platen-readout');
+
+      const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      // 视口与设备像素比尺寸状态
+      const viewPixelRatio = () => Math.min(window.ToyEmbed?.pixelRatio ?? (window.devicePixelRatio || 1), 3);
+      let cssSize = 500;
+      let dpr = viewPixelRatio();
+
+      // 最大公约数
+      function gcd(a, b) {
+        let x = Math.abs(Math.round(a));
+        let y = Math.abs(Math.round(b));
+        while (y !== 0) {
+          const temp = y;
+          y = x % y;
+          x = temp;
+        }
+        return x || 1;
+      }
+
+      // 同步原生滑杆 CSS 变量（兼容不支持 typed attr() 的浏览器）
+      function syncSliderCSSVars(slider) {
+        slider.style.setProperty('--attr-min', slider.min || '0');
+        slider.style.setProperty('--attr-max', slider.max || '100');
+        slider.style.setProperty('--control-value', slider.value);
+      }
+
+      function syncAllSlidersCSS() {
+        syncSliderCSSVars(sliderR);
+        syncSliderCSSVars(sliderr);
+        syncSliderCSSVars(sliderHole);
+        syncSliderCSSVars(sliderSpeed);
+      }
+
+      // 构建图层数据结构
+      function createLayer(R, r, holeRatio, color) {
+        const g = gcd(R, r);
+        const totalLaps = r / g;
+        const petals = R / g;
+        const tMax = totalLaps * TWO_PI;
+        // 在速度最大、曲率最平缓的内侧谷点 t_k = (2k + 1) * π * r / R 切分单调分支，
+        // 既避免自交漏掉正片叠底，又消除 0.015 步长逐段 stroke 带来的接缝墨点
+        const archSpan = (Math.PI * r) / R;
+        return {
+          R,
+          r,
+          holeRatio,
+          color,
+          gcd: g,
+          totalLaps,
+          petals,
+          t: 0,
+          tMax,
+          archSpan,
+          committedT: 0 // 已固化进 activeArchBuffer 的弧度进度
+        };
+      }
+
+      // 应用状态
+      let savedLayers = [];
+      let activeInk = INKS[0];
+      let speedLevel = 5;
+      let isPaused = false;
+      let currentLayer = createLayer(96, 40, 0.76, activeInk.hex);
+      let lastFrameTime = performance.now();
+
+      // 计算内旋轮线数学坐标 -> 画布像素坐标
+      function getPlatenGeometry() {
+        const cx = cssSize * 0.5;
+        const cy = cssSize * 0.5;
+        const ringPitchPx = cssSize * 0.392;
+        const strokeWidth = Math.max(1.2, cssSize * 0.0029);
+        return { cx, cy, ringPitchPx, strokeWidth };
+      }
+
+      function pointOnCurve(layer, t, cx, cy, ringPitchPx) {
+        const { R, r, holeRatio } = layer;
+        const d = holeRatio * r;
+        const diff = R - r;
+        const ratio = diff / r;
+        const scale = ringPitchPx / R;
+
+        const x = diff * Math.cos(t) + d * Math.cos(ratio * t);
+        const y = diff * Math.sin(t) - d * Math.sin(ratio * t);
+
+        return {
+          x: cx + x * scale,
+          y: cy + y * scale
+        };
+      }
+
+      // 在指定 2D 上下文上以 0.015 弧度步长绘制单段平滑子弧 [tStart, tEnd]
+      function strokeSubArc(ctx, layer, tStart, tEnd, isClosedEnd) {
+        if (tEnd <= tStart + 1e-9) return;
+        const { cx, cy, ringPitchPx, strokeWidth } = getPlatenGeometry();
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.strokeStyle = layer.color;
+        ctx.lineWidth = strokeWidth;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'butt';
+
+        ctx.beginPath();
+        const p0 = pointOnCurve(layer, tStart, cx, cy, ringPitchPx);
+        ctx.moveTo(p0.x, p0.y);
+
+        // 对齐到精确的 0.015 弧度网格采样点
+        const firstStepIdx = Math.floor(tStart / STEP_RAD) + 1;
+        const lastStepIdx = Math.floor((tEnd - 1e-9) / STEP_RAD);
+
+        for (let idx = firstStepIdx; idx <= lastStepIdx; idx++) {
+          const tSample = idx * STEP_RAD;
+          const pt = pointOnCurve(layer, tSample, cx, cy, ringPitchPx);
+          ctx.lineTo(pt.x, pt.y);
+        }
+
+        if (isClosedEnd && Math.abs(tEnd - layer.tMax) < 1e-6) {
+          // 精确闭合到起点 (t = 0)
+          const pClose = pointOnCurve(layer, 0, cx, cy, ringPitchPx);
+          ctx.lineTo(pClose.x, pClose.y);
+        } else {
+          const pEnd = pointOnCurve(layer, tEnd, cx, cy, ringPitchPx);
+          ctx.lineTo(pEnd.x, pEnd.y);
+        }
+
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 将完整或部分图层按分支规则绘制到目标上下文
+      function renderLayerToContext(ctx, layer, upToT) {
+        const targetT = Math.min(upToT, layer.tMax);
+        if (targetT <= 1e-9) return;
+
+        let cursor = 0;
+        let k = 0;
+        while (cursor < targetT - 1e-9) {
+          // 第一个切分点为 0.5 * archSpan？不：t_k = (2k + 1) * π * r / R = (2k + 1) * archSpan
+          const nextBreak = (2 * k + 1) * layer.archSpan;
+          const segEnd = Math.min(nextBreak, targetT, layer.tMax);
+          const isClosing = Math.abs(segEnd - layer.tMax) < 1e-6;
+          strokeSubArc(ctx, layer, cursor, segEnd, isClosing);
+          cursor = segEnd;
+          k++;
+        }
+      }
+
+      function clearCtxLogical(ctx) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.restore();
+      }
+
+      function copyBufferLogical(destCtx, srcCanvas) {
+        destCtx.save();
+        destCtx.setTransform(1, 0, 0, 1, 0, 0);
+        destCtx.globalCompositeOperation = 'source-over';
+        destCtx.clearRect(0, 0, destCtx.canvas.width, destCtx.canvas.height);
+        destCtx.drawImage(srcCanvas, 0, 0);
+        destCtx.restore();
+      }
+
+      // 重建已保存图层缓存 + 当前图层缓存
+      function rebuildAllInkBuffers() {
+        clearCtxLogical(savedCtx);
+        for (const layer of savedLayers) {
+          renderLayerToContext(savedCtx, layer, layer.t);
+        }
+        rebuildActiveLayerFromSaved();
+      }
+
+      // 从 savedBuffer 出发重建当前图层进度
+      function rebuildActiveLayerFromSaved() {
+        copyBufferLogical(activeArchCtx, savedBuffer);
+        currentLayer.committedT = 0;
+        syncInkCanvasToCurrentT();
+      }
+
+      // 增量推进当前图层的笔迹缓存，并将未满一瓣的活动弧段合成到 #ink-canvas
+      function syncInkCanvasToCurrentT() {
+        const targetT = Math.min(currentLayer.t, currentLayer.tMax);
+
+        // 将已跨过的谷点切分分支固化到 activeArchBuffer
+        while (currentLayer.committedT < targetT - 1e-9) {
+          // 寻找大于 committedT 的下一个切分点 (2k + 1) * archSpan
+          const ratio = (currentLayer.committedT / currentLayer.archSpan - 1) * 0.5;
+          const nextK = Math.floor(ratio + 1 + 1e-7);
+          const nextBreak = Math.min((2 * Math.max(0, nextK) + 1) * currentLayer.archSpan, currentLayer.tMax);
+
+          if (targetT >= nextBreak - 1e-7) {
+            const isClosing = Math.abs(nextBreak - currentLayer.tMax) < 1e-6;
+            strokeSubArc(activeArchCtx, currentLayer, currentLayer.committedT, nextBreak, isClosing);
+            currentLayer.committedT = nextBreak;
+          } else {
+            break;
+          }
+        }
+
+        // 将固化缓存复制到显示画布，再叠印当前正在生长的未完成分支
+        copyBufferLogical(inkCtx, activeArchBuffer);
+        if (targetT > currentLayer.committedT + 1e-7) {
+          const isClosing = Math.abs(targetT - currentLayer.tMax) < 1e-6;
+          strokeSubArc(inkCtx, currentLayer, currentLayer.committedT, targetT, isClosing);
+        }
+      }
+
+      // 上层画布：绘制带齿外圈、内壁滚动小齿轮、反向自转轮辐、连接笔臂与彩色笔尖
+      function renderGearOverlay() {
+        clearCtxLogical(gearCtx);
+
+        const { cx, cy, ringPitchPx } = getPlatenGeometry();
+        const { R, r, holeRatio, t } = currentLayer;
+        const modulePx = ringPitchPx / R;
+        const gearPitchPx = r * modulePx;
+        const toothHalfH = Math.min(4.6, Math.max(1.45, modulePx * 0.72));
+
+        // 1. 外圈装饰刻度环（体现第 7 号实体绘图盘质感）
+        const outerBezelR = ringPitchPx + toothHalfH + Math.max(12, cssSize * 0.034);
+        const innerWallBaseR = ringPitchPx + toothHalfH + 3.5;
+
+        gearCtx.save();
+
+        // 淡淡的环形金属/赛璐珞压圈底色
+        gearCtx.beginPath();
+        gearCtx.arc(cx, cy, outerBezelR, 0, TWO_PI);
+        gearCtx.arc(cx, cy, ringPitchPx + toothHalfH, 0, TWO_PI, true);
+        gearCtx.fillStyle = 'rgba(216, 204, 180, 0.24)';
+        gearCtx.fill();
+
+        gearCtx.beginPath();
+        gearCtx.arc(cx, cy, outerBezelR, 0, TWO_PI);
+        gearCtx.strokeStyle = 'rgba(29, 36, 51, 0.20)';
+        gearCtx.lineWidth = 1;
+        gearCtx.stroke();
+
+        // 外压圈角度刻度线（每 5° 短刻度，每 30° 长刻度）
+        for (let deg = 0; deg < 360; deg += 5) {
+          const rad = (deg * Math.PI) / 180;
+          const isMajor = deg % 30 === 0;
+          const isMid = deg % 15 === 0;
+          const rOut = outerBezelR - 1.5;
+          const rIn = rOut - (isMajor ? 6.5 : isMid ? 4.5 : 2.6);
+          gearCtx.beginPath();
+          gearCtx.moveTo(cx + rIn * Math.cos(rad), cy + rIn * Math.sin(rad));
+          gearCtx.lineTo(cx + rOut * Math.cos(rad), cy + rOut * Math.sin(rad));
+          gearCtx.strokeStyle = isMajor ? 'rgba(29, 36, 51, 0.30)' : 'rgba(122, 114, 98, 0.22)';
+          gearCtx.lineWidth = isMajor ? 1 : 0.75;
+          gearCtx.stroke();
+        }
+
+        // 2. 带齿的外齿圈（R 齿，α = 0 处为齿槽谷底以与内齿轮 α = 0 齿顶精确啮合）
+        gearCtx.beginPath();
+        gearCtx.arc(cx, cy, innerWallBaseR, 0, TWO_PI);
+        const stepOuter = TWO_PI / R;
+        const rValley = ringPitchPx + toothHalfH;
+        const rTipInward = ringPitchPx - toothHalfH;
+
+        for (let k = 0; k < R; k++) {
+          const baseA = k * stepOuter;
+          const a0 = baseA - 0.15 * stepOuter;
+          const a1 = baseA + 0.15 * stepOuter;
+          const a2 = baseA + 0.36 * stepOuter;
+          const a3 = baseA + 0.64 * stepOuter;
+          const a4 = baseA + 0.85 * stepOuter;
+
+          if (k === 0) {
+            gearCtx.moveTo(cx + rValley * Math.cos(a0), cy + rValley * Math.sin(a0));
+          } else {
+            gearCtx.lineTo(cx + rValley * Math.cos(a0), cy + rValley * Math.sin(a0));
+          }
+          gearCtx.lineTo(cx + rValley * Math.cos(a1), cy + rValley * Math.sin(a1));
+          gearCtx.lineTo(cx + rTipInward * Math.cos(a2), cy + rTipInward * Math.sin(a2));
+          gearCtx.lineTo(cx + rTipInward * Math.cos(a3), cy + rTipInward * Math.sin(a3));
+          gearCtx.lineTo(cx + rValley * Math.cos(a4), cy + rValley * Math.sin(a4));
+        }
+        gearCtx.closePath();
+        gearCtx.fillStyle = 'rgba(235, 226, 208, 0.34)';
+        gearCtx.fill('evenodd');
+        gearCtx.strokeStyle = 'rgba(29, 36, 51, 0.26)';
+        gearCtx.lineWidth = 0.95;
+        gearCtx.stroke();
+
+        // 外齿圈节圆虚线参考
+        gearCtx.beginPath();
+        gearCtx.setLineDash([3, 4]);
+        gearCtx.arc(cx, cy, ringPitchPx, 0, TWO_PI);
+        gearCtx.strokeStyle = 'rgba(122, 114, 98, 0.20)';
+        gearCtx.lineWidth = 0.75;
+        gearCtx.stroke();
+        gearCtx.setLineDash([]);
+
+        // 3. 计算小齿轮中心与反向自转角 φ(t) = -(R - r)/r * t
+        const orbitRadiusPx = (R - r) * modulePx;
+        const gx = cx + orbitRadiusPx * Math.cos(t);
+        const gy = cy + orbitRadiusPx * Math.sin(t);
+        const phi = -((R - r) / r) * t;
+
+        gearCtx.save();
+        gearCtx.translate(gx, gy);
+        gearCtx.rotate(phi);
+
+        // 绘制内齿轮外齿廓（r 齿，β = 0 处为向外凸出的齿顶，与外齿圈齿槽零滑动啮合）
+        const stepInner = TWO_PI / r;
+        const gTip = gearPitchPx + toothHalfH;
+        const gRoot = Math.max(4, gearPitchPx - toothHalfH);
+
+        gearCtx.beginPath();
+        for (let j = 0; j < r; j++) {
+          const baseB = j * stepInner;
+          const b0 = baseB - 0.13 * stepInner;
+          const b1 = baseB + 0.13 * stepInner;
+          const b2 = baseB + 0.34 * stepInner;
+          const b3 = baseB + 0.66 * stepInner;
+          const b4 = baseB + 0.87 * stepInner;
+
+          if (j === 0) {
+            gearCtx.moveTo(gTip * Math.cos(b0), gTip * Math.sin(b0));
+          } else {
+            gearCtx.lineTo(gTip * Math.cos(b0), gTip * Math.sin(b0));
+          }
+          gearCtx.lineTo(gTip * Math.cos(b1), gTip * Math.sin(b1));
+          gearCtx.lineTo(gRoot * Math.cos(b2), gRoot * Math.sin(b2));
+          gearCtx.lineTo(gRoot * Math.cos(b3), gRoot * Math.sin(b3));
+          gearCtx.lineTo(gTip * Math.cos(b4), gTip * Math.sin(b4));
+        }
+        gearCtx.closePath();
+
+        // 赛璐珞半透明圆盘质感与反向自转轮辐镂空窗口
+        const rimInnerR = gRoot * 0.82;
+        const hubOuterR = Math.max(4.5, gRoot * 0.22);
+        const spokeCount = r >= 28 ? 5 : 4;
+
+        if (rimInnerR > hubOuterR + 5) {
+          const windowGap = 0.16;
+          const sectorSpan = TWO_PI / spokeCount;
+          for (let s = 0; s < spokeCount; s++) {
+            const aStart = s * sectorSpan + windowGap;
+            const aEnd = (s + 1) * sectorSpan - windowGap;
+            if (aEnd > aStart + 0.08) {
+              gearCtx.moveTo(rimInnerR * Math.cos(aStart), rimInnerR * Math.sin(aStart));
+              gearCtx.arc(0, 0, rimInnerR, aStart, aEnd, false);
+              gearCtx.lineTo(hubOuterR * Math.cos(aEnd), hubOuterR * Math.sin(aEnd));
+              gearCtx.arc(0, 0, hubOuterR, aEnd, aStart, true);
+              gearCtx.closePath();
+            }
+          }
+        }
+
+        gearCtx.fillStyle = 'rgba(246, 241, 231, 0.48)';
+        gearCtx.fill('evenodd');
+        gearCtx.strokeStyle = 'rgba(29, 36, 51, 0.34)';
+        gearCtx.lineWidth = 1;
+        gearCtx.stroke();
+
+        // 轮辐中心骨架细线（强化反向自转视觉识别）
+        for (let s = 0; s < spokeCount; s++) {
+          const ang = (s * TWO_PI) / spokeCount;
+          gearCtx.beginPath();
+          gearCtx.moveTo(hubOuterR * 0.7 * Math.cos(ang), hubOuterR * 0.7 * Math.sin(ang));
+          gearCtx.lineTo(Math.max(hubOuterR, rimInnerR) * Math.cos(ang), Math.max(hubOuterR, rimInnerR) * Math.sin(ang));
+          gearCtx.strokeStyle = 'rgba(29, 36, 51, 0.26)';
+          gearCtx.lineWidth = 1.15;
+          gearCtx.stroke();
+        }
+
+        // 齿轮上的参考笔孔阵列刻度点（沿局部正 X 轴）
+        for (const markRatio of [0.25, 0.5, 0.75]) {
+          const holeDist = markRatio * gearPitchPx;
+          if (holeDist > hubOuterR + 3 && holeDist < gRoot - 2) {
+            gearCtx.beginPath();
+            gearCtx.arc(holeDist, 0, 1.7, 0, TWO_PI);
+            gearCtx.fillStyle = 'rgba(122, 114, 98, 0.38)';
+            gearCtx.fill();
+          }
+        }
+
+        // 4. 连接齿轮轴心与彩色笔尖的精密游标笔臂（沿局部 X 轴连接 0 -> d）
+        const penOffsetPx = holeRatio * gearPitchPx;
+        const tailLen = Math.min(12, gearPitchPx * 0.26);
+
+        // 笔臂阴影与金属杆体
+        gearCtx.beginPath();
+        gearCtx.moveTo(-tailLen, 0);
+        gearCtx.lineTo(penOffsetPx, 0);
+        gearCtx.strokeStyle = 'rgba(29, 36, 51, 0.52)';
+        gearCtx.lineWidth = 3.2;
+        gearCtx.lineCap = 'round';
+        gearCtx.stroke();
+
+        gearCtx.beginPath();
+        gearCtx.moveTo(-tailLen, 0);
+        gearCtx.lineTo(penOffsetPx, 0);
+        gearCtx.strokeStyle = '#efe7d6';
+        gearCtx.lineWidth = 1.3;
+        gearCtx.lineCap = 'round';
+        gearCtx.stroke();
+
+        // 齿轮中心转轴铆钉
+        gearCtx.beginPath();
+        gearCtx.arc(0, 0, 3.6, 0, TWO_PI);
+        gearCtx.fillStyle = '#fcfaf4';
+        gearCtx.fill();
+        gearCtx.strokeStyle = 'rgba(29, 36, 51, 0.65)';
+        gearCtx.lineWidth = 1.3;
+        gearCtx.stroke();
+
+        gearCtx.beginPath();
+        gearCtx.arc(0, 0, 1.3, 0, TWO_PI);
+        gearCtx.fillStyle = '#1d2433';
+        gearCtx.fill();
+
+        gearCtx.restore(); // 退出小齿轮局部坐标系
+
+        // 5. 彩色制图笔尖（位于世界坐标 px, py）
+        const nibPos = pointOnCurve(currentLayer, t, cx, cy, ringPitchPx);
+
+        // 落笔微弱墨晕（仅在未闭合绘制中淡淡呼吸）
+        if (!isPaused && currentLayer.t < currentLayer.tMax - 1e-6) {
+          gearCtx.beginPath();
+          gearCtx.arc(nibPos.x, nibPos.y, 9.5, 0, TWO_PI);
+          gearCtx.fillStyle = hexToRgba(currentLayer.color, 0.16);
+          gearCtx.fill();
+        }
+
+        // 笔尖外金属套环
+        gearCtx.beginPath();
+        gearCtx.arc(nibPos.x, nibPos.y, 5.6, 0, TWO_PI);
+        gearCtx.fillStyle = '#fcfaf4';
+        gearCtx.fill();
+        gearCtx.strokeStyle = '#1d2433';
+        gearCtx.lineWidth = 1.5;
+        gearCtx.stroke();
+
+        // 彩色油墨笔尖珠芯
+        gearCtx.beginPath();
+        gearCtx.arc(nibPos.x, nibPos.y, 3.5, 0, TWO_PI);
+        gearCtx.fillStyle = currentLayer.color;
+        gearCtx.fill();
+
+        // 细微高光点
+        gearCtx.beginPath();
+        gearCtx.arc(nibPos.x - 1.1, nibPos.y - 1.1, 1.0, 0, TWO_PI);
+        gearCtx.fillStyle = 'rgba(255, 255, 255, 0.82)';
+        gearCtx.fill();
+
+        gearCtx.restore();
+      }
+
+      function hexToRgba(hex, alpha) {
+        const clean = hex.replace('#', '');
+        const rVal = parseInt(clean.slice(0, 2), 16);
+        const gVal = parseInt(clean.slice(2, 4), 16);
+        const bVal = parseInt(clean.slice(4, 6), 16);
+        return `rgba(${rVal}, ${gVal}, ${bVal}, ${alpha})`;
+      }
+
+      // 更新界面读数、进度条、按钮文字与无障碍状态
+      function updateUIReadouts() {
+        const { R, r, holeRatio, gcd: g, totalLaps, petals, t, tMax } = currentLayer;
+        const progressRatio = tMax > 0 ? Math.min(1, t / tMax) : 1;
+        const currentLaps = t / TWO_PI;
+        const pct = Math.round(progressRatio * 100);
+        const isClosed = t >= tMax - 1e-6;
+        const totalLayerCount = savedLayers.length + (t > 0 || savedLayers.length === 0 ? 1 : 0);
+
+        valR.textContent = `${R} 齿`;
+        valr.textContent = `${r} 齿`;
+        valHole.textContent = holeRatio.toFixed(2);
+        valSpeed.textContent = `${speedLevel} 档`;
+
+        sliderR.setAttribute('aria-valuetext', `${R} 齿`);
+        sliderr.setAttribute('aria-valuetext', `${r} 齿`);
+        sliderHole.setAttribute('aria-valuetext', holeRatio.toFixed(2));
+        sliderSpeed.setAttribute('aria-valuetext', `${speedLevel} 档`);
+
+        drawProgress.value = progressRatio;
+        const lapStr = isClosed ? `${totalLaps}` : currentLaps.toFixed(2);
+        lapCounter.textContent = `${lapStr} / ${totalLaps} 圈 (${pct}%)`;
+
+        // 按钮文案在「暂停」与「继续」间切换（按规范不额外设置 aria-pressed 避免冲突播报）
+        if (isClosed || isPaused) {
+          btnToggle.textContent = '继续';
+        } else {
+          btnToggle.textContent = '暂停';
+        }
+
+        let statusStr = '绘制中';
+        if (isClosed) {
+          statusStr = '已闭合';
+        } else if (isPaused) {
+          statusStr = '已暂停';
+        } else if (t <= 1e-6 && isPaused) {
+          statusStr = '待落笔';
+        }
+        if (drawStatusText.textContent !== statusStr) {
+          drawStatusText.textContent = statusStr;
+        }
+
+        layerSummary.textContent = `当前第 ${savedLayers.length + 1} 层 · 已叠印 ${savedLayers.length} 层`;
+
+        const dExact = (holeRatio * r).toFixed(1);
+        platenReadout.textContent =
+          `R=${R} · r=${r} · d=${holeRatio.toFixed(2)}r(${dExact}) · gcd=${g} · 闭合=${totalLaps}圈/${petals}瓣 · 图层=${totalLayerCount}`;
+      }
+
+      // 若系统开启「减少动态效果」，曲线几乎立即画完
+      function finishImmediatelyIfReducedMotion() {
+        if (reducedMotionQuery.matches && !isPaused) {
+          currentLayer.t = currentLayer.tMax;
+          syncInkCanvasToCurrentT();
+          renderGearOverlay();
+          updateUIReadouts();
+          return true;
+        }
+        return false;
+      }
+
+      // 按当前滑杆参数重置当前图层并从头绘制（保留之前已保存图层）
+      function restartCurrentLayerFromControls(sourceControl) {
+        let R = parseInt(sliderR.value, 10);
+        let r = parseInt(sliderr.value, 10);
+        const holeRatio = parseFloat(sliderHole.value);
+
+        // 保证内齿轮始终小于外齿圈内壁（r <= R - 2），使两滑杆各自完整覆盖 40..144 与 12..100
+        if (sourceControl === 'R' && R <= r + 1) {
+          r = Math.max(12, R - 2);
+          sliderr.value = String(r);
+        } else if (sourceControl === 'r' && r >= R - 1) {
+          R = Math.min(144, r + 2);
+          sliderR.value = String(R);
+        } else if (r >= R - 1) {
+          r = Math.max(12, R - 2);
+          sliderr.value = String(r);
+        }
+
+        syncAllSlidersCSS();
+
+        isPaused = false;
+        currentLayer = createLayer(R, r, holeRatio, activeInk.hex);
+        rebuildActiveLayerFromSaved();
+
+        if (!finishImmediatelyIfReducedMotion()) {
+          renderGearOverlay();
+          updateUIReadouts();
+        }
+      }
+
+      // 调整画布尺寸与设备像素比，并根据图层记录完整重绘
+      function resizeCanvasesAndRedraw() {
+        const rect = platenDisc.getBoundingClientRect();
+        const nextCssSize = Math.max(200, Math.round(rect.width));
+        const nextDpr = viewPixelRatio();
+
+        cssSize = nextCssSize;
+        dpr = nextDpr;
+
+        const pxSize = Math.round(cssSize * dpr);
+
+        for (const canvas of [inkCanvas, gearCanvas, savedBuffer, activeArchBuffer]) {
+          if (canvas.width !== pxSize || canvas.height !== pxSize) {
+            canvas.width = pxSize;
+            canvas.height = pxSize;
+          }
+          const ctx = canvas.getContext('2d');
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        rebuildAllInkBuffers();
+        renderGearOverlay();
+        updateUIReadouts();
+      }
+
+      // 切换墨色：更新当前活动图层墨色与界面主题色
+      function applyInkSelection(inkObj) {
+        activeInk = inkObj;
+        rootEl.style.setProperty('--active-ink', activeInk.hex);
+        inkNameLabel.textContent = `${activeInk.name} · ${activeInk.hex.toUpperCase()}`;
+
+        currentLayer.color = activeInk.hex;
+        rebuildActiveLayerFromSaved();
+        renderGearOverlay();
+        updateUIReadouts();
+      }
+
+      // 事件绑定：滑杆
+      sliderR.addEventListener('input', () => restartCurrentLayerFromControls('R'));
+      sliderr.addEventListener('input', () => restartCurrentLayerFromControls('r'));
+      sliderHole.addEventListener('input', () => restartCurrentLayerFromControls('hole'));
+
+      sliderSpeed.addEventListener('input', () => {
+        speedLevel = parseInt(sliderSpeed.value, 10);
+        syncSliderCSSVars(sliderSpeed);
+        updateUIReadouts();
+      });
+
+      // 事件绑定：墨色色样
+      for (const radio of inkRadios) {
+        radio.addEventListener('change', () => {
+          if (!radio.checked) return;
+          const found = INKS.find((item) => item.id === radio.id);
+          if (found) {
+            applyInkSelection(found);
+          }
+        });
+      }
+
+      // 事件绑定：暂停／继续
+      btnToggle.addEventListener('click', () => {
+        const isClosed = currentLayer.t >= currentLayer.tMax - 1e-6;
+        if (isClosed) {
+          // 若当前曲线已闭合，点击「继续」从头重描当前图层
+          currentLayer.t = 0;
+          isPaused = false;
+          rebuildActiveLayerFromSaved();
+          if (!finishImmediatelyIfReducedMotion()) {
+            renderGearOverlay();
+            updateUIReadouts();
+          }
+          return;
+        }
+
+        isPaused = !isPaused;
+        lastFrameTime = performance.now();
+        if (!isPaused) {
+          finishImmediatelyIfReducedMotion();
+        }
+        renderGearOverlay();
+        updateUIReadouts();
+      });
+
+      // 事件绑定：新建图层（将当前已绘笔迹封存到底纸，开启新一层继续叠画）
+      btnNewLayer.addEventListener('click', () => {
+        const hadInk = currentLayer.t > 1e-6;
+        if (hadInk) {
+          savedLayers.push({
+            R: currentLayer.R,
+            r: currentLayer.r,
+            holeRatio: currentLayer.holeRatio,
+            color: currentLayer.color,
+            gcd: currentLayer.gcd,
+            totalLaps: currentLayer.totalLaps,
+            petals: currentLayer.petals,
+            t: currentLayer.t,
+            tMax: currentLayer.tMax,
+            archSpan: currentLayer.archSpan,
+            committedT: currentLayer.committedT
+          });
+          renderLayerToContext(savedCtx, savedLayers[savedLayers.length - 1], currentLayer.t);
+
+          // 封存旧层后自动轮换到下一款墨色，方便直接换色叠画（也可随时点选任意色样）
+          const currentIdx = INKS.findIndex((item) => item.id === activeInk.id);
+          const nextInk = INKS[(currentIdx + 1) % INKS.length];
+          const nextRadio = document.getElementById(nextInk.id);
+          if (nextRadio) nextRadio.checked = true;
+          activeInk = nextInk;
+          rootEl.style.setProperty('--active-ink', activeInk.hex);
+          inkNameLabel.textContent = `${activeInk.name} · ${activeInk.hex.toUpperCase()}`;
+        }
+
+        const R = parseInt(sliderR.value, 10);
+        const r = parseInt(sliderr.value, 10);
+        const holeRatio = parseFloat(sliderHole.value);
+
+        isPaused = false;
+        currentLayer = createLayer(R, r, holeRatio, activeInk.hex);
+        rebuildActiveLayerFromSaved();
+
+        if (!finishImmediatelyIfReducedMotion()) {
+          renderGearOverlay();
+          updateUIReadouts();
+        }
+      });
+
+      // 事件绑定：随机一组（随机挑选富于几何美感的参数组合与墨色）
+      btnRandom.addEventListener('click', () => {
+        let bestR = 96;
+        let bestr = 36;
+        for (let attempt = 0; attempt < 40; attempt++) {
+          const candR = 48 + Math.floor(Math.random() * (144 - 48 + 1)); // 48..144
+          const minr = Math.max(12, Math.round(candR * 0.18));
+          const maxr = Math.min(100, Math.round(candR * 0.82));
+          if (maxr <= minr) continue;
+          const candr = minr + Math.floor(Math.random() * (maxr - minr + 1));
+          const g = gcd(candR, candr);
+          const laps = candr / g;
+          const petals = candR / g;
+          // 优选圈数适中（2~24 圈）、花瓣丰富（5~36 瓣）的组合
+          if (laps >= 2 && laps <= 24 && petals >= 5 && petals <= 36) {
+            bestR = candR;
+            bestr = candr;
+            break;
+          }
+        }
+
+        const candHole = Math.round((0.26 + Math.random() * 0.68) * 100) / 100;
+
+        // 从不同于当前的墨色中随机选择一款
+        const otherInks = INKS.filter((item) => item.id !== activeInk.id);
+        const pickedInk = otherInks[Math.floor(Math.random() * otherInks.length)] || INKS[0];
+
+        sliderR.value = String(bestR);
+        sliderr.value = String(bestr);
+        sliderHole.value = candHole.toFixed(2);
+        syncAllSlidersCSS();
+
+        const radio = document.getElementById(pickedInk.id);
+        if (radio) radio.checked = true;
+        activeInk = pickedInk;
+        rootEl.style.setProperty('--active-ink', activeInk.hex);
+        inkNameLabel.textContent = `${activeInk.name} · ${activeInk.hex.toUpperCase()}`;
+
+        isPaused = false;
+        currentLayer = createLayer(bestR, bestr, candHole, activeInk.hex);
+        rebuildActiveLayerFromSaved();
+
+        if (!finishImmediatelyIfReducedMotion()) {
+          renderGearOverlay();
+          updateUIReadouts();
+        }
+      });
+
+      // 事件绑定：换张新纸（清空所有已绘图层，回到干净新纸面）
+      btnClear.addEventListener('click', () => {
+        savedLayers = [];
+        const R = parseInt(sliderR.value, 10);
+        const r = parseInt(sliderr.value, 10);
+        const holeRatio = parseFloat(sliderHole.value);
+
+        isPaused = true;
+        currentLayer = createLayer(R, r, holeRatio, activeInk.hex);
+        rebuildAllInkBuffers();
+        renderGearOverlay();
+        updateUIReadouts();
+      });
+
+      // 监听系统「减少动态效果」切换
+      reducedMotionQuery.addEventListener('change', () => {
+        if (reducedMotionQuery.matches && !isPaused && currentLayer.t < currentLayer.tMax) {
+          finishImmediatelyIfReducedMotion();
+        }
+      });
+
+      // 动画主循环：按速度档位推进 0.015 弧度步长，满 r / gcd(R, r) 圈自动停止
+      function animate(now) {
+        const dtSec = Math.min(0.06, Math.max(0, (now - lastFrameTime) / 1000));
+        lastFrameTime = now;
+
+        if (!isPaused && currentLayer.t < currentLayer.tMax - 1e-9) {
+          if (reducedMotionQuery.matches) {
+            currentLayer.t = currentLayer.tMax;
+          } else {
+            // 1~10 档指数平滑调速：1 档约 1.7 rad/s 细腻慢绘，5 档约 6.5 rad/s，10 档约 32 rad/s
+            const radPerSec = 1.7 * Math.pow(1.385, speedLevel - 1);
+            const rawAdvance = radPerSec * dtSec;
+            // 对齐到整数个 0.015 弧度步长（保证每帧至少推进一步，避免高刷新率卡顿）
+            const stepCount = Math.max(1, Math.round(rawAdvance / STEP_RAD));
+            const nextT = Math.min(currentLayer.tMax, currentLayer.t + stepCount * STEP_RAD);
+            currentLayer.t = nextT;
+          }
+
+          syncInkCanvasToCurrentT();
+          renderGearOverlay();
+          updateUIReadouts();
+        }
+
+        requestAnimationFrame(animate);
+      }
+
+      // 监听绘图盘尺寸变化与 DPR 变化自动重绘
+      const resizeObserver = new ResizeObserver(() => {
+        resizeCanvasesAndRedraw();
+      });
+      resizeObserver.observe(platenDisc);
+
+      window.addEventListener('resize', () => {
+        if (viewPixelRatio() !== dpr) {
+          resizeCanvasesAndRedraw();
+        }
+      });
+
+      // 初始化启动
+      syncAllSlidersCSS();
+      rootEl.style.setProperty('--active-ink', activeInk.hex);
+      resizeCanvasesAndRedraw();
+      finishImmediatelyIfReducedMotion();
+      window.ToyEmbed?.ready();
+      lastFrameTime = performance.now();
+      requestAnimationFrame(animate);
+    })();
+  </script>
+</body>
+</html>

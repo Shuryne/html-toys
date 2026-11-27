@@ -1,0 +1,3350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <script>try { if (window !== parent) parent.Home?.prepareWork(window); } catch {}</script>
+  <link rel="icon" href="data:,">
+  <title>翠曦港城 · Heliosia — Solarpunk 像素未来城市</title>
+  <style>
+    @layer reset, base, hud, utilities;
+
+    @layer reset {
+      *, *::before, *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+    }
+
+    @layer base {
+      :root {
+        --target-size: 26px;
+        --hud-bg: rgba(16, 28, 34, 0.78);
+        --hud-bg-elevated: rgba(12, 22, 28, 0.90);
+        --hud-border: rgba(196, 228, 198, 0.26);
+        --hud-accent: #f3c65f;
+        --hud-accent-mint: #6be3b0;
+        --hud-text: #f4f7f0;
+        --hud-muted: rgba(232, 240, 228, 0.74);
+        --focus-ring: #ffe074;
+        --font-ui: ui-monospace, "SF Mono", "JetBrains Mono", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", monospace;
+      }
+
+      @media (pointer: coarse) {
+        :root {
+          --target-size: 44px;
+        }
+      }
+
+      html, body {
+        inline-size: 100%;
+        block-size: 100%;
+        overflow: hidden;
+        background-color: #10202b;
+        color: var(--hud-text);
+        font-family: var(--font-ui);
+        -webkit-font-smoothing: antialiased;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      #stage-main {
+        position: fixed;
+        inset: 0;
+        inline-size: 100dvw;
+        block-size: 100dvh;
+        content-visibility: auto;
+        contain-intrinsic-size: auto none auto 100dvh;
+        background-color: #10202b;
+      }
+
+      #city-canvas {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        touch-action: none;
+        cursor: grab;
+      }
+
+      #city-canvas:active {
+        cursor: grabbing;
+      }
+
+      :where(button):focus-visible {
+        outline: 2px solid var(--focus-ring);
+        outline-offset: 2px;
+      }
+    }
+
+    @layer hud {
+      .hud-shell {
+        position: fixed;
+        inset-inline: 0;
+        inset-block-end: max(0.65rem, env(safe-area-inset-bottom, 0px));
+        display: flex;
+        justify-content: center;
+        padding-inline: max(0.65rem, env(safe-area-inset-left, 0px));
+        pointer-events: none;
+        z-index: 10;
+        @media (prefers-reduced-motion: no-preference) {
+          transition: opacity 0.25s ease, translate 0.25s ease;
+        }
+      }
+
+      .hud-shell.is-hidden {
+        opacity: 0;
+        translate: 0 14px;
+      }
+
+      .hud-shell.is-hidden .hud-toolbar {
+        pointer-events: none;
+      }
+
+      .hud-toolbar {
+        pointer-events: auto;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        max-inline-size: min(96dvw, 980px);
+        max-block-size: 10dvh;
+        padding: 0.3rem 0.5rem;
+        background: var(--hud-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--hud-border);
+        border-radius: 999px;
+        box-shadow: 0 8px 28px rgba(5, 12, 16, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+        overflow-x: auto;
+        scrollbar-width: none;
+        scroll-snap-type: x proximity;
+      }
+
+      .hud-toolbar::-webkit-scrollbar {
+        display: none;
+      }
+
+      .hud-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding-inline: 0.45rem 0.25rem;
+        white-space: nowrap;
+        font-size: 0.74rem;
+        letter-spacing: 0.03em;
+        color: var(--hud-text);
+        flex-shrink: 0;
+      }
+
+      .brand-dot {
+        inline-size: 8px;
+        block-size: 8px;
+        border-radius: 2px;
+        background: var(--hud-accent-mint);
+        box-shadow: 0 0 8px rgba(107, 227, 176, 0.75);
+        flex-shrink: 0;
+      }
+
+      .clock-readout {
+        font-variant-numeric: tabular-nums;
+        color: var(--hud-accent);
+        font-weight: 700;
+        font-size: 0.75rem;
+        min-inline-size: 3.1rem;
+        text-align: center;
+      }
+
+      .hud-group {
+        display: flex;
+        align-items: center;
+        gap: 0.22rem;
+        flex-shrink: 0;
+      }
+
+      [role="separator"] {
+        inline-size: 0;
+        block-size: 1.15rem;
+        border-inline-start: 1px solid rgba(214, 236, 216, 0.24);
+        margin-inline: 0.15rem;
+        flex-shrink: 0;
+      }
+
+      .hud-btn {
+        appearance: none;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--hud-muted);
+        min-inline-size: var(--target-size);
+        min-block-size: var(--target-size);
+        padding-inline: 0.52rem;
+        padding-block: 0.2rem;
+        border-radius: 999px;
+        font-family: inherit;
+        font-size: 0.72rem;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.28rem;
+        white-space: nowrap;
+        cursor: pointer;
+        scroll-snap-align: start;
+        transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+      }
+
+      @media (hover: hover) {
+        .hud-btn:hover {
+          color: var(--hud-text);
+          background: rgba(255, 255, 255, 0.10);
+        }
+      }
+
+      .hud-btn[aria-pressed="true"] {
+        background: rgba(243, 198, 95, 0.22);
+        color: #fff6d6;
+        border-color: rgba(243, 198, 95, 0.68);
+        box-shadow: inset 0 0 0 1px rgba(243, 198, 95, 0.28);
+      }
+
+      .hud-btn svg {
+        inline-size: 13px;
+        block-size: 13px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex-shrink: 0;
+      }
+
+      .vignette-badge {
+        position: fixed;
+        inset-block-start: max(0.65rem, env(safe-area-inset-top, 0px));
+        inset-inline-start: max(0.75rem, env(safe-area-inset-left, 0px));
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.3rem 0.68rem;
+        border-radius: 999px;
+        background: rgba(14, 25, 31, 0.68);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(196, 228, 198, 0.20);
+        color: rgba(244, 247, 240, 0.90);
+        font-size: 0.72rem;
+        letter-spacing: 0.02em;
+        pointer-events: none;
+        z-index: 9;
+        opacity: 0;
+        @media (prefers-reduced-motion: no-preference) {
+          transition: opacity 0.22s ease, translate 0.22s ease;
+        }
+      }
+
+      .vignette-badge.is-visible {
+        opacity: 1;
+      }
+
+      .hud-toggle-pill {
+        position: fixed;
+        inset-block-start: max(0.65rem, env(safe-area-inset-top, 0px));
+        inset-inline-end: max(0.75rem, env(safe-area-inset-right, 0px));
+        min-inline-size: var(--target-size);
+        min-block-size: var(--target-size);
+        padding: 0.28rem 0.6rem;
+        border-radius: 999px;
+        border: 1px solid rgba(196, 228, 198, 0.22);
+        background: rgba(14, 25, 31, 0.58);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        color: var(--hud-muted);
+        font-family: inherit;
+        font-size: 0.70rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        cursor: pointer;
+        z-index: 11;
+        transition: background-color 0.15s ease, color 0.15s ease, opacity 0.2s ease;
+      }
+
+      @media (hover: hover) {
+        .hud-toggle-pill:hover {
+          color: var(--hud-text);
+          background: rgba(18, 32, 40, 0.85);
+        }
+      }
+
+      .hud-toggle-pill[aria-pressed="true"] {
+        opacity: 0.52;
+        border-color: rgba(243, 198, 95, 0.55);
+        color: #ffeab0;
+      }
+
+      [interestfor] {
+        interest-delay: 0.45s 0.1s;
+      }
+
+      [popover="hint"] {
+        inset: auto;
+        position-area: block-start;
+        position-try-fallbacks: flip-block;
+        margin-block: 0.4rem;
+        padding: 0.28rem 0.55rem;
+        border-radius: 6px;
+        border: 1px solid var(--hud-border);
+        background: var(--hud-bg-elevated);
+        color: var(--hud-text);
+        font-family: var(--font-ui);
+        font-size: 0.68rem;
+        pointer-events: none;
+      }
+
+      @media (forced-colors: active) {
+        .hud-toolbar,
+        .hud-toggle-pill,
+        .vignette-badge {
+          background: Canvas;
+          color: ButtonText;
+          border: 1px solid ButtonText;
+        }
+        .hud-btn[aria-pressed="true"] {
+          outline: 2px solid Highlight;
+          color: Highlight;
+        }
+      }
+    }
+
+    @layer utilities {
+      .sr-only {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main id="stage-main">
+    <canvas id="city-canvas" aria-label="翠曦港城 Solarpunk 像素艺术未来城市动态画卷：层叠生态高塔、圣莲植物穹顶、悬空森林轻轨、瀑布水车、光帆双体船与萤光运河随昼夜流转"></canvas>
+  </main>
+
+  <div id="landmark-badge" class="vignette-badge" aria-hidden="true">
+    <span class="brand-dot"></span>
+    <span id="landmark-text">翠曦港城 · Heliosia</span>
+  </div>
+
+  <button type="button" id="btn-pure-view" class="hud-toggle-pill" aria-pressed="false" aria-label="纯净观景模式" title="隐藏控制栏 (快捷键 H)">
+    <span>纯净视图</span>
+  </button>
+
+  <div id="hud-shell" class="hud-shell">
+    <div id="city-toolbar" class="hud-toolbar" role="toolbar" focusgroup="toolbar wrap" aria-label="翠曦港城观景控制栏" aria-controls="city-canvas">
+      <div class="hud-brand" aria-hidden="true">
+        <span class="brand-dot"></span>
+        <span>翠曦港</span>
+        <span id="clock-text" class="clock-readout">16:30</span>
+      </div>
+
+      <span role="separator" aria-orientation="vertical"></span>
+
+      <div class="hud-group" role="group" aria-label="动画播放与昼夜时刻">
+        <button type="button" id="btn-pause" class="hud-btn" aria-pressed="false" aria-label="暂停动画" title="暂停或继续动画 (空格)">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="3" width="3" height="10" rx="0.8"></rect><rect x="9.5" y="3" width="3" height="10" rx="0.8"></rect></svg>
+          <span>定格</span>
+        </button>
+        <button type="button" class="hud-btn time-preset" data-time="auto" aria-pressed="true" title="昼夜自然流转">流转</button>
+        <button type="button" class="hud-btn time-preset" data-time="0.265" aria-pressed="false" title="薄雾晨曦 06:20">晨曦</button>
+        <button type="button" class="hud-btn time-preset" data-time="0.48" aria-pressed="false" title="碧空晴昼 11:30">晴昼</button>
+        <button type="button" class="hud-btn time-preset" data-time="0.745" aria-pressed="false" title="鎏金晚霞 17:50">晚霞</button>
+        <button type="button" class="hud-btn time-preset" data-time="0.935" aria-pressed="false" title="生物萤夜 22:25">萤夜</button>
+      </div>
+
+      <span role="separator" aria-orientation="vertical"></span>
+
+      <div class="hud-group" role="group" aria-label="生态气象">
+        <button type="button" class="hud-btn weather-btn" data-weather="breeze" aria-pressed="true" title="微风晴光与蒲公英绒羽">晴风</button>
+        <button type="button" class="hud-btn weather-btn" data-weather="sunshower" aria-pressed="false" title="太阳雨与双彩虹">太阳雨</button>
+        <button type="button" class="hud-btn weather-btn" data-weather="bloom" aria-pressed="false" title="落英飞花与漫天流萤">花萤</button>
+      </div>
+
+      <span role="separator" aria-orientation="vertical"></span>
+
+      <div class="hud-group" role="group" aria-label="视角与环境音效">
+        <button type="button" id="btn-zoom" class="hud-btn" aria-pressed="false" title="切换 2× 像素细节放大镜 (Z)">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14"></line></svg>
+          <span>2×微距</span>
+        </button>
+        <button type="button" id="btn-sound" class="hud-btn" aria-pressed="false" title="切换合成自然风铃与溪流声景 (M)">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6h2.8L9 3v10L5.3 10H2.5z"></path><path d="M11.5 5.2a4 4 0 0 1 0 5.6"></path></svg>
+          <span>声景</span>
+        </button>
+        <button type="button" id="btn-snap" class="hud-btn" title="导出高清整数倍像素画 PNG">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="4" width="12" height="9.5" rx="1.5"></rect><circle cx="8" cy="8.8" r="2.3"></circle><path d="M5.5 4L6.5 2.5h3L10.5 4"></path></svg>
+          <span>留影</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <p id="hud-status" role="status" class="sr-only"></p>
+
+  <script>
+    (() => {
+      'use strict';
+
+      // =========================================================================
+      // 1. CONSTANTS, PIXEL PACKING & SEEDED PRNG
+      // =========================================================================
+      const WORLD_W = 720;
+      const WORLD_H = 270;
+      const FORE_W = 840;
+      const WATER_Y = 212;
+
+      // Detect platform endianness for Uint32Array ImageData writing
+      const endianTest = new Uint8Array(new Uint32Array([0x11223344]).buffer);
+      const IS_LITTLE_ENDIAN = endianTest[0] === 0x44;
+
+      function packRGBA(r, g, b, a = 255) {
+        const rc = r < 0 ? 0 : r > 255 ? 255 : r | 0;
+        const gc = g < 0 ? 0 : g > 255 ? 255 : g | 0;
+        const bc = b < 0 ? 0 : b > 255 ? 255 : b | 0;
+        const ac = a < 0 ? 0 : a > 255 ? 255 : a | 0;
+        return IS_LITTLE_ENDIAN
+          ? ((ac << 24) | (bc << 16) | (gc << 8) | rc) >>> 0
+          : ((rc << 24) | (gc << 16) | (bc << 8) | ac) >>> 0;
+      }
+
+      function unpackR(c) { return IS_LITTLE_ENDIAN ? (c & 255) : ((c >>> 24) & 255); }
+      function unpackG(c) { return IS_LITTLE_ENDIAN ? ((c >>> 8) & 255) : ((c >>> 16) & 255); }
+      function unpackB(c) { return IS_LITTLE_ENDIAN ? ((c >>> 16) & 255) : ((c >>> 8) & 255); }
+
+      const BAYER4 = new Uint8Array([
+         0,  8,  2, 10,
+        12,  4, 14,  6,
+         3, 11,  1,  9,
+        15,  7, 13,  5
+      ]);
+
+      function mulberry32(seed) {
+        let t = seed >>> 0;
+        return function () {
+          t = (t + 0x6D2B79F5) >>> 0;
+          let r = Math.imul(t ^ (t >>> 15), 1 | t);
+          r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+          return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      // Material IDs (5 bits: 0..31)
+      const MAT = {
+        EMPTY: 0,
+        LIMESTONE: 1,      // Whitewashed organic adobe & stone
+        TERRACOTTA: 2,     // Warm clay roof tiles & trim
+        TIMBER: 3,         // Cedar & oak beams, bridges, hulls
+        BRASS: 4,          // Gleaming copper/brass domes, heliostats & trim
+        SOLAR_GLASS: 5,    // Perovskite blue-gold solar panels
+        FOLIAGE_DEEP: 6,   // Emerald banyan & oak canopy
+        FOLIAGE_LIME: 7,   // Sunlit bamboo, fern & garden greens
+        BLOSSOM_CORAL: 8,  // Bougainvillea / jacaranda coral-pink blooms
+        BLOSSOM_LILAC: 9,  // Hanging wisteria & lavender blooms
+        CLIFF_ROCK: 10,    // Terraced limestone & mossy slate cliff
+        DOME_CRYSTAL: 11,  // Translucent conservatory glass
+        AWNING_CREAM: 12,  // Warm linen sails & awnings
+        AWNING_CORAL: 13,  // Terracotta-striped awning & banners
+        STONE_DARK: 14,    // Viaduct shadow piers, cobbles, ironwork
+        DISTANT_MTN: 15,   // Far atmospheric emerald mountains
+        MID_MTN: 16,       // Midground forested ridges & distant arches
+        WINDOW: 17,        // Dynamic glass by day / warm hearth rooms at night
+        LANTERN: 18,       // Warm amber street, bridge & tea lanterns
+        BIO_FLORA: 19,     // Cyan-emerald bioluminescent Mother Tree & moss orbs
+        SUNFLOWER: 20,     // Golden yellow petals, kite gold, brass gleams
+        WATER_FOAM: 21,    // Aqueduct & waterfall sparkling water
+        SAIL_AMBER: 22,    // Translucent golden solar boat sails
+        SKIN_CLOTH: 23,    // Warm tunic/character accents
+        TEAL_TRIM: 24      // Ceramic glazed tiles & Verdigris copper roofs
+      };
+
+      // Pack 16-bit pixel: [meta:7][nx+1:2][shade:2][mat:5]
+      function packMat(mat, shade = 1, nx = 0, meta = 0) {
+        const s = shade < 0 ? 0 : shade > 3 ? 3 : shade | 0;
+        const n = nx < -1 ? 0 : nx > 1 ? 2 : (nx + 1) | 0;
+        return ((mat & 31) | (s << 5) | (n << 7) | ((meta & 127) << 9)) & 0xFFFF;
+      }
+
+      // =========================================================================
+      // 2. TIME-OF-DAY PALETTES & DYNAMIC LIGHTING ENGINE
+      // =========================================================================
+      // Each material defines 4 shades [shadow, mid, lit, rim] across 4 keyframes:
+      // 0: Midnight (0.0), 1: Dawn (0.26), 2: Noon (0.50), 3: Sunset (0.75)
+      const BASE_RAMPS = {
+        [MAT.LIMESTONE]: {
+          night:  [[24, 37, 58],  [36, 54, 80],  [52, 74, 104], [74, 100, 134]],
+          dawn:   [[84, 78, 106], [156, 136, 146],[224, 196, 184],[252, 228, 206]],
+          noon:   [[104, 122, 138],[178, 184, 178],[232, 227, 212],[252, 249, 238]],
+          sunset: [[68, 52, 88],  [146, 102, 110],[226, 158, 124],[255, 214, 152]]
+        },
+        [MAT.TERRACOTTA]: {
+          night:  [[34, 26, 44],  [52, 38, 58],  [72, 52, 72],  [94, 70, 88]],
+          dawn:   [[92, 54, 72],  [152, 86, 86], [206, 124, 104],[242, 168, 132]],
+          noon:   [[112, 58, 54], [168, 86, 68], [214, 118, 86], [244, 158, 118]],
+          sunset: [[78, 36, 58],  [148, 68, 68], [218, 108, 76], [255, 172, 106]]
+        },
+        [MAT.TIMBER]: {
+          night:  [[22, 24, 38],  [36, 36, 50],  [52, 50, 64],  [68, 66, 82]],
+          dawn:   [[64, 46, 58],  [104, 74, 72], [148, 106, 90], [186, 142, 116]],
+          noon:   [[68, 48, 42],  [112, 78, 58], [154, 112, 78], [192, 148, 106]],
+          sunset: [[52, 32, 46],  [98, 60, 56],  [156, 96, 68],  [212, 144, 92]]
+        },
+        [MAT.BRASS]: {
+          night:  [[32, 38, 54],  [52, 58, 74],  [78, 86, 102], [116, 128, 146]],
+          dawn:   [[92, 68, 72],  [158, 116, 88],[222, 176, 118],[255, 228, 176]],
+          noon:   [[106, 82, 48], [168, 132, 68],[226, 188, 102],[255, 240, 178]],
+          sunset: [[84, 48, 56],  [164, 102, 62],[236, 168, 82], [255, 232, 148]]
+        },
+        [MAT.SOLAR_GLASS]: {
+          night:  [[14, 26, 48],  [22, 42, 72],  [34, 64, 102], [58, 104, 148]],
+          dawn:   [[32, 52, 92],  [56, 92, 138], [108, 152, 186],[226, 206, 188]],
+          noon:   [[24, 54, 102], [40, 92, 154], [74, 154, 204],[196, 240, 255]],
+          sunset: [[28, 36, 78],  [62, 68, 124], [138, 108, 156],[255, 196, 136]]
+        },
+        [MAT.FOLIAGE_DEEP]: {
+          night:  [[10, 28, 38],  [16, 44, 54],  [26, 64, 72],  [40, 88, 92]],
+          dawn:   [[24, 56, 66],  [44, 92, 86],  [82, 138, 106],[146, 188, 132]],
+          noon:   [[22, 66, 62],  [38, 108, 82], [68, 154, 98], [122, 198, 118]],
+          sunset: [[20, 40, 56],  [42, 76, 72],  [88, 122, 82], [176, 168, 96]]
+        },
+        [MAT.FOLIAGE_LIME]: {
+          night:  [[14, 36, 44],  [24, 56, 62],  [38, 80, 82],  [58, 110, 104]],
+          dawn:   [[38, 72, 74],  [72, 118, 94], [126, 172, 116],[196, 218, 148]],
+          noon:   [[34, 86, 68],  [62, 138, 88], [108, 188, 104],[174, 230, 128]],
+          sunset: [[30, 52, 60],  [66, 98, 76],  [132, 150, 86],[222, 196, 112]]
+        },
+        [MAT.BLOSSOM_CORAL]: {
+          night:  [[42, 26, 52],  [68, 38, 72],  [96, 54, 92],  [128, 78, 116]],
+          dawn:   [[118, 58, 86], [182, 92, 116],[234, 138, 148],[255, 194, 192]],
+          noon:   [[138, 56, 82], [198, 86, 112],[242, 132, 146],[255, 192, 198]],
+          sunset: [[98, 38, 72],  [172, 68, 96], [238, 116, 122],[255, 184, 158]]
+        },
+        [MAT.BLOSSOM_LILAC]: {
+          night:  [[32, 30, 62],  [52, 48, 92],  [76, 72, 126], [108, 106, 162]],
+          dawn:   [[82, 68, 116], [134, 112, 164],[188, 162, 208],[232, 212, 242]],
+          noon:   [[88, 74, 132], [140, 120, 184],[192, 172, 226],[234, 222, 252]],
+          sunset: [[68, 48, 98],  [124, 88, 148],[186, 136, 188],[242, 192, 214]]
+        },
+        [MAT.CLIFF_ROCK]: {
+          night:  [[16, 24, 38],  [24, 36, 54],  [36, 52, 72],  [50, 70, 92]],
+          dawn:   [[48, 54, 78],  [82, 84, 102], [128, 120, 126],[178, 162, 154]],
+          noon:   [[56, 68, 82],  [88, 102, 108],[128, 138, 134],[168, 176, 164]],
+          sunset: [[38, 36, 62],  [74, 64, 84],  [126, 98, 98], [186, 142, 116]]
+        },
+        [MAT.DOME_CRYSTAL]: {
+          night:  [[22, 52, 74],  [36, 84, 108], [58, 126, 148],[108, 192, 206]],
+          dawn:   [[68, 96, 118], [116, 152, 168],[182, 208, 212],[248, 236, 224]],
+          noon:   [[68, 122, 146],[114, 176, 196],[178, 226, 236],[244, 254, 255]],
+          sunset: [[56, 68, 104], [112, 112, 146],[196, 162, 168],[255, 224, 184]]
+        },
+        [MAT.AWNING_CREAM]: {
+          night:  [[32, 42, 62],  [48, 62, 86],  [68, 86, 112], [92, 112, 140]],
+          dawn:   [[108, 96, 116],[176, 156, 160],[232, 212, 198],[255, 240, 222]],
+          noon:   [[132, 140, 148],[198, 200, 192],[242, 238, 224],[255, 253, 245]],
+          sunset: [[86, 64, 96],  [166, 118, 118],[236, 178, 142],[255, 228, 178]]
+        },
+        [MAT.AWNING_CORAL]: {
+          night:  [[44, 26, 44],  [68, 38, 56],  [94, 54, 68],  [120, 72, 84]],
+          dawn:   [[116, 56, 72], [178, 86, 88], [228, 126, 112],[255, 176, 152]],
+          noon:   [[138, 54, 56], [198, 82, 74], [238, 122, 98], [255, 172, 142]],
+          sunset: [[96, 36, 56],  [172, 68, 68], [236, 112, 84], [255, 178, 118]]
+        },
+        [MAT.STONE_DARK]: {
+          night:  [[12, 18, 30],  [20, 28, 44],  [30, 42, 60],  [44, 58, 80]],
+          dawn:   [[38, 42, 64],  [64, 66, 86],  [98, 96, 110], [138, 130, 136]],
+          noon:   [[44, 54, 68],  [72, 84, 96],  [106, 118, 126],[144, 154, 158]],
+          sunset: [[28, 26, 48],  [56, 48, 70],  [96, 78, 88],  [146, 114, 106]]
+        },
+        [MAT.DISTANT_MTN]: {
+          night:  [[14, 26, 44],  [18, 34, 56],  [24, 44, 68],  [34, 58, 84]],
+          dawn:   [[82, 88, 122], [116, 112, 142],[158, 142, 158],[204, 178, 176]],
+          noon:   [[82, 134, 148],[104, 158, 164],[132, 184, 178],[168, 210, 196]],
+          sunset: [[58, 52, 92],  [92, 74, 112], [142, 102, 122],[198, 142, 132]]
+        },
+        [MAT.MID_MTN]: {
+          night:  [[12, 28, 42],  [18, 40, 56],  [26, 54, 70],  [38, 72, 88]],
+          dawn:   [[52, 72, 98],  [78, 102, 114],[118, 138, 132],[168, 176, 154]],
+          noon:   [[46, 98, 102], [68, 128, 118],[98, 160, 134], [140, 192, 152]],
+          sunset: [[38, 46, 74],  [68, 72, 90],  [114, 106, 98],[172, 146, 112]]
+        },
+        [MAT.WINDOW]: {
+          night:  [[18, 30, 50],  [26, 42, 66],  [38, 58, 86],  [56, 82, 114]],
+          dawn:   [[54, 72, 102], [86, 112, 142],[146, 168, 186],[224, 206, 196]],
+          noon:   [[36, 68, 98],  [58, 104, 138],[98, 156, 188], [188, 232, 248]],
+          sunset: [[42, 42, 76],  [86, 72, 108], [176, 124, 128],[252, 196, 148]]
+        },
+        [MAT.LANTERN]: {
+          night:  [[196, 108, 42],[238, 158, 62],[255, 212, 108],[255, 248, 204]],
+          dawn:   [[168, 112, 78],[216, 162, 108],[248, 208, 152],[255, 242, 206]],
+          noon:   [[142, 118, 92],[196, 174, 142],[236, 222, 194],[254, 248, 234]],
+          sunset: [[192, 104, 48],[238, 156, 68],[255, 210, 114],[255, 246, 198]]
+        },
+        [MAT.BIO_FLORA]: {
+          night:  [[16, 124, 118],[28, 188, 164],[78, 242, 208], [184, 255, 240]],
+          dawn:   [[32, 112, 108],[58, 164, 148],[106, 214, 188],[186, 246, 224]],
+          noon:   [[32, 112, 96], [56, 158, 128],[98, 204, 158], [168, 238, 196]],
+          sunset: [[24, 106, 108],[46, 162, 148],[96, 218, 192], [182, 248, 228]]
+        },
+        [MAT.SUNFLOWER]: {
+          night:  [[54, 48, 38],  [82, 72, 48],  [112, 98, 58],  [142, 126, 74]],
+          dawn:   [[138, 96, 48], [198, 148, 62],[242, 198, 84], [255, 236, 142]],
+          noon:   [[156, 108, 32],[218, 166, 44],[250, 212, 68], [255, 244, 138]],
+          sunset: [[132, 72, 38], [202, 128, 46],[250, 188, 64], [255, 232, 126]]
+        },
+        [MAT.WATER_FOAM]: {
+          night:  [[34, 62, 88],  [54, 92, 124], [82, 130, 164],[128, 182, 212]],
+          dawn:   [[98, 128, 156],[148, 178, 198],[204, 222, 232],[248, 246, 242]],
+          noon:   [[94, 158, 186],[146, 204, 224],[206, 240, 248],[250, 255, 255]],
+          sunset: [[78, 86, 128], [138, 132, 166],[212, 186, 192],[255, 234, 212]]
+        },
+        [MAT.SAIL_AMBER]: {
+          night:  [[52, 44, 58],  [78, 66, 78],  [112, 92, 96], [156, 128, 118]],
+          dawn:   [[142, 94, 84], [202, 142, 106],[244, 192, 138],[255, 232, 188]],
+          noon:   [[158, 112, 64],[216, 166, 96],[248, 208, 138],[255, 242, 196]],
+          sunset: [[138, 68, 64], [208, 118, 76],[252, 176, 98], [255, 232, 156]]
+        },
+        [MAT.SKIN_CLOTH]: {
+          night:  [[38, 48, 72],  [58, 74, 104], [84, 104, 138],[116, 138, 172]],
+          dawn:   [[92, 96, 126], [144, 146, 172],[198, 194, 208],[240, 228, 228]],
+          noon:   [[72, 108, 142],[112, 156, 188],[164, 204, 226],[224, 242, 250]],
+          sunset: [[68, 62, 98],  [124, 102, 136],[192, 148, 158],[246, 204, 188]]
+        },
+        [MAT.TEAL_TRIM]: {
+          night:  [[16, 40, 52],  [26, 62, 76],  [40, 88, 102], [60, 118, 132]],
+          dawn:   [[38, 82, 96],  [66, 124, 132],[112, 172, 170],[178, 218, 206]],
+          noon:   [[32, 96, 104], [54, 142, 146],[92, 190, 186], [158, 232, 222]],
+          sunset: [[28, 58, 76],  [56, 98, 108], [106, 148, 138],[184, 196, 162]]
+        }
+      };
+
+      const SKY_KEYFRAMES = {
+        night:  [[8, 14, 28],   [12, 24, 44],   [18, 38, 64],   [26, 56, 84],   [34, 72, 96]],
+        dawn:   [[44, 58, 98],  [88, 88, 132],  [158, 118, 142],[228, 158, 136],[252, 208, 162]],
+        noon:   [[42, 114, 186],[68, 148, 208], [106, 184, 224],[154, 214, 232],[204, 238, 232]],
+        sunset: [[32, 34, 78],  [78, 52, 106],  [156, 76, 108], [228, 118, 88], [255, 186, 108]]
+      };
+
+      const CLOUD_KEYFRAMES = {
+        night:  [[18, 30, 52],  [28, 44, 72],   [42, 64, 96],   [62, 90, 126]],
+        dawn:   [[118, 98, 132],[178, 136, 152],[234, 184, 172],[255, 228, 204]],
+        noon:   [[142, 172, 198],[192, 212, 226],[236, 242, 244],[255, 254, 250]],
+        sunset: [[86, 56, 98],  [158, 88, 112], [234, 142, 112],[255, 212, 148]]
+      };
+
+      const WATER_KEYFRAMES = {
+        night:  { deep: [8, 22, 38],   mid: [14, 38, 58],  glint: [140, 210, 245] },
+        dawn:   { deep: [38, 68, 92],  mid: [78, 116, 132],glint: [255, 216, 178] },
+        noon:   { deep: [22, 88, 106], mid: [44, 138, 148],glint: [236, 252, 255] },
+        sunset: { deep: [32, 42, 74],  mid: [76, 76, 106], glint: [255, 198, 122] }
+      };
+
+      const colorLUT = new Uint32Array(512);
+      const rawRGBLUT = new Uint8Array(512 * 3);
+      const windowLUT = new Uint32Array(128);
+      const emissiveLUT = new Uint32Array(128);
+      const skyStopsRGB = new Float32Array(15);
+      const cloudShadesU32 = new Uint32Array(4);
+      const waterTint = { deepR: 20, deepG: 80, deepB: 100, midR: 40, midG: 130, midB: 140, glintU32: 0, nightFactor: 0, sunX: 360, sunY: 60 };
+
+      function smoothstep(edge0, edge1, x) {
+        const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+        return t * t * (3 - 2 * t);
+      }
+
+      function getKeyframeWeights(tDay) {
+        // Keyframe centers: night1=0.04, dawn=0.265, noon=0.50, sunset=0.755, night2=0.96
+        const t = ((tDay % 1) + 1) % 1;
+        let kA = 'night', kB = 'dawn', u = 0;
+        if (t < 0.16) {
+          kA = 'night'; kB = 'night'; u = 0;
+        } else if (t < 0.34) {
+          kA = 'night'; kB = 'dawn'; u = smoothstep(0.16, 0.27, t);
+          if (t > 0.27) { kA = 'dawn'; kB = 'noon'; u = smoothstep(0.27, 0.38, t); }
+        } else if (t < 0.64) {
+          if (t < 0.38) { kA = 'dawn'; kB = 'noon'; u = smoothstep(0.27, 0.38, t); }
+          else { kA = 'noon'; kB = 'noon'; u = 0; }
+        } else if (t < 0.80) {
+          kA = 'noon'; kB = 'sunset'; u = smoothstep(0.64, 0.755, t);
+          if (t > 0.755) { kA = 'sunset'; kB = 'night'; u = smoothstep(0.755, 0.87, t); }
+        } else if (t < 0.87) {
+          kA = 'sunset'; kB = 'night'; u = smoothstep(0.755, 0.87, t);
+        } else {
+          kA = 'night'; kB = 'night'; u = 0;
+        }
+        return { kA, kB, u };
+      }
+
+      function updateLightingLUTs(tDay, animTime, weatherMode) {
+        const { kA, kB, u } = getKeyframeWeights(tDay);
+        // Sun direction (-1 = morning east/left, +1 = sunset west/right)
+        const sunDirX = Math.sin((tDay - 0.5) * Math.PI * 2.1);
+        const dayFactor = smoothstep(0.19, 0.30, tDay) * (1 - smoothstep(0.74, 0.85, tDay));
+        const nightFactor = 1 - smoothstep(0.18, 0.28, tDay) + smoothstep(0.74, 0.85, tDay);
+        const clampedNight = Math.max(0, Math.min(1, nightFactor));
+        waterTint.nightFactor = clampedNight;
+
+        // Slight overcast softening during sunshower
+        const showerSoft = weatherMode === 'sunshower' ? 0.16 : 0;
+
+        for (let mat = 1; mat <= 24; mat++) {
+          const def = BASE_RAMPS[mat];
+          if (!def) continue;
+          const rA = def[kA];
+          const rB = def[kB];
+
+          for (let shade = 0; shade < 4; shade++) {
+            const cA = rA[shade];
+            const cB = rB[shade];
+            let baseR = cA[0] + (cB[0] - cA[0]) * u;
+            let baseG = cA[1] + (cB[1] - cA[1]) * u;
+            let baseB = cA[2] + (cB[2] - cA[2]) * u;
+
+            if (showerSoft > 0) {
+              const avg = (baseR + baseG + baseB) * 0.333;
+              baseR = baseR + (avg - baseR) * showerSoft;
+              baseG = baseG + (avg + 6 - baseG) * showerSoft;
+              baseB = baseB + (avg + 14 - baseB) * showerSoft;
+            }
+
+            for (let nIdx = 0; nIdx < 3; nIdx++) {
+              const nx = nIdx - 1; // -1, 0, +1
+              // Directional sunlight shift along east/west face normals
+              let shift = 0;
+              if (nx !== 0 && dayFactor > 0.02) {
+                // Sun moves from right-east (t=0.26 -> sunDirX < 0) to left-west (t=0.75 -> sunDirX > 0)
+                const align = -nx * sunDirX;
+                shift = align * 0.42 * dayFactor;
+              }
+
+              let r = baseR, g = baseG, b = baseB;
+              if (shift > 0.12 && shade < 3) {
+                const nextA = rA[shade + 1];
+                const nextB = rB[shade + 1];
+                const nr = nextA[0] + (nextB[0] - nextA[0]) * u;
+                const ng = nextA[1] + (nextB[1] - nextA[1]) * u;
+                const nb = nextA[2] + (nextB[2] - nextA[2]) * u;
+                const k = Math.min(0.75, shift);
+                r += (nr - r) * k;
+                g += (ng - g) * k;
+                b += (nb - b) * k;
+              } else if (shift < -0.12 && shade > 0) {
+                const prevA = rA[shade - 1];
+                const prevB = rB[shade - 1];
+                const pr = prevA[0] + (prevB[0] - prevA[0]) * u;
+                const pg = prevA[1] + (prevB[1] - prevA[1]) * u;
+                const pb = prevA[2] + (prevB[2] - prevA[2]) * u;
+                const k = Math.min(0.65, -shift);
+                r += (pr - r) * k;
+                g += (pg - g) * k;
+                b += (pb - b) * k;
+              }
+
+              const key = mat | (shade << 5) | (nIdx << 7);
+              colorLUT[key] = packRGBA(r, g, b);
+              const k3 = key * 3;
+              rawRGBLUT[k3] = r | 0;
+              rawRGBLUT[k3 + 1] = g | 0;
+              rawRGBLUT[k3 + 2] = b | 0;
+            }
+          }
+        }
+
+        // Sky stops
+        const sA = SKY_KEYFRAMES[kA];
+        const sB = SKY_KEYFRAMES[kB];
+        for (let i = 0; i < 5; i++) {
+          skyStopsRGB[i * 3]     = sA[i][0] + (sB[i][0] - sA[i][0]) * u;
+          skyStopsRGB[i * 3 + 1] = sA[i][1] + (sB[i][1] - sA[i][1]) * u;
+          skyStopsRGB[i * 3 + 2] = sA[i][2] + (sB[i][2] - sA[i][2]) * u;
+        }
+
+        // Cloud shades
+        const clA = CLOUD_KEYFRAMES[kA];
+        const clB = CLOUD_KEYFRAMES[kB];
+        for (let i = 0; i < 4; i++) {
+          cloudShadesU32[i] = packRGBA(
+            clA[i][0] + (clB[i][0] - clA[i][0]) * u,
+            clA[i][1] + (clB[i][1] - clA[i][1]) * u,
+            clA[i][2] + (clB[i][2] - clA[i][2]) * u
+          );
+        }
+
+        // Water colors
+        const wA = WATER_KEYFRAMES[kA];
+        const wB = WATER_KEYFRAMES[kB];
+        waterTint.deepR = wA.deep[0] + (wB.deep[0] - wA.deep[0]) * u;
+        waterTint.deepG = wA.deep[1] + (wB.deep[1] - wA.deep[1]) * u;
+        waterTint.deepB = wA.deep[2] + (wB.deep[2] - wA.deep[2]) * u;
+        waterTint.midR  = wA.mid[0]  + (wB.mid[0]  - wA.mid[0])  * u;
+        waterTint.midG  = wA.mid[1]  + (wB.mid[1]  - wA.mid[1])  * u;
+        waterTint.midB  = wA.mid[2]  + (wB.mid[2]  - wA.mid[2])  * u;
+        waterTint.glintU32 = packRGBA(
+          wA.glint[0] + (wB.glint[0] - wA.glint[0]) * u,
+          wA.glint[1] + (wB.glint[1] - wA.glint[1]) * u,
+          wA.glint[2] + (wB.glint[2] - wA.glint[2]) * u
+        );
+
+        // Window room schedules (individual cozy amber & conservatory cyan windows)
+        const baseGlass = colorLUT[MAT.WINDOW | (2 << 5) | (1 << 7)];
+        const baseGlassDark = colorLUT[MAT.WINDOW | (0 << 5) | (1 << 7)];
+        for (let i = 0; i < 128; i++) {
+          const threshold = 0.18 + ((i * 37) % 60) / 100; // staggered turn-on at dusk
+          // Late night: ~25% of residential rooms sleep while greenhouses & lanterns stay lit
+          const lateSleep = (i % 5 === 0) && (tDay > 0.03 && tDay < 0.16);
+          if (clampedNight > threshold && !lateSleep) {
+            const flicker = Math.sin(animTime * 2.3 + i * 1.7) * 6;
+            if (i % 9 === 0) {
+              // Botanical indoor grow-lamp / bioluminescent atrium window
+              windowLUT[i] = packRGBA(82 + flicker, 236, 206);
+            } else if (i % 3 === 0) {
+              windowLUT[i] = packRGBA(255, 186 + flicker, 86);
+            } else {
+              windowLUT[i] = packRGBA(255, 218 + flicker, 126);
+            }
+          } else {
+            windowLUT[i] = (i & 1) ? baseGlass : baseGlassDark;
+          }
+        }
+
+        // Emissive lanterns (0..63) & bioluminescent flora (64..127)
+        for (let i = 0; i < 64; i++) {
+          const pulse = Math.sin(animTime * 2.8 + i * 0.9) * 0.5 + 0.5;
+          // Lanterns
+          const lr = 242 + pulse * 13;
+          const lg = 178 + pulse * 44;
+          const lb = 88 + pulse * 52;
+          const dayLantern = colorLUT[MAT.LANTERN | (2 << 5) | (1 << 7)];
+          if (clampedNight > 0.15) {
+            emissiveLUT[i] = packRGBA(lr, lg, lb);
+          } else {
+            emissiveLUT[i] = dayLantern;
+          }
+
+          // Bioluminescent flora
+          const bioGlow = smoothstep(0.15, 0.55, clampedNight);
+          const dayBioIdx = (MAT.BIO_FLORA | (((i & 3)) << 5) | (1 << 7)) * 3;
+          const dr = rawRGBLUT[dayBioIdx];
+          const dg = rawRGBLUT[dayBioIdx + 1];
+          const db = rawRGBLUT[dayBioIdx + 2];
+          const br = 48 + pulse * 58;
+          const bg = 228 + pulse * 27;
+          const bb = 198 + pulse * 48;
+          emissiveLUT[64 + i] = packRGBA(
+            dr + (br - dr) * bioGlow,
+            dg + (bg - dg) * bioGlow,
+            db + (bb - db) * bioGlow
+          );
+        }
+      }
+
+      // =========================================================================
+      // 3. INTEGER PIXEL-ART BRUSH & ARCHITECTURAL SCULPTING ENGINE
+      // =========================================================================
+      function setPx(buf, w, h, x, y, val) {
+        const xi = x | 0, yi = y | 0;
+        if (xi >= 0 && xi < w && yi >= 0 && yi < h) {
+          buf[yi * w + xi] = val;
+        }
+      }
+
+      function fillRect(buf, w, h, x, y, rw, rh, val) {
+        const x0 = Math.max(0, x | 0);
+        const y0 = Math.max(0, y | 0);
+        const x1 = Math.min(w, (x + rw) | 0);
+        const y1 = Math.min(h, (y + rh) | 0);
+        for (let py = y0; py < y1; py++) {
+          const row = py * w;
+          for (let px = x0; px < x1; px++) {
+            buf[row + px] = val;
+          }
+        }
+      }
+
+      function plotLine(buf, w, h, x0, y0, x1, y1, val) {
+        let ax = x0 | 0, ay = y0 | 0;
+        const bx = x1 | 0, by = y1 | 0;
+        const dx = Math.abs(bx - ax), sx = ax < bx ? 1 : -1;
+        const dy = -Math.abs(by - ay), sy = ay < by ? 1 : -1;
+        let err = dx + dy;
+        while (true) {
+          setPx(buf, w, h, ax, ay, val);
+          if (ax === bx && ay === by) break;
+          const e2 = 2 * err;
+          if (e2 >= dy) { err += dy; ax += sx; }
+          if (e2 <= dx) { err += dx; ay += sy; }
+        }
+      }
+
+      function fillEllipse(buf, w, h, cx, cy, rx, ry, val) {
+        const x0 = Math.max(0, Math.floor(cx - rx));
+        const x1 = Math.min(w - 1, Math.ceil(cx + rx));
+        const y0 = Math.max(0, Math.floor(cy - ry));
+        const y1 = Math.min(h - 1, Math.ceil(cy + ry));
+        const invRx2 = 1 / Math.max(0.5, rx * rx);
+        const invRy2 = 1 / Math.max(0.5, ry * ry);
+        for (let py = y0; py <= y1; py++) {
+          const dy = py - cy;
+          const dy2 = dy * dy * invRy2;
+          for (let px = x0; px <= x1; px++) {
+            const dx = px - cx;
+            if (dx * dx * invRx2 + dy2 <= 1.0) {
+              buf[py * w + px] = val;
+            }
+          }
+        }
+      }
+
+      // Painterly Pixel-Cluster Tree Canopy (layered lobes, never noisy salt-and-pepper!)
+      function drawClusterTree(buf, w, h, cx, cy, rx, ry, foliageMat, flowerMat, seed, bioTips = false) {
+        const rng = mulberry32(seed);
+        // Trunk & root buttresses
+        const trunkW = Math.max(2, (rx * 0.22) | 0);
+        const trunkH = (ry * 0.95) | 0;
+        for (let ty = 0; ty < trunkH; ty++) {
+          const spread = ty > trunkH * 0.65 ? ((ty - trunkH * 0.65) * 0.35) | 0 : 0;
+          for (let tx = -trunkW - spread; tx <= trunkW + spread; tx++) {
+            const shade = tx < 0 ? 0 : tx === 0 ? 1 : 2;
+            const nx = tx < 0 ? -1 : 1;
+            setPx(buf, w, h, cx + tx, cy + (ry * 0.3) + ty, packMat(MAT.TIMBER, shade, nx));
+          }
+        }
+
+        // Generate 9-14 overlapping leaf clusters sorted bottom-to-top
+        const lobes = [];
+        const count = 10 + ((rx * 0.4) | 0);
+        for (let i = 0; i < count; i++) {
+          const ang = (i / count) * Math.PI * 2 + (rng() - 0.5) * 0.45;
+          const dist = (0.25 + rng() * 0.58);
+          const lx = cx + Math.cos(ang) * rx * dist;
+          const ly = cy + Math.sin(ang) * ry * dist;
+          const lrx = Math.max(3, rx * (0.34 + rng() * 0.22));
+          const lry = Math.max(3, ry * (0.34 + rng() * 0.22));
+          lobes.push({ lx, ly, lrx, lry });
+        }
+        lobes.push({ lx: cx, ly: cy - ry * 0.15, lrx: rx * 0.52, lry: ry * 0.46 });
+        lobes.sort((a, b) => b.ly - a.ly); // paint bottom shadow lobes first, crown lobes last
+
+        for (let i = 0; i < lobes.length; i++) {
+          const { lx, ly, lrx, lry } = lobes[i];
+          const x0 = Math.floor(lx - lrx), x1 = Math.ceil(lx + lrx);
+          const y0 = Math.floor(ly - lry), y1 = Math.ceil(ly + lry);
+          for (let py = y0; py <= y1; py++) {
+            for (let px = x0; px <= x1; px++) {
+              const dx = (px - lx) / lrx;
+              const dy = (py - ly) / lry;
+              if (dx * dx + dy * dy <= 1.0) {
+                const relY = (py - (cy - ry)) / (ry * 2);
+                const nx = px < cx - rx * 0.18 ? -1 : px > cx + rx * 0.18 ? 1 : 0;
+                let shade = 1;
+                if (dy > 0.38 || relY > 0.74) shade = 0;
+                else if (dy < -0.25 && relY < 0.48) shade = 2;
+                if (dy < -0.55 && relY < 0.32 && ((px + py) & 1) === 0) shade = 3;
+
+                let mat = foliageMat;
+                let meta = 0;
+                if (bioTips && shade >= 2 && ((px * 7 + py * 13) % 11 === 0)) {
+                  mat = MAT.BIO_FLORA;
+                  meta = (px + py) & 63;
+                }
+                setPx(buf, w, h, px, py, packMat(mat, shade, nx, meta));
+              }
+            }
+          }
+          // Accent flower clusters on sunlit top-outer lobes
+          if (flowerMat && rng() > 0.38) {
+            const fx = (lx + (rng() - 0.5) * lrx * 0.7) | 0;
+            const fy = (ly - lry * 0.35) | 0;
+            setPx(buf, w, h, fx, fy, packMat(flowerMat, 2, 0));
+            setPx(buf, w, h, fx + 1, fy, packMat(flowerMat, 3, 1));
+            setPx(buf, w, h, fx, fy + 1, packMat(flowerMat, 1, -1));
+          }
+        }
+      }
+
+      // Hanging vines & flowering tendrils
+      function drawHangingVines(buf, w, h, x0, y0, width, maxLen, mat, flowerMat, seed) {
+        const rng = mulberry32(seed);
+        for (let dx = 0; dx < width; dx += 2) {
+          if (rng() < 0.25) continue;
+          const len = (3 + rng() * maxLen) | 0;
+          for (let vy = 0; vy < len; vy++) {
+            const shade = vy === 0 ? 0 : vy > len - 3 ? 2 : 1;
+            setPx(buf, w, h, x0 + dx, y0 + vy, packMat(mat, shade, 0));
+            if (vy < len * 0.4 && rng() > 0.4) {
+              setPx(buf, w, h, x0 + dx + 1, y0 + vy, packMat(mat, 1, 1));
+            }
+          }
+          if (flowerMat && len > 4 && rng() > 0.42) {
+            setPx(buf, w, h, x0 + dx, y0 + len - 2, packMat(flowerMat, 3, 0));
+            setPx(buf, w, h, x0 + dx, y0 + len - 1, packMat(flowerMat, 2, 0));
+          }
+        }
+      }
+
+      // Curved Terracotta / Verdigris Roof with Eaves & Ridge Highlight
+      function drawPitchedRoof(buf, w, h, x, y, rw, rh, roofMat = MAT.TERRACOTTA) {
+        for (let ry = 0; ry < rh; ry++) {
+          const t = ry / Math.max(1, rh - 1);
+          // Slight graceful East-Asian / Art-Nouveau flared eaves curve
+          const flare = Math.pow(t, 1.35);
+          const halfSpan = Math.round(2 + flare * (rw * 0.5 + 2));
+          const cx = x + (rw >> 1);
+          for (let px = cx - halfSpan; px <= cx + halfSpan; px++) {
+            const isLeft = px < cx;
+            const nx = isLeft ? -1 : px > cx ? 1 : 0;
+            let shade = isLeft ? 1 : 2;
+            if (ry === 0 || Math.abs(px - cx) <= 1) shade = 3; // ridge tile highlight
+            else if (ry === rh - 1) shade = 0; // eave shadow lip
+            else if (((px + ry) % 4 === 0) && isLeft) shade = 0; // subtle tile ribbing
+            else if (((px - ry) % 4 === 0) && !isLeft) shade = 3;
+            setPx(buf, w, h, px, y - rh + 1 + ry, packMat(roofMat, shade, nx));
+          }
+        }
+      }
+
+      // Perovskite Blue-Gold Angled Solar Pergola
+      function drawSolarCanopy(buf, w, h, x, y, rw, rh) {
+        // Timber struts underneath
+        fillRect(buf, w, h, x + 2, y + rh, 2, 4, packMat(MAT.TIMBER, 0, 0));
+        fillRect(buf, w, h, x + rw - 4, y + rh, 2, 4, packMat(MAT.TIMBER, 1, 1));
+        for (let py = 0; py < rh; py++) {
+          const shift = ((rh - 1 - py) * 0.6) | 0;
+          for (let px = 0; px < rw; px++) {
+            const isFrame = py === 0 || py === rh - 1 || px === 0 || px === rw - 1 || (px % 6 === 0);
+            if (isFrame) {
+              setPx(buf, w, h, x + px + shift, y + py, packMat(MAT.BRASS, py === 0 ? 3 : 1, 0));
+            } else {
+              let shade = py < rh * 0.45 ? 2 : 1;
+              if ((px + py * 2) % 9 === 0) shade = 3; // iridescent glint
+              setPx(buf, w, h, x + px + shift, y + py, packMat(MAT.SOLAR_GLASS, shade, 0));
+            }
+          }
+        }
+      }
+
+      // Arched Solarpunk Window with Timber Sill & Planter Box
+      function drawArchedWindow(buf, w, h, cx, topY, halfW, winH, roomSeed, hasFlowerBox = true) {
+        for (let wy = 0; wy < winH; wy++) {
+          for (let wx = -halfW; wx <= halfW; wx++) {
+            if (wy < halfW && (wx * wx + (wy - halfW) * (wy - halfW) > (halfW + 0.4) * (halfW + 0.4))) {
+              continue;
+            }
+            const isFrame = Math.abs(wx) === halfW || wy === 0 || wy === winH - 1;
+            if (isFrame) {
+              setPx(buf, w, h, cx + wx, topY + wy, packMat(MAT.TIMBER, wy === 0 ? 0 : 1, 0));
+            } else {
+              const mullion = (halfW >= 3 && wx === 0) || (winH >= 7 && wy === (winH >> 1));
+              if (mullion) {
+                setPx(buf, w, h, cx + wx, topY + wy, packMat(MAT.TIMBER, 1, 0));
+              } else {
+                const shade = (wx + wy) % 3 === 0 ? 3 : 2;
+                setPx(buf, w, h, cx + wx, topY + wy, packMat(MAT.WINDOW, shade, 0, roomSeed & 127));
+              }
+            }
+          }
+        }
+        if (hasFlowerBox) {
+          fillRect(buf, w, h, cx - halfW - 1, topY + winH, halfW * 2 + 3, 2, packMat(MAT.TERRACOTTA, 1, 0));
+          for (let fx = -halfW; fx <= halfW; fx++) {
+            setPx(buf, w, h, cx + fx, topY + winH - 1, packMat(MAT.FOLIAGE_LIME, 2, 0));
+            if ((fx + roomSeed) % 2 === 0) {
+              setPx(buf, w, h, cx + fx, topY + winH - 2, packMat((roomSeed & 1) ? MAT.BLOSSOM_CORAL : MAT.SUNFLOWER, 3, 0));
+            }
+          }
+        }
+      }
+
+      // Compact shrub / planter bush without a hanging tree trunk (for tower balconies & garden beds)
+      function drawShrubCluster(buf, w, h, cx, baseY, rx, ry, foliageMat, flowerMat, seed, bioTips = false) {
+        const rng = mulberry32(seed);
+        const puffs = 5 + ((rx * 0.5) | 0);
+        for (let i = 0; i < puffs; i++) {
+          const u = (i / Math.max(1, puffs - 1)) - 0.5;
+          const pxCenter = cx + u * rx * 1.25;
+          const pyCenter = baseY - ry * (0.45 + (1 - Math.abs(u)) * 0.45);
+          const prx = Math.max(2, rx * (0.45 + rng() * 0.2));
+          const pry = Math.max(2, ry * (0.55 + rng() * 0.2));
+          for (let py = Math.floor(pyCenter - pry); py <= baseY; py++) {
+            for (let px = Math.floor(pxCenter - prx); px <= Math.ceil(pxCenter + prx); px++) {
+              const dx = (px - pxCenter) / prx;
+              const dy = (py - pyCenter) / pry;
+              if (dx * dx + dy * dy <= 1.0) {
+                const nx = px < cx - 1 ? -1 : px > cx + 1 ? 1 : 0;
+                let shade = py >= baseY - 1 ? 0 : dy < -0.3 ? 2 : 1;
+                if (dy < -0.55 && ((px + py) & 1) === 0) shade = 3;
+                let mat = foliageMat;
+                let meta = 0;
+                if (bioTips && shade >= 2 && ((px * 5 + py * 11) % 9 === 0)) {
+                  mat = MAT.BIO_FLORA;
+                  meta = (px + py) & 63;
+                }
+                setPx(buf, w, h, px, py, packMat(mat, shade, nx, meta));
+              }
+            }
+          }
+          if (flowerMat && rng() > 0.35) {
+            setPx(buf, w, h, Math.round(pxCenter), Math.round(pyCenter - pry * 0.4), packMat(flowerMat, 3, 0));
+          }
+        }
+      }
+
+      // Rounded Organic Bosco Verticale Eco-Tower
+      function drawBoscoTower(buf, w, h, cx, topY, bottomY, halfW, seed) {
+        const rng = mulberry32(seed);
+        const totalH = bottomY - topY;
+
+        // Main curved limestone cylinder with subtle taper at crown
+        for (let y = topY; y < bottomY; y++) {
+          const relY = (y - topY) / totalH;
+          const curHalf = relY < 0.12
+            ? Math.round(halfW * (0.72 + (relY / 0.12) * 0.28))
+            : halfW;
+          for (let dx = -curHalf; dx <= curHalf; dx++) {
+            const norm = dx / Math.max(1, curHalf);
+            const nx = norm < -0.32 ? -1 : norm > 0.32 ? 1 : 0;
+            let shade = norm < -0.55 ? 0 : norm < 0.15 ? 1 : norm < 0.72 ? 2 : 3;
+            // Subtle horizontal floor cornice bands every 14px
+            if ((y - topY) % 14 === 0) shade = Math.max(0, shade - 1);
+            if ((y - topY) % 14 === 1) shade = Math.min(3, shade + 1);
+            setPx(buf, w, h, cx + dx, y, packMat(MAT.LIMESTONE, shade, nx));
+          }
+        }
+
+        // Crown brass cupola + solar pergola
+        drawPitchedRoof(buf, w, h, cx - halfW + 2, topY, (halfW - 2) * 2, 7, MAT.TEAL_TRIM);
+        drawSolarCanopy(buf, w, h, cx - halfW + 4, topY - 10, (halfW - 3) * 2, 4);
+
+        // Arched windows & alternating cantilevered sky-garden balconies with curved stone corbels
+        let floorIdx = 0;
+        for (let fy = topY + 8; fy < bottomY - 14; fy += 14) {
+          const roomBase = ((seed + floorIdx * 11) % 110) + 5;
+          drawArchedWindow(buf, w, h, cx - Math.floor(halfW * 0.45), fy, 2, 7, roomBase, false);
+          drawArchedWindow(buf, w, h, cx + Math.floor(halfW * 0.1), fy, 3, 8, roomBase + 1, false);
+          drawArchedWindow(buf, w, h, cx + Math.floor(halfW * 0.58), fy, 2, 7, roomBase + 2, false);
+
+          // Cantilevered green terrace alternating left/right, anchored by stepped corbel brackets
+          const side = (floorIdx % 2 === 0) ? -1 : 1;
+          const bx = side < 0 ? cx - halfW - 6 : cx + halfW - 3;
+          const bw = 9;
+          // Lush shrub seated cleanly on balcony planter
+          drawShrubCluster(buf, w, h, bx + (bw >> 1), fy + 8, 5, 5, MAT.FOLIAGE_LIME,
+            floorIdx % 3 === 0 ? MAT.BLOSSOM_CORAL : MAT.BLOSSOM_LILAC, seed + floorIdx * 31, true);
+          // Terracotta planter rim & limestone slab
+          fillRect(buf, w, h, bx, fy + 8, bw, 2, packMat(MAT.TERRACOTTA, side < 0 ? 1 : 2, side));
+          fillRect(buf, w, h, bx, fy + 10, bw, 2, packMat(MAT.LIMESTONE, side < 0 ? 1 : 2, side));
+          // Stepped structural corbel tapering back into tower masonry
+          for (let cb = 0; cb < 4; cb++) {
+            const cw = bw - 2 - cb * 2;
+            const cxStart = side < 0 ? (bx + bw - cw) : bx;
+            fillRect(buf, w, h, cxStart, fy + 12 + cb, cw, 1, packMat(MAT.TIMBER, side < 0 ? 0 : 1, side));
+          }
+          drawHangingVines(buf, w, h, bx + 1, fy + 11, bw - 2, 6, MAT.FOLIAGE_DEEP,
+            rng() > 0.5 ? MAT.BLOSSOM_CORAL : 0, seed + floorIdx * 17);
+          floorIdx++;
+        }
+      }
+
+      // Grand Centerpiece: The Sun-Lotus Geodesic Botanical Conservatory
+      function drawSunLotusBiodome(buf, w, h, cx, baseY, rx, ry) {
+        const drumH = 20;
+        const domeBaseY = baseY - drumH - 2;
+
+        // 1. Interior Bioluminescent Mother Banyan Tree (painted first, then grounded cleanly by drum base!)
+        drawClusterTree(buf, w, h, cx, domeBaseY - Math.floor(ry * 0.56), rx * 0.72, ry * 0.60,
+          MAT.FOLIAGE_DEEP, MAT.BLOSSOM_CORAL, 777, true);
+        // Lush interior conservatory understory shrubs along dome floor
+        drawShrubCluster(buf, w, h, cx - 22, domeBaseY - 1, 12, 7, MAT.FOLIAGE_LIME, MAT.BLOSSOM_LILAC, 781, true);
+        drawShrubCluster(buf, w, h, cx + 22, domeBaseY - 1, 12, 7, MAT.FOLIAGE_LIME, MAT.BLOSSOM_CORAL, 782, true);
+
+        // 2. Stepped limestone colonnade drum base (cleanly clips any lower trunk pixels below domeBaseY!)
+        for (let y = baseY - drumH; y <= baseY; y++) {
+          const hw = rx + 4 + ((y - (baseY - drumH)) >> 2);
+          for (let dx = -hw; dx <= hw; dx++) {
+            const nx = dx < -hw * 0.35 ? -1 : dx > hw * 0.35 ? 1 : 0;
+            const shade = dx < -hw * 0.5 ? 0 : dx < hw * 0.2 ? 1 : 2;
+            setPx(buf, w, h, cx + dx, y, packMat(MAT.LIMESTONE, shade, nx));
+          }
+        }
+        // Brass cornice & glowing arched conservatory gallery windows
+        fillRect(buf, w, h, cx - rx - 5, domeBaseY, (rx + 5) * 2, 2, packMat(MAT.BRASS, 2, 0));
+        fillRect(buf, w, h, cx - rx - 4, domeBaseY + 2, (rx + 4) * 2, 1, packMat(MAT.STONE_DARK, 0, 0));
+        for (let gx = -rx + 6; gx <= rx - 6; gx += 9) {
+          drawArchedWindow(buf, w, h, cx + gx, baseY - drumH + 4, 3, 12, 9 + ((gx + 80) % 9), false);
+        }
+
+        // 3. Translucent Crystal Geodesic Dome Shell + Curved Brass Ribs
+        for (let dy = -ry; dy <= 0; dy++) {
+          const yRatio = -dy / ry;
+          const span = Math.sqrt(Math.max(0, 1 - yRatio * yRatio)) * rx;
+          const hw = Math.round(span);
+          // Open oculus at top for the Mother Tree crown!
+          if (yRatio > 0.90) continue;
+          for (let dx = -hw; dx <= hw; dx++) {
+            const xNorm = dx / Math.max(1, rx);
+            const onOuterRim = Math.abs(dx) >= hw - 1;
+            // Geodesic longitude & latitude brass ribs
+            const lonRib = Math.abs((dx / Math.max(4, span)) * 3 - Math.round((dx / Math.max(4, span)) * 3)) < 0.09;
+            const latRib = (Math.abs(dy) % 9 === 0);
+            if (onOuterRim || lonRib || latRib) {
+              const shade = dx < 0 ? 1 : 3;
+              setPx(buf, w, h, cx + dx, domeBaseY + dy, packMat(MAT.BRASS, shade, dx < 0 ? -1 : 1));
+            } else {
+              // Semi-transparent crystal: dithered over the interior Mother Tree!
+              const existing = buf[(domeBaseY + dy) * w + (cx + dx)];
+              const checker = ((cx + dx + domeBaseY + dy) & 1) === 0;
+              const specular = xNorm > 0.25 && xNorm < 0.65 && yRatio > 0.35 && yRatio < 0.75;
+              if (specular || !existing || checker) {
+                const shade = specular ? 3 : xNorm < -0.3 ? 0 : xNorm < 0.2 ? 1 : 2;
+                setPx(buf, w, h, cx + dx, domeBaseY + dy, packMat(MAT.DOME_CRYSTAL, shade, dx < 0 ? -1 : 1));
+              }
+            }
+          }
+        }
+
+        // 4. Mother Tree Bioluminescent Crown bursting through the Golden Oculus!
+        fillRect(buf, w, h, cx - 14, domeBaseY - ry + 2, 28, 2, packMat(MAT.BRASS, 3, 0));
+        drawClusterTree(buf, w, h, cx, domeBaseY - ry - 6, 22, 13, MAT.FOLIAGE_LIME, MAT.BLOSSOM_CORAL, 999, true);
+      }
+
+      // Harbor Townhouse with Warm Shutters, Striped Awning & Lantern
+      function drawHarborHouse(buf, w, h, x, topY, rw, bottomY, roofMat, hasAwning, seed) {
+        const rng = mulberry32(seed);
+        for (let y = topY; y < bottomY; y++) {
+          for (let dx = 0; dx < rw; dx++) {
+            const nx = dx < 3 ? -1 : dx > rw - 4 ? 1 : 0;
+            let shade = dx < 3 ? 0 : dx > rw - 4 ? 2 : 1;
+            if ((y - topY) < 2) shade = 0; // under-eave shadow
+            setPx(buf, w, h, x + dx, y, packMat(MAT.LIMESTONE, shade, nx));
+          }
+        }
+        // Timber corner quoins / beams
+        fillRect(buf, w, h, x, topY, 2, bottomY - topY, packMat(MAT.TIMBER, 0, -1));
+        fillRect(buf, w, h, x + rw - 2, topY, 2, bottomY - topY, packMat(MAT.TIMBER, 2, 1));
+
+        drawPitchedRoof(buf, w, h, x - 2, topY, rw + 4, 8, roofMat);
+
+        // Upper story windows
+        const cols = Math.max(1, Math.floor((rw - 8) / 11));
+        const spacing = Math.floor((rw - 4) / cols);
+        for (let c = 0; c < cols; c++) {
+          const wx = x + 3 + Math.floor(spacing * (c + 0.5));
+          drawArchedWindow(buf, w, h, wx, topY + 6, 2, 7, (seed + c * 13) & 127, true);
+        }
+
+        // Ground story shopfront / striped awning & hanging lantern
+        const groundY = topY + 20;
+        if (groundY < bottomY - 8) {
+          if (hasAwning) {
+            for (let ay = 0; ay < 5; ay++) {
+              for (let ax = 1; ax < rw - 1; ax++) {
+                const stripe = ((ax + (ay >> 1)) % 4 < 2) ? MAT.AWNING_CORAL : MAT.AWNING_CREAM;
+                setPx(buf, w, h, x + ax, groundY + ay, packMat(stripe, ay < 3 ? 2 : 1, 0));
+              }
+            }
+          }
+          // Warm shop windows & arched timber doorway
+          drawArchedWindow(buf, w, h, x + (rw >> 1), groundY + 6, Math.min(5, (rw >> 2)), 9, (seed + 3) & 127, false);
+          // Hanging street lantern
+          setPx(buf, w, h, x + 4, groundY + 6, packMat(MAT.LANTERN, 3, 0, seed & 63));
+          setPx(buf, w, h, x + 4, groundY + 7, packMat(MAT.LANTERN, 2, 0, seed & 63));
+        }
+      }
+
+      // =========================================================================
+      // 4. PRE-BAKE THE 4 PARALLAX STATIC WORLD LAYERS AT STARTUP
+      // =========================================================================
+      const layerFar  = new Uint16Array(WORLD_W * WORLD_H); // Parallax 0.32x
+      const layerMid  = new Uint16Array(WORLD_W * WORLD_H); // Parallax 0.66x
+      const layerMain = new Uint16Array(WORLD_W * WORLD_H); // Parallax 1.00x
+      const layerFore = new Uint16Array(FORE_W  * WORLD_H); // Parallax 1.28x
+
+      // Store coordinates for dynamic kinetic overlays (windmills, waterfalls, lanterns, etc.)
+      const windmills = [];
+      const helicalTurbines = [];
+      const pointLights = []; // { x, y, r, type: 'warm' | 'bio', layer: 'mid' | 'main' | 'fore' }
+
+      function buildWorldLayers() {
+        // -----------------------------------------------------------------------
+        // LAYER A: Far Karst Emerald Mountains, Offshore Solar Rings & Misty Bay
+        // -----------------------------------------------------------------------
+        for (let x = 0; x < WORLD_W; x++) {
+          // Far mountain silhouette (smooth multi-harmonic karst peaks)
+          const h1 = Math.sin(x * 0.011 + 0.4) * 26 + Math.sin(x * 0.029 + 1.8) * 14 + Math.cos(x * 0.053) * 6;
+          const farTop = Math.round(134 - Math.max(-12, h1));
+          const slope1 = Math.cos(x * 0.011 + 0.4);
+          for (let y = farTop; y < WATER_Y; y++) {
+            const dy = y - farTop;
+            let shade = slope1 > 0.1 ? 2 : 1;
+            if (dy < 3 && slope1 > 0) shade = 3;
+            else if (dy > 28) shade = 0;
+            setPx(layerFar, WORLD_W, WORLD_H, x, y, packMat(MAT.DISTANT_MTN, shade, slope1 > 0 ? 1 : -1));
+          }
+
+          // Mid-far forested ridges & terraced valleys (leaving a scenic sea-bay opening around x=540..660)
+          const bayOpen = smoothstep(510, 560, x) * (1 - smoothstep(650, 695, x));
+          const h2 = Math.sin(x * 0.017 + 2.3) * 22 + Math.cos(x * 0.041 + 0.7) * 10;
+          const midTop = Math.round(156 - h2 + bayOpen * 46);
+          const slope2 = Math.cos(x * 0.017 + 2.3);
+          for (let y = midTop; y < WATER_Y; y++) {
+            const dy = y - midTop;
+            // Subtle agricultural contour terraces on mountain slopes
+            const terrace = (dy > 8 && dy < 38 && (y % 5 === 0));
+            let shade = terrace ? 2 : (slope2 > 0 ? 1 : 0);
+            if (dy < 2 && slope2 > 0) shade = 2;
+            setPx(layerFar, WORLD_W, WORLD_H, x, y, packMat(MAT.MID_MTN, shade, slope2 > 0 ? 1 : -1));
+          }
+        }
+
+        // Distant Atmospheric Solar Collector Arch & Offshore Bay Rings (x=555..645)
+        for (let deg = 0; deg <= 180; deg += 2) {
+          const rad = (deg * Math.PI) / 180;
+          const ax = Math.round(600 + Math.cos(rad) * 38);
+          const ay = Math.round(198 - Math.sin(rad) * 34);
+          setPx(layerFar, WORLD_W, WORLD_H, ax, ay, packMat(MAT.BRASS, 2, 0));
+          setPx(layerFar, WORLD_W, WORLD_H, ax, ay + 1, packMat(MAT.DISTANT_MTN, 3, 0));
+        }
+        // Distant slender white eco-spires on the ridges
+        [118, 134, 578, 622].forEach((sx, idx) => {
+          const sy = idx < 2 ? 118 : 178;
+          fillRect(layerFar, WORLD_W, WORLD_H, sx, sy, 2, 22, packMat(MAT.LIMESTONE, 2, 0));
+          setPx(layerFar, WORLD_W, WORLD_H, sx, sy - 1, packMat(MAT.BRASS, 3, 0));
+        });
+
+        // -----------------------------------------------------------------------
+        // LAYER B: Upper Citadel, Cliffs, Sun-Lotus Biodome, Bosco Towers & Falls
+        // -----------------------------------------------------------------------
+        // Organic horizontal limestone cliff strata, mossy ledges & terraced retaining walls
+        const cliffRng = mulberry32(4242);
+        for (let x = 130; x < 555; x++) {
+          const envelope = smoothstep(130, 185, x) * (1 - smoothstep(495, 555, x));
+          if (envelope <= 0.02) continue;
+          const stepH = Math.round(182 - envelope * 58 - Math.sin(x * 0.035) * 6);
+          for (let y = stepH; y < WATER_Y; y++) {
+            const dy = y - stepH;
+            const strataWave = Math.round(Math.sin(x * 0.045 + (y >> 4) * 1.7) * 2);
+            const strataY = y + strataWave;
+            const isMossLedge = dy < 3 || (strataY % 19 === 0 && ((x + strataY) % 13 < 9));
+            const isShadowSeam = strataY % 19 === 1 || (strataY % 11 === 0 && ((x * 3) % 17 < 6));
+            const isSunBlock = !isShadowSeam && ((strataY % 19 > 2 && strataY % 19 < 7) && ((x >> 3) + (y >> 3)) % 3 === 0);
+            const mat = dy < 3 ? MAT.FOLIAGE_DEEP : (isMossLedge && dy < 36 ? MAT.FOLIAGE_DEEP : MAT.CLIFF_ROCK);
+            const shade = isMossLedge ? 2 : isShadowSeam ? 0 : isSunBlock ? 2 : 1;
+            const nx = x < 340 ? -1 : 1;
+            setPx(layerMid, WORLD_W, WORLD_H, x, y, packMat(mat, shade, nx));
+          }
+        }
+        // Cliffside mid-slope trees, terraced retaining arches & warm grotto windows behind canal bridge!
+        drawClusterTree(layerMid, WORLD_W, WORLD_H, 362, 168, 17, 13, MAT.FOLIAGE_DEEP, MAT.BLOSSOM_LILAC, 451, true);
+        drawClusterTree(layerMid, WORLD_W, WORLD_H, 422, 172, 16, 12, MAT.FOLIAGE_LIME, MAT.BLOSSOM_CORAL, 452, true);
+        drawHarborHouse(layerMid, WORLD_W, WORLD_H, 380, 158, 28, 194, MAT.TEAL_TRIM, false, 455);
+        if (cliffRng() >= 0) {
+          drawHangingVines(layerMid, WORLD_W, WORLD_H, 340, 154, 100, 12, MAT.FOLIAGE_DEEP, MAT.BLOSSOM_CORAL, 459);
+        }
+
+        // Elevated Stone Aqueduct connecting left cliff cistern to central Biodome
+        const aqY = 122;
+        fillRect(layerMid, WORLD_W, WORLD_H, 188, aqY, 156, 4, packMat(MAT.LIMESTONE, 2, 0));
+        fillRect(layerMid, WORLD_W, WORLD_H, 188, aqY + 1, 156, 1, packMat(MAT.WATER_FOAM, 3, 0));
+        for (let ax = 195; ax < 335; ax += 18) {
+          fillRect(layerMid, WORLD_W, WORLD_H, ax, aqY + 4, 4, 34, packMat(MAT.LIMESTONE, 1, -1));
+          drawHangingVines(layerMid, WORLD_W, WORLD_H, ax - 2, aqY + 4, 8, 11, MAT.FOLIAGE_DEEP, 0, ax * 13);
+        }
+
+        // Bosco Verticale Eco-Towers flanking the central Biodome
+        drawBoscoTower(layerMid, WORLD_W, WORLD_H, 282, 62, 176, 16, 101);
+        drawBoscoTower(layerMid, WORLD_W, WORLD_H, 476, 56, 180, 17, 202);
+        drawBoscoTower(layerMid, WORLD_W, WORLD_H, 232, 86, 178, 13, 303);
+
+        // Register Helical VAWT Turbines atop Bosco Towers
+        helicalTurbines.push({ x: 282, y: 40, h: 13, r: 4, layer: 'mid', speed: 2.4, phase: 0.2 });
+        helicalTurbines.push({ x: 476, y: 34, h: 14, r: 4, layer: 'mid', speed: 2.1, phase: 1.9 });
+        helicalTurbines.push({ x: 232, y: 66, h: 11, r: 3, layer: 'mid', speed: 2.8, phase: 3.4 });
+
+        // Grand Sun-Lotus Geodesic Biodome (Focal Crown at x=386, baseY=128)
+        drawSunLotusBiodome(layerMid, WORLD_W, WORLD_H, 386, 128, 44, 36);
+        pointLights.push({ x: 386, y: 102, r: 34, type: 'bio', layer: 'mid' });
+        pointLights.push({ x: 386, y: 82,  r: 22, type: 'bio', layer: 'mid' });
+
+        // Lush forest clusters around upper cliffs & biodome terraces
+        drawClusterTree(layerMid, WORLD_W, WORLD_H, 326, 118, 18, 13, MAT.FOLIAGE_DEEP, MAT.BLOSSOM_CORAL, 411, true);
+        drawClusterTree(layerMid, WORLD_W, WORLD_H, 440, 116, 19, 14, MAT.FOLIAGE_LIME, MAT.BLOSSOM_LILAC, 412, true);
+        drawClusterTree(layerMid, WORLD_W, WORLD_H, 514, 132, 20, 15, MAT.FOLIAGE_DEEP, MAT.BLOSSOM_CORAL, 413, false);
+        drawClusterTree(layerMid, WORLD_W, WORLD_H, 174, 132, 16, 12, MAT.FOLIAGE_LIME, MAT.SUNFLOWER, 414, false);
+
+        // Tall Sail-Windmills on upper ridges (layerMid)
+        [196, 526].forEach((wx, idx) => {
+          const wy = idx === 0 ? 92 : 98;
+          // Slender tapered whitewashed windmill tower
+          for (let ty = 0; ty < 38; ty++) {
+            const hw = 2 + ((ty / 14) | 0);
+            for (let dx = -hw; dx <= hw; dx++) {
+              setPx(layerMid, WORLD_W, WORLD_H, wx + dx, wy + ty, packMat(MAT.LIMESTONE, dx < 0 ? 1 : 2, dx < 0 ? -1 : 1));
+            }
+          }
+          fillRect(layerMid, WORLD_W, WORLD_H, wx - 3, wy - 2, 7, 3, packMat(MAT.BRASS, 2, 0));
+          windmills.push({ x: wx, y: wy, bladeLen: 19, layer: 'mid', speed: 0.75 + idx * 0.15, phase: idx * 1.1 });
+        });
+
+        // -----------------------------------------------------------------------
+        // LAYER C: Main Harbor Quarter, Sky-Tram Viaduct, Plazas, Bridge & Quays
+        // -----------------------------------------------------------------------
+        // 1. Left Cliff Village & Kite Overlook (x=55..175)
+        for (let x = 40; x < 182; x++) {
+          const top = x < 95 ? 184 : x < 145 ? 168 : 176;
+          for (let y = top; y < WATER_Y; y++) {
+            const dy = y - top;
+            const strataY = y + Math.round(Math.sin(x * 0.06 + (y >> 3)) * 1.5);
+            const isSeam = strataY % 11 === 0 || (strataY % 7 === 0 && (x % 13 < 5));
+            const shade = dy < 3 ? 2 : isSeam ? 0 : (((x >> 3) + (y >> 2)) % 4 === 0 ? 2 : 1);
+            setPx(layerMain, WORLD_W, WORLD_H, x, y, packMat(dy < 3 ? MAT.FOLIAGE_LIME : MAT.CLIFF_ROCK, shade, -1));
+          }
+        }
+        drawHarborHouse(layerMain, WORLD_W, WORLD_H, 68, 156, 26, 185, MAT.TERRACOTTA, false, 501);
+        drawHarborHouse(layerMain, WORLD_W, WORLD_H, 96, 146, 28, 170, MAT.TEAL_TRIM, true, 502);
+        // Wooden Beehive Apiary on terrace (x=152, y=169)
+        fillRect(layerMain, WORLD_W, WORLD_H, 150, 170, 5, 6, packMat(MAT.SUNFLOWER, 2, 0));
+        fillRect(layerMain, WORLD_W, WORLD_H, 149, 169, 7, 2, packMat(MAT.TIMBER, 2, 0));
+        fillRect(layerMain, WORLD_W, WORLD_H, 158, 171, 5, 5, packMat(MAT.SUNFLOWER, 1, 0));
+        fillRect(layerMain, WORLD_W, WORLD_H, 157, 170, 7, 2, packMat(MAT.TIMBER, 2, 0));
+
+        // 2. Waterfall Cliff Channel & Hydro-Mill Stone House (x=182..226)
+        for (let x = 180; x < 232; x++) {
+          for (let y = 148; y < WATER_Y; y++) {
+            setPx(layerMain, WORLD_W, WORLD_H, x, y, packMat(MAT.CLIFF_ROCK, x < 205 ? 0 : 1, 0));
+          }
+        }
+        drawHarborHouse(layerMain, WORLD_W, WORLD_H, 206, 166, 24, 206, MAT.TERRACOTTA, false, 509);
+
+        // 3. Sweeping Elevated Botanical Sky-Tram Viaduct (spanning x=0..720 at y=136..156)
+        const beamY = 137;
+        const bikeDeckY = 153;
+        // Overhead copper-and-timber suspension rail + solar glass shade roof
+        for (let x = 0; x < WORLD_W; x++) {
+          setPx(layerMain, WORLD_W, WORLD_H, x, beamY, packMat(MAT.BRASS, 3, 0));
+          setPx(layerMain, WORLD_W, WORLD_H, x, beamY + 1, packMat(MAT.TIMBER, 1, 0));
+          if (x % 4 === 0) setPx(layerMain, WORLD_W, WORLD_H, x, beamY - 1, packMat(MAT.SOLAR_GLASS, 2, 0));
+
+          // Lower bicycle & garden skywalk deck
+          setPx(layerMain, WORLD_W, WORLD_H, x, bikeDeckY, packMat(MAT.LIMESTONE, 3, 0));
+          setPx(layerMain, WORLD_W, WORLD_H, x, bikeDeckY + 1, packMat(MAT.LIMESTONE, 1, 0));
+          setPx(layerMain, WORLD_W, WORLD_H, x, bikeDeckY + 2, packMat(MAT.STONE_DARK, 0, 0));
+          // Balustrade railing posts
+          if (x % 3 === 0) setPx(layerMain, WORLD_W, WORLD_H, x, bikeDeckY - 2, packMat(MAT.BRASS, 2, 0));
+          setPx(layerMain, WORLD_W, WORLD_H, x, bikeDeckY - 3, packMat(MAT.TIMBER, 2, 0));
+        }
+
+        // Graceful viaduct piers & parabolic arches (skipping main canal bridge & buildings cleanly)
+        for (let px = 28; px < WORLD_W; px += 56) {
+          // Pier column supporting both upper tram rail and lower bike deck
+          fillRect(layerMain, WORLD_W, WORLD_H, px - 3, beamY + 2, 6, bikeDeckY - beamY - 2, packMat(MAT.LIMESTONE, 1, -1));
+          fillRect(layerMain, WORLD_W, WORLD_H, px, beamY + 2, 3, bikeDeckY - beamY - 2, packMat(MAT.LIMESTONE, 2, 1));
+          fillRect(layerMain, WORLD_W, WORLD_H, px - 4, bikeDeckY + 3, 8, 42, packMat(MAT.LIMESTONE, 1, 0));
+          fillRect(layerMain, WORLD_W, WORLD_H, px, bikeDeckY + 3, 4, 42, packMat(MAT.LIMESTONE, 2, 1));
+          // Parabolic arch shoulders between piers
+          for (let dx = -24; dx <= 24; dx++) {
+            const archDrop = Math.round(((24 - Math.abs(dx)) / 24) * ((24 - Math.abs(dx)) / 24) * 9);
+            for (let ay = 0; ay < 10 - archDrop; ay++) {
+              setPx(layerMain, WORLD_W, WORLD_H, px + 28 + dx, bikeDeckY + 3 + ay, packMat(MAT.LIMESTONE, dx < 0 ? 1 : 2, 0));
+            }
+          }
+          // Cascading viaduct ivy & blossoms
+          drawHangingVines(layerMain, WORLD_W, WORLD_H, px - 10, bikeDeckY + 2, 22, 10, MAT.FOLIAGE_LIME, MAT.BLOSSOM_CORAL, px * 19);
+        }
+
+        // Central Sky-Station Gazebo on Viaduct (x=352..402, y=123..153)
+        fillRect(layerMain, WORLD_W, WORLD_H, 354, 131, 46, 22, packMat(MAT.STONE_DARK, 0, 0));
+        for (let sx = 356; sx <= 398; sx += 7) {
+          fillRect(layerMain, WORLD_W, WORLD_H, sx, 130, 2, 23, packMat(MAT.BRASS, 2, 0));
+        }
+        drawPitchedRoof(layerMain, WORLD_W, WORLD_H, 350, 130, 54, 8, MAT.TEAL_TRIM);
+        // Glowing station clock & hanging lanterns
+        fillEllipse(layerMain, WORLD_W, WORLD_H, 377, 128, 3, 3, packMat(MAT.LANTERN, 3, 0, 12));
+        setPx(layerMain, WORLD_W, WORLD_H, 358, 133, packMat(MAT.LANTERN, 3, 0, 14));
+        setPx(layerMain, WORLD_W, WORLD_H, 396, 133, packMat(MAT.LANTERN, 3, 0, 16));
+        pointLights.push({ x: 377, y: 136, r: 24, type: 'warm', layer: 'main' });
+
+        // 4. Midground Harbor Plaza, Tea House & Market Townhouses (x=228..354)
+        fillRect(layerMain, WORLD_W, WORLD_H, 224, 203, 134, 9, packMat(MAT.LIMESTONE, 2, 0)); // Stone quay wall
+        fillRect(layerMain, WORLD_W, WORLD_H, 224, 209, 134, 3, packMat(MAT.STONE_DARK, 0, 0)); // Waterline moss lip
+        drawHarborHouse(layerMain, WORLD_W, WORLD_H, 232, 168, 30, 203, MAT.TERRACOTTA, true, 601);
+        drawHarborHouse(layerMain, WORLD_W, WORLD_H, 264, 162, 28, 203, MAT.TEAL_TRIM, false, 602);
+        // Canal-side Tea House with Warm Awning (x=294..332)
+        drawHarborHouse(layerMain, WORLD_W, WORLD_H, 294, 166, 36, 203, MAT.TERRACOTTA, true, 603);
+        // Tea terrace pergola & round wooden tea table (x=334..352)
+        fillRect(layerMain, WORLD_W, WORLD_H, 333, 188, 18, 2, packMat(MAT.TIMBER, 2, 0));
+        fillRect(layerMain, WORLD_W, WORLD_H, 335, 190, 1, 13, packMat(MAT.TIMBER, 1, 0));
+        fillRect(layerMain, WORLD_W, WORLD_H, 349, 190, 1, 13, packMat(MAT.TIMBER, 1, 0));
+        drawHangingVines(layerMain, WORLD_W, WORLD_H, 333, 188, 18, 5, MAT.FOLIAGE_LIME, MAT.BLOSSOM_LILAC, 619);
+        fillRect(layerMain, WORLD_W, WORLD_H, 340, 199, 6, 1, packMat(MAT.TIMBER, 2, 0)); // Tea table top
+        fillRect(layerMain, WORLD_W, WORLD_H, 342, 200, 2, 3, packMat(MAT.TIMBER, 0, 0));
+        setPx(layerMain, WORLD_W, WORLD_H, 342, 191, packMat(MAT.LANTERN, 3, 0, 21));
+        pointLights.push({ x: 342, y: 194, r: 22, type: 'warm', layer: 'main' });
+        pointLights.push({ x: 248, y: 192, r: 18, type: 'warm', layer: 'main' });
+
+        // Warm Festoon String-Lights draped between Harbor Plaza & Rooftop Garden!
+        for (let fx = 292; fx <= 334; fx++) {
+          const sag = Math.round(Math.sin(((fx - 292) / 42) * Math.PI) * 3);
+          setPx(layerMain, WORLD_W, WORLD_H, fx, 178 + sag, packMat(MAT.STONE_DARK, 1, 0));
+          if ((fx - 292) % 6 === 3) {
+            setPx(layerMain, WORLD_W, WORLD_H, fx, 179 + sag, packMat(MAT.LANTERN, 3, 0, fx & 63));
+          }
+        }
+        for (let fx = 468; fx <= 520; fx++) {
+          const sag = Math.round(Math.sin(((fx - 468) / 52) * Math.PI) * 3);
+          setPx(layerMain, WORLD_W, WORLD_H, fx, 162 + sag, packMat(MAT.STONE_DARK, 1, 0));
+          if ((fx - 468) % 7 === 3) {
+            setPx(layerMain, WORLD_W, WORLD_H, fx, 163 + sag, packMat(MAT.LANTERN, 3, 0, fx & 63));
+          }
+        }
+        pointLights.push({ x: 494, y: 165, r: 20, type: 'warm', layer: 'main' });
+
+        // Vine Pergola over Street Harpist (x=254..270)
+        drawClusterTree(layerMain, WORLD_W, WORLD_H, 228, 192, 11, 9, MAT.FOLIAGE_DEEP, MAT.BLOSSOM_CORAL, 631, false);
+
+        // 5. The Grand Arched Stone Canal Bridge (x=354..440, spanning canal inlet)
+        // Clear under-arch water sky/midground view!
+        for (let bx = 354; bx <= 440; bx++) {
+          const u = (bx - 397) / 43; // -1 .. +1
+          const deckTop = Math.round(194 + u * u * 8);
+          const archVoidTop = Math.round(199 + u * u * 18);
+          // Parapet railing
+          setPx(layerMain, WORLD_W, WORLD_H, bx, deckTop - 2, packMat(MAT.LIMESTONE, 3, 0));
+          if (bx % 3 === 0) setPx(layerMain, WORLD_W, WORLD_H, bx, deckTop - 1, packMat(MAT.LIMESTONE, 1, 0));
+          // Stone bridge masonry above the arch curve
+          const maxY = Math.abs(u) > 0.78 ? WATER_Y : Math.min(WATER_Y, archVoidTop);
+          for (let by = deckTop; by < maxY; by++) {
+            let shade = by === deckTop ? 3 : (u < 0 ? 1 : 2);
+            if (by === archVoidTop - 1) shade = 0; // arch keystone shadow
+            setPx(layerMain, WORLD_W, WORLD_H, bx, by, packMat(MAT.LIMESTONE, shade, u < 0 ? -1 : 1));
+          }
+        }
+        // Four glowing moss-and-brass bridge posts
+        [360, 384, 410, 434].forEach((lx, idx) => {
+          const u = (lx - 397) / 43;
+          const ly = Math.round(194 + u * u * 8) - 5;
+          fillRect(layerMain, WORLD_W, WORLD_H, lx, ly + 2, 2, 3, packMat(MAT.BRASS, 2, 0));
+          setPx(layerMain, WORLD_W, WORLD_H, lx, ly, packMat(MAT.LANTERN, 3, 0, 30 + idx));
+          setPx(layerMain, WORLD_W, WORLD_H, lx + 1, ly, packMat(MAT.LANTERN, 2, 0, 30 + idx));
+          pointLights.push({ x: lx, y: ly, r: 17, type: 'warm', layer: 'main' });
+        });
+        drawHangingVines(layerMain, WORLD_W, WORLD_H, 364, 197, 66, 6, MAT.FOLIAGE_DEEP, MAT.BLOSSOM_CORAL, 655);
+
+        // 6. Right Quarter: Rooftop Community Farm, Solar Workshops & Timber Boathouse (x=440..680)
+        fillRect(layerMain, WORLD_W, WORLD_H, 440, 203, 185, 9, packMat(MAT.LIMESTONE, 2, 0));
+        fillRect(layerMain, WORLD_W, WORLD_H, 440, 209, 185, 3, packMat(MAT.STONE_DARK, 0, 0));
+        // Stone water steps leading down to canal (x=446..460)
+        for (let st = 0; st < 5; st++) {
+          fillRect(layerMain, WORLD_W, WORLD_H, 446 + st * 3, 203 + st * 2, 14 - st * 3, 2, packMat(MAT.LIMESTONE, 1, -1));
+        }
+
+        // Terraced Community Agro-Hall with flat rooftop garden (x=464..542, roof at y=174)
+        for (let y = 175; y < 203; y++) {
+          for (let x = 464; x < 542; x++) {
+            const shade = x < 468 ? 0 : x > 537 ? 2 : 1;
+            setPx(layerMain, WORLD_W, WORLD_H, x, y, packMat(MAT.LIMESTONE, shade, x < 500 ? -1 : 1));
+          }
+        }
+        fillRect(layerMain, WORLD_W, WORLD_H, 462, 173, 82, 2, packMat(MAT.TERRACOTTA, 2, 0)); // Rooftop parapet
+        for (let wx = 472; wx <= 532; wx += 12) {
+          drawArchedWindow(layerMain, WORLD_W, WORLD_H, wx, 181, 3, 9, 70 + ((wx - 472) >> 1), true);
+        }
+        // Rooftop raised beds, sunflowers, copper rainwater barrel & solar greenhouse cold-frame
+        fillRect(layerMain, WORLD_W, WORLD_H, 466, 170, 6, 4, packMat(MAT.BRASS, 2, 0)); // Copper rain cistern
+        drawSolarCanopy(layerMain, WORLD_W, WORLD_H, 522, 165, 18, 5);
+        for (let sx = 476; sx <= 504; sx += 4) {
+          fillRect(layerMain, WORLD_W, WORLD_H, sx, 171, 3, 2, packMat(MAT.TIMBER, 1, 0));
+          setPx(layerMain, WORLD_W, WORLD_H, sx + 1, 169, packMat(MAT.FOLIAGE_LIME, 2, 0));
+          setPx(layerMain, WORLD_W, WORLD_H, sx + 1, 168, packMat(MAT.FOLIAGE_LIME, 2, 0));
+          setPx(layerMain, WORLD_W, WORLD_H, sx + 1, 167, packMat(MAT.SUNFLOWER, 3, 0));
+        }
+
+        // Harbor Boathouse, Timber Pier & Right Windmill Lighthouse (x=546..668)
+        drawHarborHouse(layerMain, WORLD_W, WORLD_H, 548, 164, 34, 203, MAT.TEAL_TRIM, true, 701);
+        drawHarborHouse(layerMain, WORLD_W, WORLD_H, 584, 170, 28, 203, MAT.TERRACOTTA, false, 702);
+        // Timber pier extending over right bay (x=618..668)
+        fillRect(layerMain, WORLD_W, WORLD_H, 618, 202, 48, 3, packMat(MAT.TIMBER, 2, 0));
+        for (let px = 622; px <= 662; px += 10) {
+          fillRect(layerMain, WORLD_W, WORLD_H, px, 205, 3, 7, packMat(MAT.TIMBER, 0, 0));
+        }
+        // Stacked market crates & glowing pier beacon
+        fillRect(layerMain, WORLD_W, WORLD_H, 628, 198, 5, 4, packMat(MAT.TIMBER, 2, 0));
+        fillRect(layerMain, WORLD_W, WORLD_H, 634, 199, 4, 3, packMat(MAT.AWNING_CORAL, 2, 0));
+        fillRect(layerMain, WORLD_W, WORLD_H, 660, 194, 2, 8, packMat(MAT.BRASS, 2, 0));
+        setPx(layerMain, WORLD_W, WORLD_H, 660, 192, packMat(MAT.BIO_FLORA, 3, 0, 8));
+        setPx(layerMain, WORLD_W, WORLD_H, 661, 192, packMat(MAT.BIO_FLORA, 3, 0, 8));
+        pointLights.push({ x: 660, y: 192, r: 20, type: 'bio', layer: 'main' });
+
+        // Harbor Lighthouse Wind-Spire at x=646
+        for (let ty = 0; ty < 48; ty++) {
+          const hw = 3 + ((ty / 14) | 0);
+          for (let dx = -hw; dx <= hw; dx++) {
+            const stripe = ((ty >> 3) & 1) ? MAT.TEAL_TRIM : MAT.LIMESTONE;
+            setPx(layerMain, WORLD_W, WORLD_H, 646 + dx, 154 + ty, packMat(stripe, dx < 0 ? 1 : 2, dx < 0 ? -1 : 1));
+          }
+        }
+        windmills.push({ x: 646, y: 154, bladeLen: 22, layer: 'main', speed: 0.92, phase: 2.3 });
+        pointLights.push({ x: 646, y: 158, r: 22, type: 'warm', layer: 'main' });
+
+        // Lush harbor trees & bioluminescent park trees
+        drawClusterTree(layerMain, WORLD_W, WORLD_H, 452, 188, 14, 11, MAT.FOLIAGE_LIME, MAT.BLOSSOM_CORAL, 801, true);
+        drawClusterTree(layerMain, WORLD_W, WORLD_H, 616, 186, 15, 12, MAT.FOLIAGE_DEEP, MAT.BLOSSOM_LILAC, 802, true);
+        drawClusterTree(layerMain, WORLD_W, WORLD_H, 42,  166, 22, 16, MAT.FOLIAGE_DEEP, MAT.BLOSSOM_CORAL, 803, true);
+        pointLights.push({ x: 452, y: 186, r: 18, type: 'bio', layer: 'main' });
+        pointLights.push({ x: 616, y: 184, r: 18, type: 'bio', layer: 'main' });
+
+        // -----------------------------------------------------------------------
+        // LAYER D: Foreground Botanical Overlook Balustrade & Framing Boughs
+        // -----------------------------------------------------------------------
+        // Left Foreground Stone Balcony & Bioluminescent Moss-Orb Streetlamp (x=0..108, y=190..270)
+        fillRect(layerFore, FORE_W, WORLD_H, 0, 242, 98, 28, packMat(MAT.STONE_DARK, 0, 1));
+        fillRect(layerFore, FORE_W, WORLD_H, 0, 238, 102, 5, packMat(MAT.LIMESTONE, 2, 1));
+        for (let bx = 8; bx < 94; bx += 12) {
+          fillRect(layerFore, FORE_W, WORLD_H, bx, 244, 5, 16, packMat(MAT.LIMESTONE, 1, 1));
+        }
+        // Ornate curved brass streetlamp with glowing cyan-emerald moss terrarium orb!
+        fillRect(layerFore, FORE_W, WORLD_H, 74, 198, 3, 40, packMat(MAT.BRASS, 1, 1));
+        plotLine(layerFore, FORE_W, WORLD_H, 75, 198, 84, 192, packMat(MAT.BRASS, 2, 1));
+        plotLine(layerFore, FORE_W, WORLD_H, 84, 192, 88, 196, packMat(MAT.BRASS, 2, 1));
+        fillEllipse(layerFore, FORE_W, WORLD_H, 88, 200, 4, 4, packMat(MAT.BIO_FLORA, 3, 0, 3));
+        fillRect(layerFore, FORE_W, WORLD_H, 85, 195, 7, 2, packMat(MAT.BRASS, 3, 0));
+        pointLights.push({ x: 88, y: 200, r: 30, type: 'bio', layer: 'fore' });
+
+        // Foreground left fern & wisteria bush
+        drawClusterTree(layerFore, FORE_W, WORLD_H, 22, 232, 28, 18, MAT.FOLIAGE_DEEP, MAT.BLOSSOM_LILAC, 901, true);
+        // Top-left & top-right overhanging flowering boughs framing the sky
+        drawClusterTree(layerFore, FORE_W, WORLD_H, 28, 14, 38, 18, MAT.FOLIAGE_DEEP, MAT.BLOSSOM_LILAC, 902, false);
+        drawHangingVines(layerFore, FORE_W, WORLD_H, 4, 24, 54, 22, MAT.FOLIAGE_LIME, MAT.BLOSSOM_LILAC, 903);
+
+        drawClusterTree(layerFore, FORE_W, WORLD_H, FORE_W - 36, 16, 44, 20, MAT.FOLIAGE_DEEP, MAT.BLOSSOM_CORAL, 904, false);
+        drawHangingVines(layerFore, FORE_W, WORLD_H, FORE_W - 72, 26, 62, 18, MAT.FOLIAGE_LIME, MAT.BLOSSOM_CORAL, 905);
+
+        // Bottom-right mossy stone quay bollard & flowering reed cluster
+        fillRect(layerFore, FORE_W, WORLD_H, FORE_W - 68, 248, 68, 22, packMat(MAT.STONE_DARK, 0, -1));
+        fillRect(layerFore, FORE_W, WORLD_H, FORE_W - 72, 245, 72, 4, packMat(MAT.LIMESTONE, 1, -1));
+        fillRect(layerFore, FORE_W, WORLD_H, FORE_W - 56, 236, 7, 9, packMat(MAT.BRASS, 2, -1));
+        drawClusterTree(layerFore, FORE_W, WORLD_H, FORE_W - 20, 240, 24, 15, MAT.FOLIAGE_LIME, MAT.BLOSSOM_CORAL, 906, true);
+      }
+
+      buildWorldLayers();
+
+      // =========================================================================
+      // 5. LIVE ANIMATED ENTITIES (CLOUDS, TRANSIT, BOATS, CITIZENS, WILDLIFE)
+      // =========================================================================
+      const rngInit = mulberry32(20261127);
+
+      // Stars (twinkling night sky)
+      const stars = Array.from({ length: 88 }, () => ({
+        x: Math.floor(rngInit() * WORLD_W),
+        y: Math.floor(rngInit() * 124),
+        phase: rngInit() * Math.PI * 2,
+        speed: 1.2 + rngInit() * 2.6,
+        bright: rngInit() > 0.72
+      }));
+
+      // Volumetric Pixel Cumulus Clouds (2 depth planes)
+      const clouds = Array.from({ length: 11 }, (_, i) => {
+        const puffs = [];
+        const puffCount = 4 + (i % 4);
+        const baseW = 32 + (i % 5) * 14;
+        for (let p = 0; p < puffCount; p++) {
+          const u = (p / (puffCount - 1)) - 0.5;
+          puffs.push({
+            ox: Math.round(u * baseW),
+            oy: Math.round(Math.abs(u) * 6 - (p % 2) * 3),
+            rx: Math.round(9 + (1 - Math.abs(u)) * 9 + (p % 3) * 2),
+            ry: Math.round(5 + (1 - Math.abs(u)) * 6)
+          });
+        }
+        return {
+          x: (i * 74 + rngInit() * 30) % (WORLD_W + 120) - 60,
+          y: 18 + (i % 4) * 18 + Math.floor(rngInit() * 8),
+          speed: (i % 2 === 0 ? 2.4 : 4.1) * (0.85 + rngInit() * 0.3),
+          parallax: i % 2 === 0 ? 0.25 : 0.45,
+          puffs
+        };
+      });
+
+      // Solar Bio-Airships (Dirigibles)
+      const airships = [
+        { x: 150, y: 42, dir: 1,  speed: 5.2, scale: 1.0, bobPhase: 0.4 },
+        { x: 540, y: 62, dir: -1, speed: 3.6, scale: 0.75, bobPhase: 2.6 }
+      ];
+
+      // Suspended Botanical Sky-Tram State
+      const tram = {
+        x: 180,
+        vel: 24,
+        maxSpeed: 26,
+        stopTimer: 0,
+        hasStoppedThisLap: false
+      };
+
+      // Viaduct Cyclists
+      const cyclists = [
+        { x: 90,  dir: 1,  speed: 16, color: MAT.AWNING_CORAL },
+        { x: 310, dir: -1, speed: 14, color: MAT.SUNFLOWER },
+        { x: 520, dir: 1,  speed: 18, color: MAT.TEAL_TRIM },
+        { x: 640, dir: -1, speed: 13, color: MAT.BLOSSOM_LILAC }
+      ];
+
+      // Canal Solar Boats & Barges
+      const boats = [
+        { x: 240, y: 219, dir: 1,  speed: 8.5, type: 'catamaran' },
+        { x: 510, y: 229, dir: -1, speed: 6.2, type: 'barge' },
+        { x: 110, y: 242, dir: 1,  speed: 7.0, type: 'gondola' }
+      ];
+
+      // Swimming Koi & Ducks
+      const kois = Array.from({ length: 7 }, (_, i) => ({
+        x: 190 + i * 62,
+        y: 224 + (i % 3) * 11,
+        dir: i % 2 === 0 ? 1 : -1,
+        speed: 4 + (i % 3) * 1.8,
+        phase: i * 1.3
+      }));
+
+      // Soaring Birds & Butterflies/Fireflies
+      const birds = Array.from({ length: 9 }, (_, i) => ({
+        x: (i * 85) % WORLD_W,
+        y: 44 + (i % 3) * 22 + (i % 2) * 6,
+        vx: (i < 5 ? 15 : -13) * (0.9 + (i % 3) * 0.1),
+        flapPhase: i * 0.85
+      }));
+
+      const particles = Array.from({ length: 85 }, () => ({
+        x: rngInit() * WORLD_W,
+        y: rngInit() * WORLD_H,
+        vx: (rngInit() - 0.5) * 12,
+        vy: (rngInit() - 0.5) * 8,
+        phase: rngInit() * Math.PI * 2,
+        seed: Math.floor(rngInit() * 1000)
+      }));
+
+      const waterRipples = []; // Dynamic concentric rings from heron beak / raindrops
+
+      // =========================================================================
+      // 6. VIEWPORT FRAMEBUFFER & CAMERA SYSTEM
+      // =========================================================================
+      const canvas = document.getElementById('city-canvas');
+      const ctx = canvas.getContext('2d', { alpha: false });
+      const clockText = document.getElementById('clock-text');
+      const statusRegion = document.getElementById('hud-status');
+      const landmarkBadge = document.getElementById('landmark-badge');
+      const landmarkText = document.getElementById('landmark-text');
+
+      let viewW = 480;
+      let viewH = 270;
+      let frameImgData = null;
+      let out32 = null;
+
+      // Interactive state
+      const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      let isPaused = reducedMotionQuery.matches;
+      let isVisibilityPaused = false;
+      let timeMode = 'auto';
+      let tDay = 0.685; // Start at gorgeous Golden Late-Afternoon (16:26) so sunset arrives naturally!
+      let animTime = 0;
+      let weatherMode = 'breeze'; // 'breeze' | 'sunshower' | 'bloom'
+      let isZoom2x = false;
+      let isPureView = false;
+
+      // Camera center in WORLD coordinates
+      let camX = 386;
+      let camY = 135;
+      let targetCamX = 386;
+      let targetCamY = 135;
+      let isDragging = false;
+      let dragStartX = 0, dragStartY = 0, dragCamX = 386, dragCamY = 135;
+      let pointerNormX = 0.5;
+
+      const LANDMARKS = [
+        { x: 386, y: 100, r: 46, label: '圣莲生态穹顶 · 追日定日镜环与发光母树' },
+        { x: 377, y: 138, r: 34, label: '中央云站 · 悬空植物轻轨与空中单车廊道' },
+        { x: 194, y: 175, r: 30, label: '翠崖双叠瀑 · 铜木水轮发电坊' },
+        { x: 325, y: 192, r: 30, label: '临水茶寮 · 品茗旅人与棚顶晒太阳的橘猫' },
+        { x: 397, y: 202, r: 32, label: '苔灯石拱桥 · 运河光帆船影' },
+        { x: 496, y: 168, r: 34, label: '屋顶共耕农园 · 向日葵畦与农耕小机偶' },
+        { x: 135, y: 118, r: 34, label: '望海崖台 · 放飞燕尾纸鸢的孩童与蜂箱' },
+        { x: 646, y: 165, r: 32, label: '东港风帆灯塔 · 萤藻航标木栈桥' }
+      ];
+
+      function resizeBuffers() {
+        const cssW = Math.max(320, window.innerWidth);
+        const cssH = Math.max(240, window.innerHeight);
+        const aspect = cssW / cssH;
+        const baseH = isZoom2x ? 135 : 270;
+        viewH = baseH;
+        viewW = Math.min(WORLD_W, Math.max(180, Math.round(baseH * aspect)));
+
+        canvas.width = viewW;
+        canvas.height = viewH;
+        ctx.imageSmoothingEnabled = false;
+
+        frameImgData = ctx.createImageData(viewW, viewH);
+        out32 = new Uint32Array(frameImgData.data.buffer);
+        clampCamera();
+      }
+
+      function clampCamera() {
+        const halfW = viewW * 0.5;
+        const halfH = viewH * 0.5;
+        targetCamX = Math.max(halfW, Math.min(WORLD_W - halfW, targetCamX));
+        targetCamY = Math.max(halfH, Math.min(WORLD_H - halfH, targetCamY));
+        camX = Math.max(halfW, Math.min(WORLD_W - halfW, camX));
+        camY = Math.max(halfH, Math.min(WORLD_H - halfH, camY));
+      }
+
+      window.addEventListener('resize', resizeBuffers);
+
+      // =========================================================================
+      // 7. PER-FRAME PIXEL RENDERING PIPELINE
+      // =========================================================================
+      function plotViewMat(wx, wy, mat, shade = 2, nx = 0, viewLeft = 0, viewTop = 0) {
+        const vx = (wx - viewLeft) | 0;
+        const vy = (wy - viewTop) | 0;
+        if (vx >= 0 && vx < viewW && vy >= 0 && vy < viewH) {
+          out32[vy * viewW + vx] = colorLUT[mat | ((shade & 3) << 5) | (((nx + 1) & 3) << 7)];
+        }
+      }
+
+      function plotViewU32(wx, wy, u32, viewLeft, viewTop) {
+        const vx = (wx - viewLeft) | 0;
+        const vy = (wy - viewTop) | 0;
+        if (vx >= 0 && vx < viewW && vy >= 0 && vy < viewH) {
+          out32[vy * viewW + vx] = u32;
+        }
+      }
+
+      function fillViewRectMat(wx, wy, rw, rh, mat, shade, viewLeft, viewTop) {
+        const u32 = colorLUT[mat | ((shade & 3) << 5) | (1 << 7)];
+        const x0 = Math.max(0, (wx - viewLeft) | 0);
+        const y0 = Math.max(0, (wy - viewTop) | 0);
+        const x1 = Math.min(viewW, (wx + rw - viewLeft) | 0);
+        const y1 = Math.min(viewH, (wy + rh - viewTop) | 0);
+        for (let py = y0; py < y1; py++) {
+          const row = py * viewW;
+          for (let px = x0; px < x1; px++) {
+            out32[row + px] = u32;
+          }
+        }
+      }
+
+      function plotViewLineU32(wx0, wy0, wx1, wy1, u32, viewLeft, viewTop) {
+        let ax = (wx0 - viewLeft) | 0, ay = (wy0 - viewTop) | 0;
+        const bx = (wx1 - viewLeft) | 0, by = (wy1 - viewTop) | 0;
+        const dx = Math.abs(bx - ax), sx = ax < bx ? 1 : -1;
+        const dy = -Math.abs(by - ay), sy = ay < by ? 1 : -1;
+        let err = dx + dy;
+        while (true) {
+          if (ax >= 0 && ax < viewW && ay >= 0 && ay < viewH) {
+            out32[ay * viewW + ax] = u32;
+          }
+          if (ax === bx && ay === by) break;
+          const e2 = 2 * err;
+          if (e2 >= dy) { err += dy; ax += sx; }
+          if (e2 <= dx) { err += dx; ay += sy; }
+        }
+      }
+
+      // Bayer-dithered additive glow light stamp (warm lanterns, tram beams, bio-orbs)
+      function stampDitheredGlow(wx, wy, radius, rAdd, gAdd, bAdd, intensity, viewLeft, viewTop) {
+        if (intensity <= 0.03) return;
+        const vxCenter = (wx - viewLeft) | 0;
+        const vyCenter = (wy - viewTop) | 0;
+        const rad = radius | 0;
+        if (vxCenter + rad < 0 || vxCenter - rad >= viewW || vyCenter + rad < 0 || vyCenter - rad >= viewH) return;
+
+        const x0 = Math.max(0, vxCenter - rad);
+        const x1 = Math.min(viewW - 1, vxCenter + rad);
+        const y0 = Math.max(0, vyCenter - rad);
+        const y1 = Math.min(viewH - 1, vyCenter + rad);
+        const invR2 = 1 / (rad * rad);
+
+        for (let py = y0; py <= y1; py++) {
+          const dy = py - vyCenter;
+          const dy2 = dy * dy;
+          const row = py * viewW;
+          const byRow = (py & 3) << 2;
+          for (let px = x0; px <= x1; px++) {
+            const dx = px - vxCenter;
+            const d2 = (dx * dx + dy2) * invR2;
+            if (d2 >= 1.0) continue;
+            const falloff = (1.0 - d2) * (1.0 - d2) * intensity;
+            const bayer = BAYER4[byRow | (px & 3)] / 16.0;
+            // Quantize light into 3 crisp pixel-art glow rings using Bayer dithering
+            let tier = 0;
+            if (falloff > 0.58 + bayer * 0.18) tier = 0.62;
+            else if (falloff > 0.24 + bayer * 0.20) tier = 0.32;
+            else if (falloff > 0.07 + bayer * 0.14) tier = 0.13;
+            if (tier > 0) {
+              const c = out32[row + px];
+              const cr = unpackR(c) + rAdd * tier;
+              const cg = unpackG(c) + gAdd * tier;
+              const cb = unpackB(c) + bAdd * tier;
+              out32[row + px] = packRGBA(cr, cg, cb);
+            }
+          }
+        }
+      }
+
+      function blitIndexedLayer(layerBuf, layerW, parallax, viewLeft, viewTop, maxY) {
+        const centerW = WORLD_W * 0.5;
+        const layerCenter = layerW * 0.5;
+        const shiftX = Math.round((camX - centerW) * parallax + layerCenter - viewW * 0.5);
+        const yEnd = Math.min(viewH, maxY - viewTop);
+        if (yEnd <= 0) return shiftX;
+
+        for (let vy = 0; vy < yEnd; vy++) {
+          const wy = vy + viewTop;
+          if (wy < 0 || wy >= WORLD_H) continue;
+          const srcRow = wy * layerW;
+          const dstRow = vy * viewW;
+          for (let vx = 0; vx < viewW; vx++) {
+            const lx = vx + shiftX;
+            if (lx < 0 || lx >= layerW) continue;
+            const packed = layerBuf[srcRow + lx];
+            if (packed === 0) continue;
+            const mat = packed & 31;
+            if (mat === MAT.WINDOW) {
+              out32[dstRow + vx] = windowLUT[packed >>> 9];
+            } else if (mat === MAT.LANTERN) {
+              out32[dstRow + vx] = emissiveLUT[(packed >>> 9) & 63];
+            } else if (mat === MAT.BIO_FLORA) {
+              out32[dstRow + vx] = emissiveLUT[64 + ((packed >>> 9) & 63)];
+            } else {
+              out32[dstRow + vx] = colorLUT[packed & 511];
+            }
+          }
+        }
+        return shiftX;
+      }
+
+      function renderSkyAndCelestials(viewLeft, viewTop) {
+        const skyLimit = Math.min(viewH, WATER_Y - viewTop + 2);
+        // 1. Bayer-dithered quantized sky gradient
+        for (let vy = 0; vy < skyLimit; vy++) {
+          const wy = Math.max(0, Math.min(WATER_Y, vy + viewTop));
+          const t = (wy / WATER_Y) * 4.0;
+          const seg = Math.min(3, t | 0);
+          const frac = t - seg;
+          const s0 = seg * 3, s1 = (seg + 1) * 3;
+          const r0 = skyStopsRGB[s0], g0 = skyStopsRGB[s0 + 1], b0 = skyStopsRGB[s0 + 2];
+          const dr = skyStopsRGB[s1] - r0, dg = skyStopsRGB[s1 + 1] - g0, db = skyStopsRGB[s1 + 2] - b0;
+          const row = vy * viewW;
+          const byRow = (vy & 3) << 2;
+
+          for (let vx = 0; vx < viewW; vx++) {
+            const bayer = (BAYER4[byRow | (vx & 3)] / 16.0) - 0.5;
+            // Quantize into crisp pixel bands with ordered dither transitions
+            const q = Math.max(0, Math.min(1, Math.round((frac + bayer * 0.28) * 5) / 5));
+            out32[row + vx] = packRGBA(r0 + dr * q, g0 + dg * q, b0 + db * q);
+          }
+        }
+
+        // 2. Night Stars & Shooting Star
+        const nightAlpha = waterTint.nightFactor;
+        if (nightAlpha > 0.25) {
+          const starShift = Math.round((camX - WORLD_W * 0.5) * 0.12 + WORLD_W * 0.5 - viewW * 0.5);
+          for (let i = 0; i < stars.length; i++) {
+            const st = stars[i];
+            const vx = st.x - starShift;
+            const vy = st.y - viewTop;
+            if (vx < 0 || vx >= viewW || vy < 0 || vy >= skyLimit) continue;
+            const tw = Math.sin(animTime * st.speed + st.phase) * 0.5 + 0.5;
+            if (tw * nightAlpha > 0.38) {
+              const lum = st.bright ? 248 : 190;
+              out32[vy * viewW + vx] = packRGBA(lum - 16, lum, 255);
+              if (st.bright && tw > 0.82 && nightAlpha > 0.65) {
+                const soft = packRGBA(120, 175, 220);
+                if (vx > 0) out32[vy * viewW + vx - 1] = soft;
+                if (vx + 1 < viewW) out32[vy * viewW + vx + 1] = soft;
+              }
+            }
+          }
+          // Periodic shooting star every ~14s at night
+          const meteorCycle = (animTime * 0.07) % 1;
+          if (nightAlpha > 0.6 && meteorCycle < 0.06) {
+            const prog = meteorCycle / 0.06;
+            const mx = Math.round(520 - prog * 170);
+            const my = Math.round(22 + prog * 54);
+            plotViewLineU32(mx, my, mx + 12, my - 4, packRGBA(180, 245, 255), viewLeft, viewTop);
+            plotViewU32(mx, my, packRGBA(255, 255, 255), viewLeft, viewTop);
+          }
+        }
+
+        // 3. Sun & Crescent Moon Arc
+        // Sun rises t=0.23 (east x=560) -> zenith t=0.50 (x=380, y=26) -> sets t=0.77 (west x=150, y=152)
+        if (tDay > 0.19 && tDay < 0.82) {
+          const sunU = (tDay - 0.21) / 0.58;
+          const sunX = Math.round(585 - sunU * 440);
+          const sunY = Math.round(148 - Math.sin(Math.max(0, Math.min(1, sunU)) * Math.PI) * 122);
+          waterTint.sunX = sunX;
+          waterTint.sunY = sunY;
+
+          // Dithered warm sun corona
+          const isLowSun = sunY > 75;
+          stampDitheredGlow(sunX, sunY, isLowSun ? 46 : 34, 255, isLowSun ? 145 : 210, isLowSun ? 65 : 140, 0.72, viewLeft, viewTop);
+
+          // Crisp pixel Sun disc (radius 10)
+          const sunCore = isLowSun ? packRGBA(255, 232, 158) : packRGBA(255, 252, 226);
+          const sunRim  = isLowSun ? packRGBA(255, 176, 88)  : packRGBA(255, 238, 176);
+          for (let dy = -10; dy <= 10; dy++) {
+            for (let dx = -10; dx <= 10; dx++) {
+              const d2 = dx * dx + dy * dy;
+              if (d2 <= 100) {
+                plotViewU32(sunX + dx, sunY + dy, d2 > 72 ? sunRim : sunCore, viewLeft, viewTop);
+              }
+            }
+          }
+        } else {
+          // Crescent Moon arc across night sky
+          const nightU = tDay >= 0.82 ? (tDay - 0.82) / 0.37 : (tDay + 0.18) / 0.37;
+          const moonX = Math.round(560 - nightU * 360);
+          const moonY = Math.round(126 - Math.sin(Math.max(0, Math.min(1, nightU)) * Math.PI) * 92);
+          waterTint.sunX = moonX;
+          waterTint.sunY = moonY;
+
+          stampDitheredGlow(moonX, moonY, 28, 95, 165, 225, 0.45, viewLeft, viewTop);
+          const moonLit = packRGBA(238, 248, 255);
+          const moonEarthshine = packRGBA(36, 58, 86);
+          for (let dy = -8; dy <= 8; dy++) {
+            for (let dx = -8; dx <= 8; dx++) {
+              if (dx * dx + dy * dy <= 64) {
+                const inShadow = (dx - 3) * (dx - 3) + (dy + 2) * (dy + 2) <= 46;
+                plotViewU32(moonX + dx, moonY + dy, inShadow ? moonEarthshine : moonLit, viewLeft, viewTop);
+              }
+            }
+          }
+        }
+
+        // 4. Double Pixel Rainbow during Sun-shower!
+        if (weatherMode === 'sunshower' && nightAlpha < 0.55) {
+          const rbColors = [
+            packRGBA(244, 108, 112),
+            packRGBA(250, 176, 96),
+            packRGBA(246, 232, 118),
+            packRGBA(118, 224, 146),
+            packRGBA(104, 188, 242),
+            packRGBA(168, 132, 232)
+          ];
+          const rcx = 410, rcy = 205;
+          for (let vx = 0; vx < viewW; vx++) {
+            const wx = vx + viewLeft;
+            const dx = wx - rcx;
+            for (let vy = 10; vy < skyLimit; vy++) {
+              if (((vx + vy) & 1) !== 0) continue; // delicate 50% pixel dither!
+              const wy = vy + viewTop;
+              const dy = wy - rcy;
+              if (dy > 0) continue;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              const band = Math.floor((dist - 142) * 0.5);
+              if (band >= 0 && band < 6) {
+                const cur = out32[vy * viewW + vx];
+                const rc = rbColors[5 - band];
+                out32[vy * viewW + vx] = packRGBA(
+                  (unpackR(cur) * 2 + unpackR(rc)) / 3,
+                  (unpackG(cur) * 2 + unpackG(rc)) / 3,
+                  (unpackB(cur) * 2 + unpackB(rc)) / 3
+                );
+              }
+            }
+          }
+        }
+
+        // 5. Volumetric Pixel Cumulus Clouds (with warm sunlit tops & flat undersides)
+        for (let i = 0; i < clouds.length; i++) {
+          const cl = clouds[i];
+          const shift = Math.round((camX - WORLD_W * 0.5) * cl.parallax + WORLD_W * 0.5 - viewW * 0.5);
+          const cx = Math.round(cl.x) - shift;
+          const cy = cl.y - viewTop;
+          if (cx < -70 || cx > viewW + 70 || cy < -25 || cy > skyLimit + 10) continue;
+
+          const flatBottomY = cy + 6;
+          for (let p = 0; p < cl.puffs.length; p++) {
+            const pf = cl.puffs[p];
+            const pxCenter = cx + pf.ox;
+            const pyCenter = cy + pf.oy;
+            for (let dy = -pf.ry; dy <= pf.ry; dy++) {
+              const py = pyCenter + dy;
+              if (py < 0 || py >= skyLimit || py > flatBottomY) continue;
+              for (let dx = -pf.rx; dx <= pf.rx; dx++) {
+                const px = pxCenter + dx;
+                if (px < 0 || px >= viewW) continue;
+                if ((dx * dx) / (pf.rx * pf.rx) + (dy * dy) / (pf.ry * pf.ry) <= 1.0) {
+                  let shade = 2;
+                  if (py >= flatBottomY - 1 || dy > pf.ry * 0.45) shade = 0;
+                  else if (dy > 0) shade = 1;
+                  else if (dy < -pf.ry * 0.45 && ((px + py) & 1) === 0) shade = 3;
+                  out32[py * viewW + px] = cloudShadesU32[shade];
+                }
+              }
+            }
+          }
+        }
+
+        // 6. Solar Bio-Airships gliding between clouds & mountains
+        for (let i = 0; i < airships.length; i++) {
+          const ship = airships[i];
+          const bob = Math.round(Math.sin(animTime * 1.4 + ship.bobPhase) * 2);
+          const sx = Math.round(ship.x);
+          const sy = ship.y + bob;
+          const rx = i === 0 ? 18 : 13;
+          const ry = i === 0 ? 6 : 4;
+
+          // Envelope hull (cream linen + golden solar spine)
+          for (let dy = -ry; dy <= ry; dy++) {
+            for (let dx = -rx; dx <= rx; dx++) {
+              if ((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) <= 1.0) {
+                const isSolarSpine = dy < -ry * 0.3 && Math.abs(dx) < rx * 0.65;
+                const mat = isSolarSpine ? MAT.SOLAR_GLASS : (Math.abs(dy) === 0 ? MAT.TEAL_TRIM : MAT.AWNING_CREAM);
+                const shade = dy < -1 ? 3 : dy > 2 ? 0 : 2;
+                plotViewMat(sx + dx, sy + dy, mat, shade, 0, viewLeft, viewTop);
+              }
+            }
+          }
+          // Dorsal solar sail fin
+          const tailDir = -ship.dir;
+          for (let fy = 1; fy <= 4; fy++) {
+            for (let fx = 0; fx < 6 - fy; fx++) {
+              plotViewMat(sx + tailDir * (rx - 5 + fx), sy - ry - fy + 1, MAT.SAIL_AMBER, 2, 0, viewLeft, viewTop);
+            }
+          }
+          // Timber gondola + glowing night cabin & navigation beacon
+          fillViewRectMat(sx - 5, sy + ry + 2, 10, 3, MAT.TIMBER, 1, viewLeft, viewTop);
+          plotViewMat(sx - 4, sy + ry + 1, MAT.STONE_DARK, 0, 0, viewLeft, viewTop);
+          plotViewMat(sx + 4, sy + ry + 1, MAT.STONE_DARK, 0, 0, viewLeft, viewTop);
+          if (nightAlpha > 0.3) {
+            plotViewU32(sx - 2, sy + ry + 3, packRGBA(255, 218, 120), viewLeft, viewTop);
+            plotViewU32(sx + 1, sy + ry + 3, packRGBA(255, 218, 120), viewLeft, viewTop);
+            if (((animTime * 2) | 0) % 2 === 0) {
+              plotViewU32(sx + ship.dir * rx, sy, packRGBA(90, 255, 210), viewLeft, viewTop);
+            }
+          }
+        }
+      }
+
+      // Dynamic Windmills, Helical Turbines, Rotating Heliostat Ring & Waterfalls
+      function renderCleanEnergyKinetics(targetLayer, parallax, viewLeft, viewTop) {
+        const shiftX = Math.round((camX - WORLD_W * 0.5) * parallax + WORLD_W * 0.5 - viewW * 0.5);
+        const toWorldViewX = (lx) => lx - shiftX + viewLeft;
+
+        // 1. Rotating Golden Heliostat Ring above Sun-Lotus Biodome (on 'mid' layer)
+        if (targetLayer === 'mid') {
+          const hcx = toWorldViewX(386);
+          const hcy = 72;
+          for (let deg = 0; deg < 360; deg += 5) {
+            const ang = (deg * Math.PI) / 180 + animTime * 0.8;
+            const rx = Math.round(hcx + Math.cos(ang) * 21);
+            const ry = Math.round(hcy + Math.sin(ang) * 4);
+            // Back half goes behind crown only if sin < 0, front half sparkles in front
+            if (Math.sin(ang) < 0 && Math.abs(Math.cos(ang)) < 0.65) continue;
+            const glint = Math.sin(ang * 2 - animTime * 2) > 0.5 ? 3 : 2;
+            plotViewMat(rx, ry, MAT.BRASS, glint, 0, viewLeft, viewTop);
+          }
+        }
+
+        // 2. Helical Vertical-Axis Wind Turbines (Savonius/Darrieus double-helix)
+        for (let i = 0; i < helicalTurbines.length; i++) {
+          const ht = helicalTurbines[i];
+          if (ht.layer !== targetLayer) continue;
+          const tx = toWorldViewX(ht.x);
+          // Central brass mast
+          fillViewRectMat(tx, ht.y, 1, ht.h + 4, MAT.BRASS, 1, viewLeft, viewTop);
+          for (let dy = 0; dy < ht.h; dy++) {
+            const a1 = animTime * ht.speed + ht.phase + dy * 0.42;
+            const x1 = Math.round(tx + Math.sin(a1) * ht.r);
+            const x2 = Math.round(tx + Math.sin(a1 + Math.PI) * ht.r);
+            plotViewMat(x1, ht.y + dy, MAT.TEAL_TRIM, Math.cos(a1) > 0 ? 3 : 1, 0, viewLeft, viewTop);
+            plotViewMat(x2, ht.y + dy, MAT.AWNING_CREAM, Math.cos(a1 + Math.PI) > 0 ? 3 : 1, 0, viewLeft, viewTop);
+          }
+        }
+
+        // 3. 3-Blade Sail Windmills
+        for (let i = 0; i < windmills.length; i++) {
+          const wm = windmills[i];
+          if (wm.layer !== targetLayer) continue;
+          const wx = toWorldViewX(wm.x);
+          const wy = wm.y;
+          const sparColor = colorLUT[MAT.TIMBER | (2 << 5) | (1 << 7)];
+          const sailLit   = colorLUT[MAT.AWNING_CREAM | (3 << 5) | (1 << 7)];
+          const sailMid   = colorLUT[MAT.AWNING_CREAM | (2 << 5) | (1 << 7)];
+
+          for (let b = 0; b < 3; b++) {
+            const ang = animTime * wm.speed + wm.phase + (b * Math.PI * 2) / 3;
+            const ca = Math.cos(ang), sa = Math.sin(ang);
+            const px = -sa, py = ca;
+            const tipX = Math.round(wx + ca * wm.bladeLen);
+            const tipY = Math.round(wy + sa * wm.bladeLen);
+            plotViewLineU32(wx, wy, tipX, tipY, sparColor, viewLeft, viewTop);
+            // Linen sail lattice along outer 75% of spar
+            for (let r = 4; r <= wm.bladeLen - 1; r++) {
+              const bx = wx + ca * r;
+              const by = wy + sa * r;
+              const sailW = r < wm.bladeLen - 3 ? 3 : 2;
+              for (let sw = 1; sw <= sailW; sw++) {
+                plotViewU32(Math.round(bx + px * sw), Math.round(by + py * sw), sw === 1 ? sailLit : sailMid, viewLeft, viewTop);
+              }
+            }
+          }
+          // Brass rotor hub
+          fillViewRectMat(wx - 1, wy - 1, 3, 3, MAT.BRASS, 3, viewLeft, viewTop);
+        }
+
+        // 4. Cascading Aqueduct Waterfalls & Spinning Hydro-Wheels (on 'main' layer)
+        if (targetLayer === 'main') {
+          // Upper cliff cascade (x=188..198, y=148..212) + secondary cascade (x=200..205, y=172..212)
+          const foam3 = colorLUT[MAT.WATER_FOAM | (3 << 5) | (1 << 7)];
+          const foam2 = colorLUT[MAT.WATER_FOAM | (2 << 5) | (1 << 7)];
+          const foam1 = colorLUT[MAT.WATER_FOAM | (1 << 5) | (1 << 7)];
+          const scroll = (animTime * 28) | 0;
+
+          for (let fy = 148; fy < WATER_Y; fy++) {
+            const wSpread = fy > 184 ? 10 : 8;
+            for (let fx = 0; fx < wSpread; fx++) {
+              const wx = 188 + fx;
+              const n = ((fy - scroll + fx * 7) * 13) & 15;
+              const col = (fx === 0 || fx === wSpread - 1 || n < 5) ? foam3 : (n < 11 ? foam2 : foam1);
+              plotViewU32(wx, fy, col, viewLeft, viewTop);
+            }
+          }
+          // Rotating Copper-and-Oak Waterwheels at (199, 180, r=9) and (203, 198, r=7)
+          const wheels = [
+            { cx: 201, cy: 180, r: 9, spd: 1.9 },
+            { cx: 204, cy: 198, r: 7, spd: 2.5 }
+          ];
+          const rimCol = colorLUT[MAT.TIMBER | (2 << 5) | (1 << 7)];
+          const hubCol = colorLUT[MAT.BRASS  | (3 << 5) | (1 << 7)];
+          for (let wIdx = 0; wIdx < wheels.length; wIdx++) {
+            const wh = wheels[wIdx];
+            // Rim circle
+            for (let deg = 0; deg < 360; deg += 10) {
+              const rad = (deg * Math.PI) / 180;
+              plotViewU32(Math.round(wh.cx + Math.cos(rad) * wh.r), Math.round(wh.cy + Math.sin(rad) * wh.r), rimCol, viewLeft, viewTop);
+            }
+            // Rotating spokes & paddles
+            for (let sp = 0; sp < 6; sp++) {
+              const ang = animTime * wh.spd + (sp * Math.PI) / 3;
+              const sx = Math.round(wh.cx + Math.cos(ang) * (wh.r + 1));
+              const sy = Math.round(wh.cy + Math.sin(ang) * (wh.r + 1));
+              plotViewLineU32(wh.cx, wh.cy, sx, sy, rimCol, viewLeft, viewTop);
+              plotViewU32(sx, sy, foam3, viewLeft, viewTop); // water droplet off paddle!
+            }
+            fillViewRectMat(wh.cx - 1, wh.cy - 1, 3, 3, MAT.BRASS, 3, viewLeft, viewTop);
+            plotViewU32(wh.cx, wh.cy, hubCol, viewLeft, viewTop);
+          }
+
+          // Waterfall base foam & rising mist spray at canal surface
+          for (let mx = 184; mx <= 206; mx++) {
+            const lift = Math.round(Math.abs(Math.sin(animTime * 5 + mx * 0.7)) * 4);
+            for (let my = 0; my <= lift; my++) {
+              if (((mx + my + (animTime * 10 | 0)) & 1) === 0) {
+                plotViewU32(mx, WATER_Y - 1 - my, foam3, viewLeft, viewTop);
+              }
+            }
+          }
+        }
+      }
+
+      // Sky-Tram, Viaduct Cyclists, Citizens, Cat, Kite, Clothesline & Agro-Bot
+      function renderTransitAndCitizens(viewLeft, viewTop) {
+        const nightAlpha = waterTint.nightFactor;
+
+        // 1. Suspended 3-Car Botanical Sky-Tram along beamY=137 (cars hang at y=141..149)
+        const carW = 20, carGap = 3;
+        for (let c = 0; c < 3; c++) {
+          const cx = Math.round(tram.x - c * (carW + carGap));
+          const cy = 141;
+          // Suspension bogies & brass pantograph hangers up to beamY=138
+          fillViewRectMat(cx + 4, 138, 2, 3, MAT.STONE_DARK, 1, viewLeft, viewTop);
+          fillViewRectMat(cx + carW - 6, 138, 2, 3, MAT.STONE_DARK, 1, viewLeft, viewTop);
+          // Streamlined cream & teal-green tram body
+          fillViewRectMat(cx + 1, cy, carW - 2, 2, MAT.AWNING_CREAM, 3, viewLeft, viewTop);
+          fillViewRectMat(cx, cy + 2, carW, 4, MAT.AWNING_CREAM, 2, viewLeft, viewTop);
+          fillViewRectMat(cx + 1, cy + 6, carW - 2, 2, MAT.TEAL_TRIM, 2, viewLeft, viewTop);
+          // Rooftop mini planter strip on middle car!
+          if (c === 1) {
+            fillViewRectMat(cx + 5, cy - 1, 10, 1, MAT.FOLIAGE_LIME, 2, viewLeft, viewTop);
+          }
+          // Panoramic windows + tiny seated passenger silhouettes
+          const winCol = nightAlpha > 0.25 ? packRGBA(255, 224, 132) : colorLUT[MAT.WINDOW | (3 << 5) | (1 << 7)];
+          for (let wx = 2; wx < carW - 2; wx += 4) {
+            for (let wy = 2; wy <= 4; wy++) {
+              plotViewU32(cx + wx, cy + wy, winCol, viewLeft, viewTop);
+              plotViewU32(cx + wx + 1, cy + wy, winCol, viewLeft, viewTop);
+              plotViewU32(cx + wx + 2, cy + wy, winCol, viewLeft, viewTop);
+            }
+            // Tiny passenger head silhouette in alternating windows
+            if (((wx + c) & 1) === 0) {
+              plotViewMat(cx + wx + 1, cy + 4, MAT.STONE_DARK, 0, 0, viewLeft, viewTop);
+            }
+          }
+          if (c < 2) {
+            // Flexible accordion coupling between cars
+            fillViewRectMat(cx - carGap, cy + 2, carGap, 5, MAT.STONE_DARK, 1, viewLeft, viewTop);
+          }
+          if (nightAlpha > 0.3) {
+            stampDitheredGlow(cx + 10, cy + 4, 14, 255, 195, 95, nightAlpha * 0.55, viewLeft, viewTop);
+          }
+        }
+        // Lead car warm headlight beam at dusk/night
+        if (nightAlpha > 0.3) {
+          const leadFrontX = Math.round(tram.x + carW);
+          plotViewU32(leadFrontX, 145, packRGBA(255, 250, 200), viewLeft, viewTop);
+          stampDitheredGlow(leadFrontX + 12, 145, 18, 255, 225, 135, nightAlpha * 0.65, viewLeft, viewTop);
+        }
+
+        // 2. Viaduct Cyclists on Lower Garden Deck (y=152)
+        for (let i = 0; i < cyclists.length; i++) {
+          const cyc = cyclists[i];
+          const x = Math.round(cyc.x);
+          const y = 152;
+          // Two wheels (2x2) + frame + pedaling rider
+          plotViewMat(x - 2, y, MAT.STONE_DARK, 0, 0, viewLeft, viewTop);
+          plotViewMat(x + 2, y, MAT.STONE_DARK, 0, 0, viewLeft, viewTop);
+          plotViewMat(x, y - 1, MAT.BRASS, 2, 0, viewLeft, viewTop);
+          plotViewMat(x, y - 2, cyc.color, 2, 0, viewLeft, viewTop);
+          plotViewMat(x, y - 3, cyc.color, 3, 0, viewLeft, viewTop);
+          plotViewMat(x + cyc.dir, y - 4, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop); // sun hat / helmet
+        }
+
+        // 3. Flapping Colorful Laundry Line between Townhouses (x=262..294, y=174)
+        for (let lx = 262; lx <= 294; lx++) {
+          const sag = Math.round(Math.sin(((lx - 262) / 32) * Math.PI) * 3);
+          plotViewMat(lx, 173 + sag, MAT.STONE_DARK, 1, 0, viewLeft, viewTop);
+        }
+        const shirts = [
+          { x: 268, mat: MAT.AWNING_CREAM },
+          { x: 275, mat: MAT.AWNING_CORAL },
+          { x: 282, mat: MAT.TEAL_TRIM },
+          { x: 288, mat: MAT.SUNFLOWER }
+        ];
+        for (let s = 0; s < shirts.length; s++) {
+          const sh = shirts[s];
+          const sag = Math.round(Math.sin(((sh.x - 262) / 32) * Math.PI) * 3);
+          const flap = Math.round(Math.sin(animTime * 4.5 + s * 1.4));
+          fillViewRectMat(sh.x, 174 + sag, 4, 3, sh.mat, 2, viewLeft, viewTop);
+          fillViewRectMat(sh.x + flap, 177 + sag, 4, 2, sh.mat, 3, viewLeft, viewTop);
+        }
+
+        // 4. Kids Flying a Swallow-Tailed Kite on Cliff Overlook (x=136, y=168)
+        const kidX = 136, kidY = 167;
+        // Kid 1 holding spool + Kid 2 pointing up
+        fillViewRectMat(kidX, kidY - 4, 2, 3, MAT.TEAL_TRIM, 2, viewLeft, viewTop);
+        plotViewMat(kidX, kidY - 5, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+        plotViewMat(kidX, kidY - 1, MAT.STONE_DARK, 0, 0, viewLeft, viewTop);
+
+        const jump = ((animTime * 2.5) | 0) % 5 === 0 ? 1 : 0;
+        fillViewRectMat(kidX + 5, kidY - 3 - jump, 2, 2, MAT.AWNING_CORAL, 2, viewLeft, viewTop);
+        plotViewMat(kidX + 5, kidY - 4 - jump, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+        plotViewMat(kidX + 5, kidY - 1 - jump, MAT.STONE_DARK, 0, 0, viewLeft, viewTop);
+
+        // Bobbing Swallow Kite in sky (around x=114, y=106)
+        const kiteX = Math.round(112 + Math.sin(animTime * 1.7) * 6);
+        const kiteY = Math.round(106 + Math.cos(animTime * 2.3) * 4);
+        plotViewLineU32(kidX, kidY - 4, kiteX, kiteY + 2, packRGBA(215, 225, 225), viewLeft, viewTop);
+        // Diamond coral-and-gold kite + streaming tail ribbon
+        fillViewRectMat(kiteX - 2, kiteY - 1, 5, 3, MAT.AWNING_CORAL, 3, viewLeft, viewTop);
+        plotViewMat(kiteX, kiteY - 2, MAT.SUNFLOWER, 3, 0, viewLeft, viewTop);
+        plotViewMat(kiteX, kiteY, MAT.SUNFLOWER, 3, 0, viewLeft, viewTop);
+        for (let t = 1; t <= 6; t++) {
+          const tx = kiteX - t - Math.round(Math.sin(animTime * 6 - t * 0.8));
+          plotViewMat(tx, kiteY + 1 + (t >> 1), t % 2 === 0 ? MAT.SUNFLOWER : MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+        }
+
+        // 5. Buzzing Golden Bees around Rooftop Apiary (by day)
+        if (nightAlpha < 0.4) {
+          for (let b = 0; b < 4; b++) {
+            const bx = Math.round(154 + Math.cos(animTime * 5.2 + b * 1.7) * 7);
+            const by = Math.round(166 + Math.sin(animTime * 6.8 + b * 2.3) * 4);
+            plotViewU32(bx, by, packRGBA(255, 224, 68), viewLeft, viewTop);
+          }
+        }
+
+        // 6. Canal-side Tea House Friends, Rising Tea Steam & Napping Orange Cat!
+        // Friend A (left of table x=338) & Friend B (right of table x=347)
+        fillViewRectMat(337, 197, 2, 4, MAT.TEAL_TRIM, 2, viewLeft, viewTop);
+        plotViewMat(337, 196, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+        fillViewRectMat(347, 197, 2, 4, MAT.SKIN_CLOTH, 2, viewLeft, viewTop);
+        plotViewMat(347, 196, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+        // Teacups + animated rising 1px white steam wisps
+        plotViewMat(341, 198, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+        plotViewMat(344, 198, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+        const steamStep = (animTime * 3) | 0;
+        plotViewU32(341 + (steamStep & 1), 196 - (steamStep % 3), packRGBA(235, 245, 245), viewLeft, viewTop);
+        plotViewU32(344 - (steamStep & 1), 195 - ((steamStep + 1) % 3), packRGBA(235, 245, 245), viewLeft, viewTop);
+
+        // Orange Tabby Cat curled on warm Tea-House Awning (x=312, y=184)
+        fillViewRectMat(311, 184, 4, 2, MAT.SUNFLOWER, 2, viewLeft, viewTop);
+        plotViewMat(310, 183, MAT.SUNFLOWER, 3, 0, viewLeft, viewTop); // head & ear
+        const tailLift = Math.sin(animTime * 2.6) > 0.4 ? -1 : 0;
+        plotViewMat(315, 184 + tailLift, MAT.AWNING_CORAL, 2, 0, viewLeft, viewTop);
+        plotViewMat(316, 183 + tailLift, MAT.SUNFLOWER, 3, 0, viewLeft, viewTop);
+
+        // 7. Street Harpist at Plaza (x=258, y=202) + Floating Musical Notes
+        fillViewRectMat(257, 198, 2, 5, MAT.BLOSSOM_LILAC, 2, viewLeft, viewTop);
+        plotViewMat(257, 197, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+        plotViewLineU32(260, 197, 260, 202, colorLUT[MAT.BRASS | (3 << 5) | (1 << 7)], viewLeft, viewTop);
+        plotViewMat(261, 198, MAT.BRASS, 2, 0, viewLeft, viewTop);
+        const noteProg = (animTime * 0.65) % 1;
+        if (noteProg < 0.7) {
+          const nx = Math.round(261 + Math.sin(noteProg * 8) * 3);
+          const ny = Math.round(195 - noteProg * 11);
+          plotViewU32(nx, ny, packRGBA(255, 232, 136), viewLeft, viewTop);
+          plotViewU32(nx + 1, ny - 1, packRGBA(255, 232, 136), viewLeft, viewTop);
+        }
+
+        // 8. Pedestrians on Grand Stone Arch Bridge
+        const walkerX = Math.round(366 + ((animTime * 4.5) % 62));
+        const wu = (walkerX - 397) / 43;
+        const walkerY = Math.round(194 + wu * wu * 8) - 1;
+        const step = ((animTime * 6) | 0) & 1;
+        fillViewRectMat(walkerX, walkerY - 4, 2, 3, MAT.AWNING_CORAL, 2, viewLeft, viewTop);
+        plotViewMat(walkerX, walkerY - 5, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+        plotViewMat(walkerX + step, walkerY - 1, MAT.STONE_DARK, 0, 0, viewLeft, viewTop);
+
+        // Sightseer leaning on bridge apex parapet (x=398, y=193)
+        fillViewRectMat(398, 189, 2, 3, MAT.SKIN_CLOTH, 2, viewLeft, viewTop);
+        plotViewMat(398, 188, MAT.SUNFLOWER, 3, 0, viewLeft, viewTop);
+
+        // 9. Rooftop Gardener Watering Sunflowers + Cute Brass Agro-Bot (x=472..518, y=172)
+        const gardX = 508, gardY = 172;
+        fillViewRectMat(gardX, gardY - 4, 2, 3, MAT.FOLIAGE_DEEP, 2, viewLeft, viewTop);
+        fillViewRectMat(gardX - 1, gardY - 6, 4, 1, MAT.SUNFLOWER, 3, viewLeft, viewTop); // straw sun-hat!
+        plotViewMat(gardX, gardY - 5, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+        plotViewMat(gardX, gardY - 1, MAT.STONE_DARK, 0, 0, viewLeft, viewTop);
+        // Copper watering can + sparkling water arc!
+        plotViewMat(gardX - 2, gardY - 3, MAT.BRASS, 3, 0, viewLeft, viewTop);
+        if (nightAlpha < 0.5) {
+          for (let d = 1; d <= 4; d++) {
+            if (((d + (animTime * 10 | 0)) & 1) === 0) {
+              plotViewU32(gardX - 2 - d, gardY - 3 + ((d * d) >> 2), packRGBA(185, 245, 255), viewLeft, viewTop);
+            }
+          }
+        }
+        // Cute Brass-and-Ceramic Agro-Bot trundling along rooftop (x=480..500)
+        const botX = Math.round(490 + Math.sin(animTime * 1.1) * 10);
+        fillViewRectMat(botX - 2, 170, 5, 2, MAT.AWNING_CREAM, 3, viewLeft, viewTop);
+        fillViewRectMat(botX - 1, 169, 3, 1, MAT.BRASS, 3, viewLeft, viewTop);
+        plotViewMat(botX - 2, 172, MAT.STONE_DARK, 0, 0, viewLeft, viewTop);
+        plotViewMat(botX + 2, 172, MAT.STONE_DARK, 0, 0, viewLeft, viewTop);
+        plotViewU32(botX, 168, packRGBA(95, 250, 195), viewLeft, viewTop); // sprout sensor LED!
+
+        // 10. Harbor Solar Tinker on East Pier (x=624, y=202)
+        fillViewRectMat(623, 197, 2, 4, MAT.TEAL_TRIM, 2, viewLeft, viewTop);
+        plotViewMat(623, 196, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+        // Parabolic brass solar kettle dish beside tinker
+        plotViewMat(620, 199, MAT.BRASS, 3, 0, viewLeft, viewTop);
+        plotViewMat(619, 198, MAT.BRASS, 3, 0, viewLeft, viewTop);
+        plotViewMat(620, 200, MAT.TIMBER, 1, 0, viewLeft, viewTop);
+      }
+
+      // =========================================================================
+      // 8. GRAND EMERALD CANAL: REAL-TIME MIRROR REFLECTION, BOATS & WETLANDS
+      // =========================================================================
+      function renderCanalAndWildlife(viewLeft, viewTop) {
+        const waterScreenY = WATER_Y - viewTop;
+        if (waterScreenY >= viewH) return;
+
+        const startVY = Math.max(0, waterScreenY);
+        const nightAlpha = waterTint.nightFactor;
+        const sunScreenX = waterTint.sunX - viewLeft;
+
+        // 1. Real-time wavy reflection of everything already rendered above WATER_Y!
+        for (let vy = startVY; vy < viewH; vy++) {
+          const depth = vy - waterScreenY; // 0 .. 58
+          const depthNorm = Math.min(1, depth / 56);
+          const wave = Math.sin(depth * 0.52 - animTime * 3.8) * (1.2 + depthNorm * 2.8);
+          const srcWY = WATER_Y - 1 - Math.floor(depth * 0.92);
+          const srcVY = srcWY - viewTop;
+
+          const wtR = waterTint.midR + (waterTint.deepR - waterTint.midR) * depthNorm;
+          const wtG = waterTint.midG + (waterTint.deepG - waterTint.midG) * depthNorm;
+          const wtB = waterTint.midB + (waterTint.deepB - waterTint.midB) * depthNorm;
+          // Reflection clarity: stronger for bright lights at night, softer deep down
+          const reflMix = Math.max(0.24, 0.66 - depthNorm * 0.36);
+          const row = vy * viewW;
+
+          for (let vx = 0; vx < viewW; vx++) {
+            const rippleX = Math.round(vx + wave + Math.sin(vx * 0.14 + depth * 0.3 + animTime * 2.4) * 1.1);
+            const sx = Math.max(0, Math.min(viewW - 1, rippleX));
+
+            let rr = wtR, rg = wtG, rb = wtB;
+            if (srcVY >= 0 && srcVY < viewH && srcVY < waterScreenY) {
+              const srcCol = out32[srcVY * viewW + sx];
+              const sr = unpackR(srcCol), sg = unpackG(srcCol), sb = unpackB(srcCol);
+              // Boost bright lantern/window reflections on night water!
+              const lum = sr + sg + sb;
+              const boost = (nightAlpha > 0.3 && lum > 380) ? Math.min(0.84, reflMix + 0.24) : reflMix;
+              rr = wtR * (1 - boost) + sr * boost;
+              rg = wtG * (1 - boost) + sg * boost;
+              rb = wtB * (1 - boost) + sb * boost;
+            }
+
+            // Organic horizontal pixel wave shimmer bars along sun/moon reflection column (no diagonal moire!)
+            const sunJitter = Math.sin(depth * 0.85 - animTime * 3.4) * (2.5 + depth * 0.14)
+                            + Math.cos(depth * 2.1 + animTime * 2.1) * 2.0;
+            const sunDist = Math.abs((vx - sunScreenX) - sunJitter);
+            const sunBarHalfW = (1.5 + depth * 0.28) * (0.45 + 0.55 * (Math.sin(depth * 1.37 - animTime * 4.1) * 0.5 + 0.5));
+            const rowHasGlint = Math.sin(depth * 1.9 - animTime * 3.6) + Math.cos(depth * 0.73 + animTime * 1.9) > 0.15;
+            if (rowHasGlint && sunDist < sunBarHalfW) {
+              out32[row + vx] = waterTint.glintU32;
+              continue;
+            }
+            // Subtle teal crest line + night bioluminescent plankton sparkles!
+            const crest = Math.sin(vx * 0.13 + Math.sin(depth * 0.6) * 2.2 - animTime * 2.0 + depth * 0.45);
+            if (nightAlpha > 0.45 && crest > 0.965 && ((vx * 7 + vy * 13) % 11 === 0)) {
+              out32[row + vx] = packRGBA(64, 242, 212);
+            } else if (crest > 0.93 && depth > 2 && ((vx + depth * 3) % 7 < 3)) {
+              out32[row + vx] = packRGBA(rr + 18, rg + 26, rb + 26);
+            } else {
+              out32[row + vx] = packRGBA(rr, rg, rb);
+            }
+          }
+        }
+
+        // Organic lapping water highlights along stone harbor quays
+        for (let wx = 40; wx < 670; wx++) {
+          if (wx > 356 && wx < 438) continue; // under bridge arch
+          const lap = Math.sin(wx * 0.11 + animTime * 2.3) + Math.cos(wx * 0.27 - animTime * 3.1);
+          if (lap > 0.95) {
+            plotViewMat(wx, WATER_Y, MAT.WATER_FOAM, lap > 1.45 ? 3 : 2, 0, viewLeft, viewTop);
+          }
+        }
+
+        // 2. Swimming Koi Fish silhouettes just beneath the translucent surface
+        for (let k = 0; k < kois.length; k++) {
+          const koi = kois[k];
+          const kx = Math.round(koi.x);
+          const ky = koi.y + Math.round(Math.sin(animTime * 3 + koi.phase));
+          const tailWag = ((animTime * 7 + k) | 0) % 2 === 0 ? -1 : 1;
+          const koiHead = k % 2 === 0 ? packRGBA(236, 118, 56) : packRGBA(238, 232, 218);
+          const koiTail = packRGBA(218, 92, 48);
+          plotViewU32(kx, ky, koiHead, viewLeft, viewTop);
+          plotViewU32(kx - koi.dir, ky, koiHead, viewLeft, viewTop);
+          plotViewU32(kx - koi.dir * 2, ky + (tailWag > 0 ? 0 : 1), koiTail, viewLeft, viewTop);
+        }
+
+        // 3. Concentric Pixel Water Ripples (from heron & rain)
+        for (let r = 0; r < waterRipples.length; r++) {
+          const rp = waterRipples[r];
+          const rx = Math.round(rp.r);
+          const ry = Math.max(1, Math.round(rp.r * 0.35));
+          const col = packRGBA(150, 220, 228);
+          for (let deg = 0; deg < 360; deg += 30) {
+            const rad = (deg * Math.PI) / 180;
+            plotViewU32(Math.round(rp.x + Math.cos(rad) * rx), Math.round(rp.y + Math.sin(rad) * ry), col, viewLeft, viewTop);
+          }
+        }
+
+        // 4. Floating Chinampa Wetland Eco-Islands, Waterlilies & Wading White Heron
+        const islands = [
+          { cx: 146, cy: 232, rx: 22, ry: 4 },
+          { cx: 582, cy: 236, rx: 25, ry: 4 }
+        ];
+        for (let idx = 0; idx < islands.length; idx++) {
+          const isl = islands[idx];
+          for (let dy = -isl.ry; dy <= isl.ry; dy++) {
+            const span = Math.round(Math.sqrt(Math.max(0, 1 - (dy * dy) / (isl.ry * isl.ry))) * isl.rx);
+            for (let dx = -span; dx <= span; dx++) {
+              const mat = dy < 0 ? MAT.FOLIAGE_LIME : dy === isl.ry ? MAT.TIMBER : MAT.FOLIAGE_DEEP;
+              plotViewMat(isl.cx + dx, isl.cy + dy, mat, dy < 0 ? 2 : 1, 0, viewLeft, viewTop);
+            }
+          }
+          // Swaying cattail reeds & pink lotus blossoms
+          const sway = Math.round(Math.sin(animTime * 2.1 + idx) * 1);
+          for (let rx = -isl.rx + 5; rx <= isl.rx - 5; rx += 5) {
+            const hReed = 5 + (Math.abs(rx) % 4);
+            for (let ry = 1; ry <= hReed; ry++) {
+              plotViewMat(isl.cx + rx + (ry > 3 ? sway : 0), isl.cy - ry, MAT.FOLIAGE_DEEP, 2, 0, viewLeft, viewTop);
+            }
+            if (rx % 10 === 0) {
+              plotViewMat(isl.cx + rx + sway, isl.cy - hReed - 1, MAT.TIMBER, 1, 0, viewLeft, viewTop); // cattail head
+            }
+          }
+          // Waterlily pads & glowing night lotus lanterns around island
+          [-isl.rx - 6, -isl.rx - 2, isl.rx + 4, isl.rx + 9].forEach((ox, lIdx) => {
+            const lx = isl.cx + ox;
+            const ly = isl.cy + 2 + (lIdx & 1);
+            fillViewRectMat(lx - 1, ly, 3, 1, MAT.FOLIAGE_LIME, 2, viewLeft, viewTop);
+            if (lIdx % 2 === 0) {
+              if (nightAlpha > 0.3) {
+                plotViewU32(lx, ly - 1, packRGBA(255, 198, 224), viewLeft, viewTop);
+                stampDitheredGlow(lx, ly - 1, 9, 255, 150, 195, nightAlpha * 0.5, viewLeft, viewTop);
+              } else {
+                plotViewMat(lx, ly - 1, MAT.BLOSSOM_CORAL, 3, 0, viewLeft, viewTop);
+              }
+            }
+          });
+        }
+
+        // White Heron on Left Chinampa Island (x=156, y=231)
+        const heronX = 156, heronY = 230;
+        const dip = ((animTime * 0.45) % 1) < 0.14;
+        plotViewMat(heronX, heronY, MAT.BRASS, 1, 0, viewLeft, viewTop); // slender leg
+        plotViewMat(heronX, heronY - 1, MAT.BRASS, 1, 0, viewLeft, viewTop);
+        fillViewRectMat(heronX - 2, heronY - 3, 4, 2, MAT.AWNING_CREAM, 3, viewLeft, viewTop); // white body
+        if (dip) {
+          plotViewMat(heronX + 2, heronY - 2, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+          plotViewMat(heronX + 3, heronY - 1, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+          plotViewMat(heronX + 4, heronY, MAT.SUNFLOWER, 3, 0, viewLeft, viewTop); // beak dipping!
+        } else {
+          plotViewMat(heronX + 1, heronY - 4, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+          plotViewMat(heronX + 1, heronY - 5, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+          plotViewMat(heronX + 2, heronY - 5, MAT.SUNFLOWER, 3, 0, viewLeft, viewTop); // orange beak
+        }
+
+        // Mother Duck + 3 Yellow Ducklings paddling in a line (around x=410..470, y=246)
+        const duckBaseX = Math.round(445 - ((animTime * 3.2) % 90));
+        const duckY = 247 + Math.round(Math.sin(animTime * 3.5) * 0.6);
+        // Mother duck (facing left -1)
+        fillViewRectMat(duckBaseX, duckY, 4, 2, MAT.AWNING_CREAM, 2, viewLeft, viewTop);
+        plotViewMat(duckBaseX, duckY - 1, MAT.TEAL_TRIM, 2, 0, viewLeft, viewTop);
+        plotViewMat(duckBaseX - 1, duckY - 1, MAT.SUNFLOWER, 3, 0, viewLeft, viewTop);
+        // 3 tiny yellow ducklings trailing behind!
+        for (let d = 1; d <= 3; d++) {
+          const dx = duckBaseX + 3 + d * 4;
+          const dy = duckY + 1 + (((animTime * 6 + d) | 0) % 2 === 0 ? 0 : -1);
+          fillViewRectMat(dx, dy, 2, 1, MAT.SUNFLOWER, 3, viewLeft, viewTop);
+          plotViewMat(dx, dy - 1, MAT.SUNFLOWER, 3, 0, viewLeft, viewTop);
+        }
+
+        // 5. Canal Solar-Sail Catamarans, Market Barges & Lantern Gondolas
+        for (let i = 0; i < boats.length; i++) {
+          const bt = boats[i];
+          const bx = Math.round(bt.x);
+          const by = bt.y + Math.round(Math.sin(animTime * 2.5 + i * 1.8) * 0.7);
+
+          // V-shaped trailing water wake
+          const wakeCol = colorLUT[MAT.WATER_FOAM | (2 << 5) | (1 << 7)];
+          for (let w = 1; w <= 9; w += 2) {
+            plotViewU32(bx - bt.dir * (10 + w), by + 1 - (w >> 3), wakeCol, viewLeft, viewTop);
+            plotViewU32(bx - bt.dir * (10 + w), by + 2 + (w >> 3), wakeCol, viewLeft, viewTop);
+          }
+
+          if (bt.type === 'catamaran') {
+            // Sleek timber twin-hull + curved amber translucent solar sail!
+            fillViewRectMat(bx - 10, by, 20, 2, MAT.TIMBER, 2, viewLeft, viewTop);
+            plotViewMat(bx + bt.dir * 10, by - 1, MAT.BRASS, 3, 0, viewLeft, viewTop);
+            // Mast & curved solar sail
+            fillViewRectMat(bx, by - 14, 1, 14, MAT.TIMBER, 1, viewLeft, viewTop);
+            for (let sy = 1; sy <= 12; sy++) {
+              const belly = Math.round(Math.sin((sy / 12) * Math.PI) * 6) + 1;
+              for (let sx = 1; sx <= belly; sx++) {
+                const shade = sx === belly ? 3 : (sy < 5 ? 3 : 2);
+                plotViewMat(bx + bt.dir * sx - bt.dir * 2, by - 14 + sy, MAT.SAIL_AMBER, shade, 0, viewLeft, viewTop);
+              }
+            }
+            // Sailor at helm
+            fillViewRectMat(bx - bt.dir * 5, by - 3, 2, 3, MAT.TEAL_TRIM, 2, viewLeft, viewTop);
+            plotViewMat(bx - bt.dir * 5, by - 4, MAT.AWNING_CREAM, 3, 0, viewLeft, viewTop);
+          } else if (bt.type === 'barge') {
+            // Botanical Harvest Barge carrying pumpkins, greenery & solar canopy
+            fillViewRectMat(bx - 12, by, 24, 3, MAT.TIMBER, 1, viewLeft, viewTop);
+            fillViewRectMat(bx - 10, by - 1, 20, 1, MAT.TIMBER, 2, viewLeft, viewTop);
+            // Crates of produce (coral tomatoes, golden pumpkins, fresh greens)
+            fillViewRectMat(bx - 7, by - 3, 4, 2, MAT.AWNING_CORAL, 2, viewLeft, viewTop);
+            fillViewRectMat(bx - 2, by - 3, 4, 2, MAT.SUNFLOWER, 3, viewLeft, viewTop);
+            fillViewRectMat(bx + 3, by - 4, 5, 3, MAT.FOLIAGE_LIME, 2, viewLeft, viewTop);
+            // Small solar canopy cabin at stern
+            fillViewRectMat(bx - bt.dir * 8, by - 5, 5, 1, MAT.SOLAR_GLASS, 3, viewLeft, viewTop);
+            fillViewRectMat(bx - bt.dir * 6, by - 4, 2, 3, MAT.SKIN_CLOTH, 2, viewLeft, viewTop);
+          } else {
+            // Graceful curved gondola with warm bow lantern
+            fillViewRectMat(bx - 8, by, 16, 2, MAT.TIMBER, 1, viewLeft, viewTop);
+            plotViewMat(bx - 9, by - 1, MAT.BRASS, 3, 0, viewLeft, viewTop);
+            plotViewMat(bx + 9, by - 1, MAT.BRASS, 3, 0, viewLeft, viewTop);
+            fillViewRectMat(bx - 3, by - 3, 6, 3, MAT.AWNING_CREAM, 2, viewLeft, viewTop);
+            fillViewRectMat(bx - bt.dir * 6, by - 4, 2, 4, MAT.AWNING_CORAL, 2, viewLeft, viewTop);
+          }
+
+          // Warm bow lantern + reflection on water at dusk/night!
+          const bowX = bx + bt.dir * 10;
+          if (nightAlpha > 0.25) {
+            plotViewU32(bowX, by - 2, packRGBA(255, 232, 138), viewLeft, viewTop);
+            stampDitheredGlow(bowX, by, 12, 255, 190, 88, nightAlpha * 0.65, viewLeft, viewTop);
+          }
+        }
+      }
+
+      // Foreground Kingfisher, Anemometer, Soaring Birds & Weather/Firefly Particles
+      function renderForegroundAndAtmosphere(foreShiftX, viewLeft, viewTop) {
+        const nightAlpha = waterTint.nightFactor;
+        const foreToWorldX = (fx) => fx - foreShiftX + viewLeft;
+
+        // 1. Spinning 3-Cup Brass Anemometer on Foreground Stone Balustrade (fx=52, y=231)
+        const anemX = foreToWorldX(52);
+        fillViewRectMat(anemX, 231, 1, 7, MAT.BRASS, 2, viewLeft, viewTop);
+        const armSpan = Math.round(Math.sin(animTime * 5.4) * 4);
+        plotViewLineU32(anemX - armSpan, 231, anemX + armSpan, 231, colorLUT[MAT.BRASS | (3 << 5) | (1 << 7)], viewLeft, viewTop);
+        plotViewMat(anemX - armSpan, 230, MAT.BRASS, 3, 0, viewLeft, viewTop);
+        plotViewMat(anemX + armSpan, 230, MAT.BRASS, 1, 0, viewLeft, viewTop);
+
+        // 2. Turquoise-and-Orange Pixel Kingfisher perched on Foreground Rail (fx=64, y=237)
+        const hop = ((animTime * 1.3) % 4 < 0.22) ? -2 : 0;
+        const kfX = foreToWorldX(64);
+        const kfY = 236 + hop;
+        fillViewRectMat(kfX, kfY, 3, 2, MAT.AWNING_CORAL, 3, viewLeft, viewTop); // orange breast
+        fillViewRectMat(kfX - 1, kfY - 1, 3, 2, MAT.TEAL_TRIM, 3, viewLeft, viewTop); // turquoise back & crest
+        plotViewMat(kfX + 3, kfY - 1, MAT.STONE_DARK, 0, 0, viewLeft, viewTop); // long kingfisher bill!
+        if (hop < 0) {
+          plotViewMat(kfX - 2, kfY - 2, MAT.TEAL_TRIM, 3, 0, viewLeft, viewTop); // fluttered wing!
+        }
+
+        // 3. Soaring White Swallows / Gulls (day & sunset)
+        if (nightAlpha < 0.72) {
+          const birdCol = colorLUT[MAT.AWNING_CREAM | (3 << 5) | (1 << 7)];
+          const birdTip = colorLUT[MAT.STONE_DARK | (1 << 5) | (1 << 7)];
+          for (let i = 0; i < birds.length; i++) {
+            const b = birds[i];
+            const bx = Math.round(b.x);
+            const by = Math.round(b.y + Math.sin(animTime * 2 + b.flapPhase) * 2.5);
+            const flap = Math.sin(animTime * 8.5 + b.flapPhase);
+            const wingY = flap > 0.2 ? -1 : flap < -0.2 ? 1 : 0;
+            plotViewU32(bx, by, birdCol, viewLeft, viewTop);
+            plotViewU32(bx - 1, by + wingY, birdCol, viewLeft, viewTop);
+            plotViewU32(bx + 1, by + wingY, birdCol, viewLeft, viewTop);
+            plotViewU32(bx - 2, by + wingY, birdTip, viewLeft, viewTop);
+          }
+        }
+
+        // 4. Radial Crepuscular Sunbeams fanning out from the Sun during Dawn & Golden Hour!
+        const isGoldenBeams = (tDay > 0.23 && tDay < 0.34) || (tDay > 0.65 && tDay < 0.77);
+        if (isGoldenBeams && weatherMode !== 'sunshower') {
+          const beamStr = tDay < 0.5
+            ? Math.sin(((tDay - 0.23) / 0.11) * Math.PI)
+            : Math.sin(((tDay - 0.65) / 0.12) * Math.PI);
+          const sx = waterTint.sunX - viewLeft;
+          const sy = waterTint.sunY - viewTop;
+          const maxBeamY = Math.min(viewH - 20, WATER_Y - viewTop + 6);
+          for (let vy = 0; vy < maxBeamY; vy++) {
+            const dy = vy - sy;
+            if (dy < -12) continue;
+            const byRow = (vy & 3) << 2;
+            const row = vy * viewW;
+            for (let vx = 0; vx < viewW; vx++) {
+              const dx = vx - sx;
+              const dist2 = dx * dx + dy * dy;
+              if (dist2 < 144 || dist2 > 95000) continue;
+              const falloff = 1.0 - dist2 / 95000;
+              const bayer = BAYER4[byRow | (vx & 3)] / 16.0;
+              if (bayer > beamStr * falloff * 0.48) continue;
+              const ang = Math.atan2(dy, dx);
+              const ray = Math.sin(ang * 15.0 + 0.6) * Math.cos(ang * 7.0 - 0.4);
+              if (ray > 0.46) {
+                const c = out32[row + vx];
+                out32[row + vx] = packRGBA(unpackR(c) + 22, unpackG(c) + 15, unpackB(c) + 5);
+              }
+            }
+          }
+        }
+
+        // 5. Atmospheric Point Lights (Night Lanterns & Bioluminescent Canopy Halos)
+        if (nightAlpha > 0.18) {
+          const midShift  = Math.round((camX - WORLD_W * 0.5) * 0.66 + WORLD_W * 0.5 - viewW * 0.5);
+          for (let i = 0; i < pointLights.length; i++) {
+            const pl = pointLights[i];
+            let wx = pl.x;
+            if (pl.layer === 'mid') wx = pl.x - midShift + viewLeft;
+            else if (pl.layer === 'fore') wx = pl.x - foreShiftX + viewLeft;
+
+            if (pl.type === 'warm') {
+              stampDitheredGlow(wx, pl.y, pl.r, 255, 175, 72, nightAlpha * 0.58, viewLeft, viewTop);
+            } else {
+              stampDitheredGlow(wx, pl.y, pl.r, 42, 238, 198, nightAlpha * 0.52, viewLeft, viewTop);
+            }
+          }
+        }
+
+        // 6. Weather & Ecological Particles (Blossoms, Dandelions, Sun-shower Rain, or Night Fireflies!)
+        const activeCount = weatherMode === 'breeze' ? 42 : 85;
+        for (let i = 0; i < activeCount; i++) {
+          const p = particles[i];
+          const px = Math.round(p.x);
+          const py = Math.round(p.y);
+
+          if (weatherMode === 'sunshower') {
+            // Crisp diagonal pixel rain streak
+            const rainCol = nightAlpha > 0.4 ? packRGBA(120, 185, 230) : packRGBA(205, 240, 255);
+            plotViewLineU32(px, py, px - 2, py + 5, rainCol, viewLeft, viewTop);
+          } else if (nightAlpha > 0.35) {
+            // Bioluminescent Emerald & Golden Fireflies / Floating Forest Spores!
+            const blink = Math.sin(animTime * 3.2 + p.phase) * 0.5 + 0.5;
+            if (blink > 0.25) {
+              const isGold = (i % 3 === 0);
+              const core = isGold ? packRGBA(255, 238, 128) : packRGBA(110, 255, 218);
+              plotViewU32(px, py, core, viewLeft, viewTop);
+              if (blink > 0.78 && weatherMode === 'bloom') {
+                stampDitheredGlow(px, py, 6, isGold ? 255 : 55, isGold ? 210 : 245, isGold ? 90 : 195, 0.45, viewLeft, viewTop);
+              }
+            }
+          } else {
+            // Daytime drifting Sakura/Jacaranda petals & white dandelion seeds
+            if (weatherMode === 'bloom' || i % 3 === 0) {
+              const petalCol = (i & 1) ? packRGBA(255, 182, 198) : packRGBA(242, 204, 252);
+              plotViewU32(px, py, petalCol, viewLeft, viewTop);
+              if (((animTime * 5 + i) | 0) & 1) {
+                plotViewU32(px + 1, py, packRGBA(255, 224, 232), viewLeft, viewTop);
+              }
+            } else {
+              // Delicate floating pollen / dandelion seed mote
+              plotViewU32(px, py, packRGBA(255, 252, 230), viewLeft, viewTop);
+            }
+          }
+        }
+      }
+
+      // =========================================================================
+      // 9. SIMULATION UPDATE STEP
+      // =========================================================================
+      function updateSimulation(dt) {
+        animTime += dt;
+
+        // 1. Advance 24-hour Solarpunk clock (~96 seconds per full day in 'auto' mode)
+        if (timeMode === 'auto') {
+          tDay = (tDay + dt / 96.0) % 1.0;
+        }
+
+        // Format HH:MM clock readout
+        const totalMinutes = Math.floor(tDay * 24 * 60) % 1440;
+        const hh = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+        const mm = String(totalMinutes % 60).padStart(2, '0');
+        const nextClock = `${hh}:${mm}`;
+        if (clockText.textContent !== nextClock) {
+          clockText.textContent = nextClock;
+        }
+
+        // 2. Smooth camera easing + subtle pointer/breathing drift when not dragging
+        if (!isDragging && !isZoom2x) {
+          const gentleDrift = Math.sin(animTime * 0.14) * 26 + (pointerNormX - 0.5) * 70;
+          targetCamX = 386 + gentleDrift;
+          targetCamY = 135;
+        }
+        clampCamera();
+        const ease = 1 - Math.exp(-dt * 5.5);
+        camX += (targetCamX - camX) * ease;
+        camY += (targetCamY - camY) * ease;
+
+        // 3. Clouds & Airships
+        for (let i = 0; i < clouds.length; i++) {
+          const cl = clouds[i];
+          cl.x += cl.speed * dt;
+          if (cl.x > WORLD_W + 80) cl.x = -80;
+        }
+        for (let i = 0; i < airships.length; i++) {
+          const s = airships[i];
+          s.x += s.dir * s.speed * dt;
+          if (s.dir > 0 && s.x > WORLD_W + 50) s.x = -50;
+          if (s.dir < 0 && s.x < -50) s.x = WORLD_W + 50;
+        }
+
+        // 4. Suspended Sky-Tram with smooth station stop at Central Sky-Station (x=392)
+        if (tram.stopTimer > 0) {
+          tram.stopTimer -= dt;
+          tram.vel = 0;
+        } else {
+          const distToStation = 392 - tram.x;
+          if (!tram.hasStoppedThisLap && distToStation > 0 && distToStation < 42) {
+            tram.vel = Math.max(4, (distToStation / 42) * tram.maxSpeed);
+            if (distToStation < 1.5) {
+              tram.x = 392;
+              tram.stopTimer = 3.2; // Pause for passengers at Central Sky-Station!
+              tram.hasStoppedThisLap = true;
+            }
+          } else {
+            tram.vel = Math.min(tram.maxSpeed, tram.vel + dt * 16);
+          }
+          tram.x += tram.vel * dt;
+          if (tram.x > WORLD_W + 90) {
+            tram.x = -30;
+            tram.hasStoppedThisLap = false;
+          }
+        }
+
+        // 5. Cyclists, Boats, Koi & Birds
+        for (let i = 0; i < cyclists.length; i++) {
+          const c = cyclists[i];
+          c.x += c.dir * c.speed * dt;
+          if (c.dir > 0 && c.x > WORLD_W + 20) c.x = -20;
+          if (c.dir < 0 && c.x < -20) c.x = WORLD_W + 20;
+        }
+        for (let i = 0; i < boats.length; i++) {
+          const b = boats[i];
+          b.x += b.dir * b.speed * dt;
+          if (b.dir > 0 && b.x > 665) b.dir = -1;
+          if (b.dir < 0 && b.x < 75) b.dir = 1;
+        }
+        for (let i = 0; i < kois.length; i++) {
+          const k = kois[i];
+          k.x += k.dir * k.speed * dt;
+          if (k.x > 550) k.dir = -1;
+          if (k.x < 190) k.dir = 1;
+        }
+        for (let i = 0; i < birds.length; i++) {
+          const b = birds[i];
+          b.x += b.vx * dt;
+          if (b.vx > 0 && b.x > WORLD_W + 20) b.x = -20;
+          if (b.vx < 0 && b.x < -20) b.x = WORLD_W + 20;
+        }
+
+        // 6. Water Ripples (Heron dip & Sun-shower raindrops)
+        if (((animTime * 0.45) % 1) < 0.04 && waterRipples.length < 12) {
+          waterRipples.push({ x: 160, y: 231, r: 1, maxR: 11 });
+        }
+        if (weatherMode === 'sunshower' && Math.random() < 0.45 && waterRipples.length < 22) {
+          waterRipples.push({
+            x: 80 + Math.random() * 560,
+            y: WATER_Y + 3 + Math.random() * 48,
+            r: 0.5,
+            maxR: 6 + Math.random() * 5
+          });
+        }
+        for (let i = waterRipples.length - 1; i >= 0; i--) {
+          waterRipples[i].r += dt * 7.5;
+          if (waterRipples[i].r >= waterRipples[i].maxR) {
+            waterRipples.splice(i, 1);
+          }
+        }
+
+        // 7. Particles (Rain / Fireflies / Blossoms)
+        const nightAlpha = waterTint.nightFactor;
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          if (weatherMode === 'sunshower') {
+            p.x -= 48 * dt;
+            p.y += 145 * dt;
+            if (p.y > WATER_Y + 35) { p.y = -10; p.x = Math.random() * (WORLD_W + 100); }
+            if (p.x < 0) p.x += WORLD_W;
+          } else if (nightAlpha > 0.35) {
+            // Fireflies drift gently upward & meander over gardens & water
+            p.x += Math.sin(animTime * 1.3 + p.phase) * 9 * dt;
+            p.y -= (3.5 + (i % 3) * 1.8) * dt;
+            if (p.y < 55) { p.y = 250; p.x = 60 + Math.random() * 600; }
+          } else {
+            // Blossoms & dandelion seeds ride the warm afternoon breeze
+            p.x += (10 + Math.sin(animTime * 1.6 + p.phase) * 5) * dt;
+            p.y += (5 + Math.cos(animTime * 2.1 + p.phase) * 3) * dt;
+            if (p.y > WORLD_H) { p.y = -4; p.x = Math.random() * WORLD_W; }
+            if (p.x > WORLD_W) p.x = 0;
+          }
+        }
+      }
+
+      function renderFrame() {
+        updateLightingLUTs(tDay, animTime, weatherMode);
+
+        const viewLeft = Math.round(camX - viewW * 0.5);
+        const viewTop  = Math.round(camY - viewH * 0.5);
+
+        // 1. Sky, Stars, Sun/Moon, Rainbow, Clouds & Airships
+        renderSkyAndCelestials(viewLeft, viewTop);
+
+        // 2. Far Mountain & Bay Horizon Layer (parallax 0.32x)
+        blitIndexedLayer(layerFar, WORLD_W, 0.32, viewLeft, viewTop, WATER_Y);
+
+        // 3. Upper Citadel, Sun-Lotus Biodome & Bosco Towers (parallax 0.66x)
+        blitIndexedLayer(layerMid, WORLD_W, 0.66, viewLeft, viewTop, WATER_Y);
+        renderCleanEnergyKinetics('mid', 0.66, viewLeft, viewTop);
+
+        // 4. Main Harbor Quarter, Viaduct, Townhouses & Arch Bridge (parallax 1.00x)
+        blitIndexedLayer(layerMain, WORLD_W, 1.00, viewLeft, viewTop, WATER_Y);
+        renderCleanEnergyKinetics('main', 1.00, viewLeft, viewTop);
+        renderTransitAndCitizens(viewLeft, viewTop);
+
+        // 5. Grand Emerald Canal: Real-Time Wavy Mirror Reflection, Boats & Wildlife
+        renderCanalAndWildlife(viewLeft, viewTop);
+
+        // 6. Foreground Botanical Overlook Frame, Kingfisher, Sunbeams & Fireflies
+        const foreShiftX = blitIndexedLayer(layerFore, FORE_W, 1.28, viewLeft, viewTop, WORLD_H);
+        renderForegroundAndAtmosphere(foreShiftX, viewLeft, viewTop);
+
+        ctx.putImageData(frameImgData, 0, 0);
+      }
+
+      // =========================================================================
+      // 10. ANIMATION LOOP & EFFICIENT BACKGROUND PAUSING
+      // =========================================================================
+      let rafId = 0;
+      let lastTs = 0;
+
+      function tick(ts) {
+        if (isPaused || isVisibilityPaused) {
+          rafId = 0;
+          return;
+        }
+        const dt = lastTs ? Math.min(0.05, (ts - lastTs) / 1000) : 0.016;
+        lastTs = ts;
+        updateSimulation(dt);
+        renderFrame();
+        rafId = requestAnimationFrame(tick);
+      }
+
+      function ensureLoopState() {
+        if (isPaused || isVisibilityPaused) {
+          if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = 0;
+          }
+          setAudioSuspended(true);
+        } else if (!rafId) {
+          lastTs = 0;
+          setAudioSuspended(false);
+          rafId = requestAnimationFrame(tick);
+        }
+      }
+
+      // Efficient background pausing via contentvisibilityautostatechange + IntersectionObserver fallback
+      const stageMain = document.getElementById('stage-main');
+      stageMain.addEventListener('contentvisibilityautostatechange', (event) => {
+        isVisibilityPaused = Boolean(event.skipped) || document.hidden;
+        ensureLoopState();
+      });
+
+      if (!('contentVisibility' in document.documentElement.style) && 'IntersectionObserver' in window) {
+        const io = new IntersectionObserver((entries) => {
+          for (const entry of entries) {
+            isVisibilityPaused = !entry.isIntersecting || document.hidden;
+            ensureLoopState();
+          }
+        }, { rootMargin: '150px' });
+        io.observe(stageMain);
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        isVisibilityPaused = document.hidden;
+        ensureLoopState();
+      });
+
+      // =========================================================================
+      // 11. PROCEDURAL SOLARPUNK WEB AUDIO SOUNDSCAPE (BREEZE, BROOK & CHIMES)
+      // =========================================================================
+      let audioCtx = null;
+      let masterGain = null;
+      let chimeTimer = 0;
+      let isSoundOn = false;
+
+      // Lydian Solarpunk scale (F Lydian: C4, D4, E4, F4, G4, A4, C5, D5, E5, G5)
+      const CHIME_FREQS = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99];
+
+      function initAudio() {
+        if (audioCtx) return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        audioCtx = new AudioCtx();
+        window.ToyEmbed?.trackAudio(audioCtx);
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.22;
+        masterGain.connect(audioCtx.destination);
+
+        // Gentle filtered pink-noise breeze & distant waterfall murmur
+        const bufSize = audioCtx.sampleRate * 3;
+        const noiseBuf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+        const out = noiseBuf.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0;
+        for (let i = 0; i < bufSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.997 * b0 + white * 0.029;
+          b1 = 0.985 * b1 + white * 0.032;
+          b2 = 0.950 * b2 + white * 0.048;
+          out[i] = (b0 + b1 + b2) * 0.16;
+        }
+        const noiseSrc = audioCtx.createBufferSource();
+        noiseSrc.buffer = noiseBuf;
+        noiseSrc.loop = true;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 480;
+
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.value = 0.26;
+        noiseSrc.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(masterGain);
+        noiseSrc.start();
+
+        scheduleNextChime();
+      }
+
+      function scheduleNextChime() {
+        if (!isSoundOn || !audioCtx) return;
+        if (audioCtx.state === 'running' && !isPaused && !isVisibilityPaused) {
+          const now = audioCtx.currentTime;
+          const freq = CHIME_FREQS[Math.floor(Math.random() * CHIME_FREQS.length)];
+          const osc = audioCtx.createOscillator();
+          const oscHarm = audioCtx.createOscillator();
+          const env = audioCtx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          oscHarm.type = 'triangle';
+          oscHarm.frequency.setValueAtTime(freq * 2, now);
+
+          const harmGain = audioCtx.createGain();
+          harmGain.gain.value = 0.12;
+
+          env.gain.setValueAtTime(0.0001, now);
+          env.gain.exponentialRampToValueAtTime(0.14, now + 0.04);
+          env.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+
+          osc.connect(env);
+          oscHarm.connect(harmGain);
+          harmGain.connect(env);
+          env.connect(masterGain);
+
+          osc.start(now);
+          oscHarm.start(now);
+          osc.stop(now + 2.9);
+          oscHarm.stop(now + 2.9);
+        }
+        chimeTimer = window.setTimeout(scheduleNextChime, 1100 + Math.random() * 2100);
+      }
+
+      function setAudioSuspended(suspend) {
+        if (!audioCtx || !isSoundOn) return;
+        if (suspend && audioCtx.state === 'running') {
+          audioCtx.suspend();
+        } else if (!suspend && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      }
+
+      // =========================================================================
+      // 12. HUD TOOLBAR, ACCESSIBILITY, CAMERA INTERACTION & SNAPSHOT EXPORT
+      // =========================================================================
+      const toolbar = document.getElementById('city-toolbar');
+      const hudShell = document.getElementById('hud-shell');
+      const btnPause = document.getElementById('btn-pause');
+      const btnZoom = document.getElementById('btn-zoom');
+      const btnSound = document.getElementById('btn-sound');
+      const btnSnap = document.getElementById('btn-snap');
+      const btnPureView = document.getElementById('btn-pure-view');
+      const timeButtons = Array.from(document.querySelectorAll('.time-preset'));
+      const weatherButtons = Array.from(document.querySelectorAll('.weather-btn'));
+
+      // Roving tabindex fallback only when native focusgroup is unsupported
+      if (!('focusGroup' in HTMLElement.prototype)) {
+        const items = Array.from(toolbar.querySelectorAll('button'));
+        items.forEach((b, i) => { b.tabIndex = i === 0 ? 0 : -1; });
+        toolbar.addEventListener('focusin', ({ target }) => {
+          if (items.includes(target)) {
+            items.forEach((b) => { b.tabIndex = b === target ? 0 : -1; });
+          }
+        });
+        toolbar.addEventListener('keydown', (e) => {
+          const idx = items.indexOf(document.activeElement);
+          if (idx < 0) return;
+          const rtl = getComputedStyle(toolbar).direction === 'rtl';
+          let next = -1;
+          if (e.key === 'ArrowRight') next = (idx + (rtl ? -1 : 1) + items.length) % items.length;
+          else if (e.key === 'ArrowLeft') next = (idx + (rtl ? 1 : -1) + items.length) % items.length;
+          else if (e.key === 'Home') next = 0;
+          else if (e.key === 'End') next = items.length - 1;
+          if (next >= 0) {
+            e.preventDefault();
+            items[next].focus();
+          }
+        });
+      }
+
+      // Progressive interest-invoker hint upgrade where supported
+      if ('interestForElement' in HTMLButtonElement.prototype && CSS.supports('position-area', 'block-start')) {
+        toolbar.querySelectorAll('button[title]').forEach((b, i) => {
+          const tip = document.createElement('div');
+          tip.id = `hud-tip-${i}`;
+          tip.textContent = b.title;
+          tip.setAttribute('popover', 'hint');
+          tip.setAttribute('role', 'tooltip');
+          b.setAttribute('interestfor', tip.id);
+          b.setAttribute('aria-describedby', tip.id);
+          b.removeAttribute('title');
+          b.addEventListener('click', () => {
+            if (tip.matches(':popover-open')) tip.hidePopover?.();
+          });
+          document.body.append(tip);
+        });
+      }
+
+      function syncPauseUI() {
+        btnPause.setAttribute('aria-pressed', String(isPaused));
+      }
+      syncPauseUI();
+
+      btnPause.addEventListener('click', () => {
+        isPaused = !isPaused;
+        syncPauseUI();
+        ensureLoopState();
+        if (isPaused) renderFrame();
+      });
+
+      timeButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          timeButtons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+          const val = btn.dataset.time;
+          if (val === 'auto') {
+            timeMode = 'auto';
+          } else {
+            timeMode = 'fixed';
+            tDay = parseFloat(val);
+            const totalMinutes = Math.floor(tDay * 24 * 60) % 1440;
+            clockText.textContent = `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
+          }
+          renderFrame();
+        });
+      });
+
+      weatherButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          weatherButtons.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+          weatherMode = btn.dataset.weather;
+          renderFrame();
+        });
+      });
+
+      function toggleZoom() {
+        isZoom2x = !isZoom2x;
+        btnZoom.setAttribute('aria-pressed', String(isZoom2x));
+        resizeBuffers();
+        renderFrame();
+      }
+      btnZoom.addEventListener('click', toggleZoom);
+
+      function toggleSound() {
+        isSoundOn = !isSoundOn;
+        btnSound.setAttribute('aria-pressed', String(isSoundOn));
+        if (isSoundOn) {
+          initAudio();
+          if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+          window.clearTimeout(chimeTimer);
+          scheduleNextChime();
+        } else {
+          window.clearTimeout(chimeTimer);
+          if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
+        }
+      }
+      btnSound.addEventListener('click', toggleSound);
+
+      function togglePureView() {
+        isPureView = !isPureView;
+        btnPureView.setAttribute('aria-pressed', String(isPureView));
+        hudShell.classList.toggle('is-hidden', isPureView);
+        if (isPureView) landmarkBadge.classList.remove('is-visible');
+      }
+      btnPureView.addEventListener('click', togglePureView);
+
+      btnSnap.addEventListener('click', () => {
+        renderFrame();
+        const scale = 3;
+        const outCanvas = document.createElement('canvas');
+        outCanvas.width = viewW * scale;
+        outCanvas.height = viewH * scale;
+        const octx = outCanvas.getContext('2d');
+        octx.imageSmoothingEnabled = false;
+        octx.drawImage(canvas, 0, 0, outCanvas.width, outCanvas.height);
+        const link = document.createElement('a');
+        link.download = `heliosia-solarpunk-${clockText.textContent.replace(':', '')}.png`;
+        link.href = outCanvas.toDataURL('image/png');
+        link.click();
+        statusRegion.textContent = '已导出高清像素画快照 PNG';
+      });
+
+      // Pointer drag-pan & Landmark hover whisper badge
+      canvas.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        dragCamX = targetCamX;
+        dragCamY = targetCamY;
+        canvas.setPointerCapture(e.pointerId);
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        pointerNormX = e.clientX / Math.max(1, window.innerWidth);
+        const pxRatioX = viewW / Math.max(1, window.innerWidth);
+        const pxRatioY = viewH / Math.max(1, window.innerHeight);
+
+        if (isDragging) {
+          targetCamX = dragCamX - (e.clientX - dragStartX) * pxRatioX;
+          targetCamY = dragCamY - (e.clientY - dragStartY) * pxRatioY;
+          clampCamera();
+          if (isPaused) {
+            camX = targetCamX;
+            camY = targetCamY;
+            renderFrame();
+          }
+          return;
+        }
+
+        if (!isPureView) {
+          const worldX = (camX - viewW * 0.5) + e.clientX * pxRatioX;
+          const worldY = (camY - viewH * 0.5) + e.clientY * pxRatioY;
+          let found = null;
+          for (let i = 0; i < LANDMARKS.length; i++) {
+            const lm = LANDMARKS[i];
+            const dx = worldX - lm.x, dy = worldY - lm.y;
+            if (dx * dx + dy * dy <= lm.r * lm.r) {
+              found = lm;
+              break;
+            }
+          }
+          if (found) {
+            landmarkText.textContent = found.label;
+            landmarkBadge.classList.add('is-visible');
+          } else {
+            landmarkBadge.classList.remove('is-visible');
+          }
+        }
+      });
+
+      const endDrag = () => { isDragging = false; };
+      canvas.addEventListener('pointerup', endDrag);
+      canvas.addEventListener('pointercancel', endDrag);
+      canvas.addEventListener('pointerleave', () => {
+        landmarkBadge.classList.remove('is-visible');
+      });
+
+      // Wheel zoom convenience
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if ((e.deltaY < -12 && !isZoom2x) || (e.deltaY > 12 && isZoom2x)) {
+          toggleZoom();
+        }
+      }, { passive: false });
+
+      // Keyboard shortcuts (Space: Pause, Z: 2x Zoom, M: Sound, H: Pure View)
+      window.addEventListener('keydown', (e) => {
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+        if (e.code === 'Space' && document.activeElement?.tagName !== 'BUTTON') {
+          e.preventDefault();
+          btnPause.click();
+        } else if (e.key === 'z' || e.key === 'Z') {
+          toggleZoom();
+        } else if (e.key === 'm' || e.key === 'M') {
+          toggleSound();
+        } else if (e.key === 'h' || e.key === 'H') {
+          togglePureView();
+        }
+      });
+
+      // Boot scene immediately!
+      resizeBuffers();
+      renderFrame();
+      window.ToyEmbed?.ready();
+      ensureLoopState();
+    })();
+  </script>
+</body>
+</html>
